@@ -1,0 +1,89 @@
+description: |
+    This node takes a `sensor_msgs/Joy.msg` and converts it to a
+    `duckietown_msgs/CarControl.msg`.
+
+    It publishes at a fixed interval with a zero-order hold.
+
+parameters:
+    v_gain:
+        desc:
+        type: float
+        default: 0.41
+    omega_gain:
+        desc:
+        type: float
+        default: 8.3
+    bicycle_kinematics:
+        desc:
+        type: int
+        default: 0
+    steer_angle_gain:
+        desc:
+        type: int
+        default: 1
+    simulated_vehicle_length:
+        desc:
+        type: float
+        default: 0.18
+
+publishers:
+    car_cmd:
+        desc:
+        type: duckietown_msgs/Twist2DStamped
+        topic: ~car_cmd
+        queue_size: 1
+    joy_override:
+        desc:
+        type: duckietown_msgs/BoolStamped
+        topic: ~joystick_override
+        queue_size: 1
+    parallel_autonomy:
+        desc:
+        type: duckietown_msgs/BoolStamped
+        topic: ~parallel_autonomy
+        queue_size: 1
+    anti_instagram:
+        desc:
+        type: duckietown_msgs/BoolStamped
+        topic: anti_instagram_node/click
+        queue_size: 1
+    e_stop:
+        desc:
+        type: duckietown_msgs/BoolStamped
+        topic: wheels_driver_node/emergency_stop
+        queue_size: 1
+    avoidance:
+        desc:
+        type: duckietown_msgs/BoolStamped
+        topic: ~start_avoidance
+        queue_size: 1
+
+subscriptions:
+    joy:
+        desc: |
+         The `Joy.msg` from `joy_node` of the `joy` package. The vertical axis of the left stick maps to speed. The horizontal axis of the right stick maps to steering.
+        type: sensor_msgs/Joy
+        topic: joy # XXX
+        queue_size: 1
+
+contracts: {}
+
+#
+# parameters
+#
+# * `~pub_timestep`: Time steps (in seconds) between publishings of CarControl msgs. Default to 0.02 (50hz)
+#
+# Subscribe Topics:
+#
+# * `joy`: sensor_msgs/Joy.msg
+#
+#
+# Publish Topics:
+#
+# * `~joy_control`: duckietown_msgs/CarControl.msg
+#
+# CarControl.speed: [-1,1] Positive is forward speed.
+#
+# CarControl.steering: [-1,1] Positive is steering left.
+#
+# CarControl.need_steering: default to false.

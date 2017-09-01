@@ -1,0 +1,27 @@
+description:
+    Camera driver.
+    
+parameters:
+    framerate:
+        type: float
+        default: 60
+        desc: Frame rate
+    res_w:
+        type: int
+        default: 320
+        desc: Resolution (width)
+    res_h:
+        type: int
+        default: 200
+        desc: Resolution (height)
+
+subscriptions: {}
+
+
+publishers:
+    image_compressed:
+        topic: ~image/compressed"
+        type: sensor_msgs/CompressedImage
+        queue_size: 1
+
+contracts: {}

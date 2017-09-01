@@ -1,0 +1,32 @@
+description:
+    A node that decodes a compressed image into a regular image.
+    This is useful so that multiple nodes that need to use the image
+    do not do redundant computaon.
+
+parameters:
+    publish_freq:
+        type: float
+        default: 1.0
+        desc: Frequency at which to publish (Hz).
+
+subscriptions:
+    compressed_image:
+        topic: ~compressed_image
+        desc: The image to decode.
+        type: sensor_msgs/CompressedImage
+        queue_size: 1
+
+    switch:
+        desc: Switch to turn on or off. The node starts as active.
+        topic: ~switch
+        type: duckietown_msgs/BoolStamped
+        queue_size: 1
+
+publishers:
+    raw:
+        desc: The decoded image.
+        topic: ~image/raw
+        type: sensor_msgs/Image
+        queue_size: 1
+
+contracts: {}
