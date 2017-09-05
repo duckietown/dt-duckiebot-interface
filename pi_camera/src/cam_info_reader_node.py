@@ -19,7 +19,7 @@ class CamInfoReader(object):
         rospack = rospkg.RosPack()
         self.cali_file = (rospack.get_path('duckietown') + "/config/"
                             + self.config + "/calibration/camera_intrinsic/"
-                           +  self.cali_file_name + ".yaml"
+                           +  self.cali_file_name + ".yaml")
         self.camera_info_msg = None
 
         # Load calibration yaml file
