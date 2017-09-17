@@ -57,6 +57,7 @@ class DaguWheelsDriver:
 
         if fabs(vl) < self.SPEED_TOLERANCE:
             leftMotorMode = Adafruit_MotorHAT.RELEASE
+            pwml = 0
         elif vl > 0:
             leftMotorMode = Adafruit_MotorHAT.FORWARD
         elif vl < 0: 
