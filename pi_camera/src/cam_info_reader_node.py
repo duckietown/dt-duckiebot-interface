@@ -3,6 +3,7 @@ import rospy
 import rospkg
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 import os.path
+import os
 import yaml
 
 class CamInfoReader(object):
@@ -10,15 +11,18 @@ class CamInfoReader(object):
         self.node_name = rospy.get_name()
         # Load parameters
         self.config         = self.setupParam("~config","baseline")
-        self.cali_file_name = self.setupParam("~cali_file_name","default")
+        # TODO cali_file_name is not needed and should be the robot name by default
+        self.cali_file_name = self.setupParam("~cali_file_name","default") 
         self.image_type = self.setupParam("~image_type", "compressed")
 
         # Setup publisher
         self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
         # Get path to calibration yaml file
-        rospack = rospkg.RosPack()
-        self.cali_file = (rospack.get_path('duckietown') + "/config/"
-                            + self.config + "/calibration/camera_intrinsic/"
+
+        if os.environ.get('DUCKIEFLEET_ROOT') is None:
+            rospy.signal_shutdown("DUCKIEFLEET_ROOT not set - exiting")
+            
+        self.cali_file = (os.environ.get('DUCKIEFLEET_ROOT') + "/calibrations/camera_intrinsic/"
                            +  self.cali_file_name + ".yaml")
         self.camera_info_msg = None
 
@@ -26,8 +30,7 @@ class CamInfoReader(object):
         if not os.path.isfile(self.cali_file):
             rospy.logwarn("[%s] Can't find calibration file: %s.\nUsing default calibration instead."
                           %(self.node_name,self.cali_file))
-            self.cali_file = (rospack.get_path('duckietown') + "/config/" + self.config
-                            + "/calibration/camera_intrinsic/default.yaml")
+            self.cali_file = (os.environ.get('DUCKIEFLEET_ROOT') + "/calibrations/camera_intrinsic/default.yaml")
 
         # Shutdown if no calibration file not found
         if not os.path.isfile(self.cali_file):
