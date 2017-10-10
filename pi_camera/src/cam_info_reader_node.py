@@ -3,8 +3,8 @@ import rospy
 import rospkg
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 import os.path
-import os
 import yaml
+from duckietown_utils import get_duckiefleet_root
 
 class CamInfoReader(object):
     def __init__(self):
@@ -19,8 +19,7 @@ class CamInfoReader(object):
         self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
 
         # Get path to calibration yaml file
-        # Note: environment variable doesn't seem to be readable when run remotely. Should look into why LP
-        self.cali_file = (os.environ['DUCKIEFLEET_ROOT'] + "/calibrations/camera_intrinsic/"
+        self.cali_file = (get_duckiefleet_root() + "/calibrations/camera_intrinsic/"
                            +  self.cali_file_name + ".yaml")
         self.camera_info_msg = None
 
@@ -28,7 +27,7 @@ class CamInfoReader(object):
         if not os.path.isfile(self.cali_file):
             rospy.logwarn("[%s] Can't find calibration file: %s.\nUsing default calibration instead."
                           %(self.node_name,self.cali_file))
-            self.cali_file = (os.environ.get('DUCKIEFLEET_ROOT') + "/calibrations/camera_intrinsic/default.yaml")
+            self.cali_file = (get_duckiefleet_root() + "/calibrations/camera_intrinsic/default.yaml")
 
         # Shutdown if no calibration file not found
         if not os.path.isfile(self.cali_file):

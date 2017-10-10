@@ -4,14 +4,13 @@ import rospy
 import yaml
 import thread
 import io
-import os
 
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 from picamera import PiCamera
 from picamera.array import PiRGBArray
-
+from duckietown_utils import get_duckiefleet_root
 from duckietown_msgs.msg import BoolStamped
 
 class CameraNode(object):
@@ -35,8 +34,7 @@ class CameraNode(object):
 
 
         # For intrinsic calibration
-        # note: env variable might not be read correctly from remote launch - not sure why
-        self.cali_file_folder = os.environ['DUCKIEFLEET_ROOT'] + "/calibrations/camera_intrinsic/"
+        self.cali_file_folder = get_duckiefleet_root() + "/calibrations/camera_intrinsic/"
     
         self.frame_id = rospy.get_namespace().strip('/') + "/camera_optical_frame"
 
