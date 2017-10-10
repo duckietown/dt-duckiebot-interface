@@ -4,6 +4,7 @@ import rospy
 import yaml
 import thread
 import io
+import os
 
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image, CompressedImage, CameraInfo
@@ -34,9 +35,8 @@ class CameraNode(object):
 
 
         # For intrinsic calibration
-        rospack = rospkg.RosPack()
-        self.config = self.setupParam("~config","baseline")
-        self.cali_file_folder = rospack.get_path('duckietown') + "/config/" + self.config + "/calibration/camera_intrinsic/"
+        # note: env variable might not be read correctly from remote launch - not sure why
+        self.cali_file_folder = os.environ['DUCKIEFLEET_ROOT'] + "/calibrations/camera_intrinsic/"
     
         self.frame_id = rospy.get_namespace().strip('/') + "/camera_optical_frame"
 

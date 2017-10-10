@@ -17,12 +17,10 @@ class CamInfoReader(object):
 
         # Setup publisher
         self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
-        # Get path to calibration yaml file
 
-        if os.environ.get('DUCKIEFLEET_ROOT') is None:
-            rospy.signal_shutdown("DUCKIEFLEET_ROOT not set - exiting")
-            
-        self.cali_file = (os.environ.get('DUCKIEFLEET_ROOT') + "/calibrations/camera_intrinsic/"
+        # Get path to calibration yaml file
+        # Note: environment variable doesn't seem to be readable when run remotely. Should look into why LP
+        self.cali_file = (os.environ['DUCKIEFLEET_ROOT'] + "/calibrations/camera_intrinsic/"
                            +  self.cali_file_name + ".yaml")
         self.camera_info_msg = None
 
