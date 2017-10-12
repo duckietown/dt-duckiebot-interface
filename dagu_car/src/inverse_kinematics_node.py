@@ -74,7 +74,10 @@ class InverseKinematicsNode(object):
                 # Skip if not defined, use default value instead.
                 pass
 
+    def getFilePath(self, name):
+        return (get_duckiefleet_root()+'/calibrations/kinematics/' + name + ".yaml")
 
+            
     def saveCalibration(self):
         # Write to yaml
         data = {
