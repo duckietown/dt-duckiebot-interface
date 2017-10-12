@@ -8,7 +8,7 @@ import rospkg
 import yaml
 import time
 import os.path
-
+from duckietown_utils import get_duckiefleet_root
 
 # Inverse Kinematics Node
 # Author: Robert Katzschmann, Shih-Yuan Liu
@@ -76,8 +76,7 @@ class InverseKinematicsNode(object):
                 pass
 
     def getFilePath(self, name):
-        rospack = rospkg.RosPack()
-        return rospack.get_path('duckietown')+'/config/baseline/calibration/kinematics/' + name + ".yaml"        
+        return get_duckiefleet_root()+'/calibrations/kinematics/' + name + ".yaml"        
 
     def saveCalibration(self):
         # Write to yaml
