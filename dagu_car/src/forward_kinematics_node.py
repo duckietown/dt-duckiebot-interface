@@ -4,10 +4,10 @@ from duckietown_msgs.msg import WheelsCmdStamped, Twist2DStamped
 from duckietown_msgs.srv import SetValueRequest, SetValueResponse, SetValue
 from std_srvs.srv import EmptyRequest, EmptyResponse, Empty
 from numpy import *
-import rospkg
 import yaml
 import time
 import os.path
+from duckietown_utils import get_duckiefleet_root
 
 
 # Forward Kinematics Node
@@ -66,8 +66,7 @@ class ForwardKinematicsNode(object):
                 pass
 
     def getFilePath(self, name):
-        rospack = rospkg.RosPack()
-        return rospack.get_path('duckietown') + '/config/baseline/calibration/kinematics/' + name + ".yaml"
+        return get_duckiefleet_root()+'/calibrations/kinematics/' + name + ".yaml"        
 
     def printValues(self):
         rospy.loginfo("[%s] gain: %s trim: %s baseline: %s radius: %s k: %s" % (self.node_name, self.gain, self.trim, self.baseline, self.radius, self.k))

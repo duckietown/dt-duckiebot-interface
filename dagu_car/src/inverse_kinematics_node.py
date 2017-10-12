@@ -4,7 +4,6 @@ from duckietown_msgs.msg import WheelsCmdStamped, Twist2DStamped
 from duckietown_msgs.srv import SetValueRequest, SetValueResponse, SetValue
 from std_srvs.srv import EmptyRequest, EmptyResponse, Empty
 from numpy import *
-import rospkg
 import yaml
 import time
 import os.path
@@ -75,8 +74,6 @@ class InverseKinematicsNode(object):
                 # Skip if not defined, use default value instead.
                 pass
 
-    def getFilePath(self, name):
-        return get_duckiefleet_root()+'/calibrations/kinematics/' + name + ".yaml"        
 
     def saveCalibration(self):
         # Write to yaml
