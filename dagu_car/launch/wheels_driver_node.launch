@@ -1,7 +1,15 @@
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
-    <node ns="$(arg veh)" machine="$(arg veh)" pkg="dagu_car" type="wheels_driver_node.py" name="wheels_driver_node" output="screen" clear_params="true" required="true"/>
-    
+    <arg name="use_rad_lim" default="false" doc="true for using a minimal allowed turning radius. false for not using it."/>
+    <arg name="min_rad" default="0.08" doc="minimal turning radius duckiebot is allowed to drive."/>
+    <arg name="wheel_distance" default="0.103" doc="wheel distance of duckiebot."/>
+
+    <node ns="$(arg veh)" machine="$(arg veh)" pkg="dagu_car" type="wheels_driver_node.py" name="wheels_driver_node" output="screen" clear_params="true" required="true">
+      <param name="~use_rad_lim" value="$(arg use_rad_lim)"/>
+      <param name="~min_rad" value="$(arg min_rad)"/>
+      <param name="~wheel_distance" value="$(arg wheel_distance)"/>
+    </node>
+
     <!-- Subscriptions -->
     <!-- "~wheels_cmd": duckietown_msgs/WheelsCmd. Command for the wheels -->
 
