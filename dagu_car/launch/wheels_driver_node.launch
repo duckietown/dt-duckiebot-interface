@@ -1,13 +1,12 @@
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
-    <arg name="use_rad_lim" default="false" doc="true for using a minimal allowed turning radius. false for not using it."/>
-    <arg name="min_rad" default="0.08" doc="minimal turning radius duckiebot is allowed to drive."/>
-    <arg name="wheel_distance" default="0.103" doc="wheel distance of duckiebot."/>
+    <arg name="config" default="baseline" doc="Specify a config."/>
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman." />
 
-    <node ns="$(arg veh)" machine="$(arg veh)" pkg="dagu_car" type="wheels_driver_node.py" name="wheels_driver_node" output="screen" clear_params="true" required="true">
-      <param name="~use_rad_lim" value="$(arg use_rad_lim)"/>
-      <param name="~min_rad" value="$(arg min_rad)"/>
-      <param name="~wheel_distance" value="$(arg wheel_distance)"/>
+    <arg name="pkg_name" value="dagu_car"/>
+    <arg name="node_name" default="wheels_driver_node"/>
+    <node ns="$(arg veh)" machine="$(arg veh)" pkg="$(arg pkg_name)" type="$(arg node_name).py" name="$(arg node_name)" output="screen" clear_params="true" required="true">
+      <rosparam command="load" file="$(find duckietown)/config/$(arg config)/$(arg pkg_name)/$(arg node_name)/$(arg param_file_name).yaml"/>
     </node>
 
     <!-- Subscriptions -->

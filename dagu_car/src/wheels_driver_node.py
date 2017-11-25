@@ -26,6 +26,7 @@ class WheelsDriverNode(object):
         self.control_constant = 1.0
         self.sub_topic = rospy.Subscriber("~wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
         self.sub_e_stop = rospy.Subscriber("~emergency_stop", BoolStamped, self.cbEStop, queue_size=1)
+        self.sub_rad_lim = rospy.Subscriber("~radius_limit", BoolStamped, self.cbRadLimit, queue_size=1)
 
         self.params_update = rospy.Timer(rospy.Duration.from_sec(1.0), self.updateParams)
 
@@ -59,6 +60,10 @@ class WheelsDriverNode(object):
         self.msg_wheels_cmd.vel_left = msg.vel_left
         self.msg_wheels_cmd.vel_right = msg.vel_right
         self.pub_wheels_cmd.publish(self.msg_wheels_cmd)
+
+    def cbRadLimit(self, msg):
+        rospy.set_param("~use_rad_lim", msg.data)
+        self.use_rad_lim = msg.data
 
     def checkAndAdjustRadius(self, msg):
         didAdjustment = False
