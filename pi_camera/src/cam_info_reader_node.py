@@ -35,7 +35,7 @@ class CamInfoReader(object):
 
         # Print out and prepare message
         rospy.loginfo("[%s] Using calibration file: %s" %(self.node_name,self.cali_file))
-        self.camera_info_msg = load_camera_info(self.cali_file)
+        self.camera_info_msg = load_camera_info_2(self.cali_file)
         self.camera_info_msg.header.frame_id = rospy.get_namespace() + "camera_optical_frame"
         rospy.loginfo("[%s] CameraInfo: %s" %(self.node_name,self.camera_info_msg))
         # self.timer_pub = rospy.Timer(rospy.Duration.from_sec(1.0/self.pub_freq),self.cbTimer)
@@ -57,34 +57,8 @@ class CamInfoReader(object):
         rospy.loginfo("[%s] %s = %s " %(self.node_name,param_name,value))
         return value
 
-    # def loadCameraInfo(self, filename):
-    #     stream = file(filename, 'r')
-    #     calib_data = yaml.load(stream)
-    #     cam_info = CameraInfo()
-    #     cam_info.width = calib_data['image_width']
-    #     cam_info.height = calib_data['image_height']
-    #     cam_info.K = calib_data['camera_matrix']['data']
-    #     cam_info.D = calib_data['distortion_coefficients']['data']
-    #     cam_info.R = calib_data['rectification_matrix']['data']
-    #     cam_info.P = calib_data['projection_matrix']['data']
-    #     cam_info.distortion_model = calib_data['distortion_model']
-    #     return cam_info
-
     def on_shutdown(self):
         rospy.loginfo("[%s] Shutdown." %(self.node_name))
-
-def load_camera_info(filename):
-    stream = file(filename, 'r')
-    calib_data = yaml.load(stream)
-    cam_info = CameraInfo()
-    cam_info.width = calib_data['image_width']
-    cam_info.height = calib_data['image_height']
-    cam_info.K = calib_data['camera_matrix']['data']
-    cam_info.D = calib_data['distortion_coefficients']['data']
-    cam_info.R = calib_data['rectification_matrix']['data']
-    cam_info.P = calib_data['projection_matrix']['data']
-    cam_info.distortion_model = calib_data['distortion_model']
-    return cam_info
 
 if __name__ == '__main__':
     rospy.init_node('cam_info_reader',anonymous=False)
