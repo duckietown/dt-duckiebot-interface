@@ -17,15 +17,15 @@ class CameraNode(object):
         # TODO: load parameters
 
         self.framerate = self.setupParam("~framerate",60.0)
-        self.res_w = self.setupParam("~res_w",320)
-        self.res_h = self.setupParam("~res_h",200)
+        #self.res_w = self.setupParam("~res_w",320)
+        #self.res_h = self.setupParam("~res_h",200)
 
         # self.img_low_framerate = self.setupParam("~img_low_framerate",30.0)
         # self.img_high_framerate = self.setupParam("~img_high_framerate",5.0)
         # self.img_low_res_w = self.setupParam("~img_low_res_w",320)
         # self.img_low_res_h = self.setupParam("~img_low_res_h",200)
-        # self.img_high_res_w = self.setupParam("~img_high_res_w",640)
-        # self.img_high_res_h = self.setupParam("~img_high_res_h",400)
+         self.img_high_res_w = self.setupParam("~img_high_res_w",640)
+         self.img_high_res_h = self.setupParam("~img_high_res_h",400)
         # self.uncompress = self.setupParam("~uncompress",False)
 
         # TODO: load camera info yaml file and publish CameraInfo
