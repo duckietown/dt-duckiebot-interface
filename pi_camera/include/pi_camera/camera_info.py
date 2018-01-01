@@ -20,6 +20,31 @@ def get_camera_info_default():
     """ Returns a nominal CameraInfo """
     return get_camera_info_for_robot('default')
 
+
+default_camera_info = """
+image_width: 640
+image_height: 480
+camera_name: /shamrock/rosberrypi_cam
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [305.5718893575089, 0, 303.0797142544728, 0, 308.8338858195428, 231.8845403702499, 0, 0, 1]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [-0.2944667743901807, 0.0701431287084318, 0.0005859930422629722, -0.0006697840226199427, 0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1, 0, 0, 0, 1, 0, 0, 0, 1]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [220.2460277141687, 0, 301.8668918355899, 0, 0, 238.6758484095299, 227.0880056118307, 0, 0, 0, 1, 0]
+
+"""
+
 @dtu.contract(robot_name=str, returns=CameraInfo)
 def get_camera_info_for_robot(robot_name):
     """ 
@@ -38,12 +63,15 @@ def get_camera_info_for_robot(robot_name):
             InvalidCameraInfo   if the info exists but is invalid
     """
     
-    # find the file
-    fn = get_camera_info_config_file(robot_name)
-    
-    # load the YAML
-    
-    calib_data = dtu.yaml_load_file(fn, plain_yaml=True)
+    if robot_name == dtu.DuckietownConstants.ROBOT_NAME_FOR_TESTS:
+        calib_data = dtu.yaml_load(default_camera_info)
+    else:
+        # find the file
+        fn = get_camera_info_config_file(robot_name)
+        
+        # load the YAML
+        
+        calib_data = dtu.yaml_load_file(fn, plain_yaml=True)
     
     # convert the YAML
     camera_info = camera_info_from_yaml(calib_data) 
