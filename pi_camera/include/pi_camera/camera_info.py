@@ -62,7 +62,7 @@ def get_camera_info_for_robot(robot_name):
             NoCameraInfoAvailable  if no info available
             InvalidCameraInfo   if the info exists but is invalid
     """
-    
+
     if robot_name == dtu.DuckietownConstants.ROBOT_NAME_FOR_TESTS:
         calib_data = dtu.yaml_load(default_camera_info)
     else:
@@ -74,7 +74,11 @@ def get_camera_info_for_robot(robot_name):
         calib_data = dtu.yaml_load_file(fn, plain_yaml=True)
     
     # convert the YAML
-    camera_info = camera_info_from_yaml(calib_data) 
+    try:
+        camera_info = camera_info_from_yaml(calib_data)
+    except InvalidCameraInfo as e:
+        msg = 'Invalid data in file %s'  % fn
+        dtu.raise_wrapped(InvalidCameraInfo, e, msg) 
     
     check_camera_info_sane_for_DB17(camera_info)
     
