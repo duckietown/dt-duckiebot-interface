@@ -110,15 +110,20 @@ def camera_info_from_yaml(calib_data):
         dtu.raise_wrapped(InvalidCameraInfo, e, msg)
 
 def get_camera_info_config_file(robot_name):
-    df = dtu.get_duckiefleet_root()
+    roots = [os.path.join(dtu.get_duckiefleet_root(), 'calibrations'),
+             os.path.join(dtu.get_ros_package_path('duckietown'), 'config', 'baseline', 'calibration')]
     
+    for df in roots:
     # Load camera information
-    fn = os.path.join(df, 'calibrations', 'camera_intrinsic', robot_name + '.yaml')
-    if not os.path.exists(fn):
-        msg = 'Cannot find calibration file for robot %r;\n%s' % (robot_name, fn) 
-        raise NoCameraInfoAvailable(msg)
+        fn = os.path.join(df,  'camera_intrinsic', robot_name + '.yaml')
+        if os.path.exists(fn):
+            return fn
+        else:
+            print('%s does not exist' % fn)
     
-    return fn
+    msg = 'Cannot find intrinsic file for robot %r;\n%s' % (robot_name, roots) 
+    raise NoCameraInfoAvailable(msg)
+    
             
 
 # from cam_info_reader_node
