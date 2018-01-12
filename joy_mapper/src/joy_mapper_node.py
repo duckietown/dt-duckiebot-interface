@@ -40,6 +40,7 @@ class JoyMapper(object):
         self.has_complained = False
 
         self.state_parallel_autonomy = False
+        self.deep_learning = False
         self.state_verbose = False
 
         pub_msg = BoolStamped()
@@ -93,10 +94,11 @@ class JoyMapper(object):
     def processButtons(self, joy_msg):
         # Button A
         if (joy_msg.buttons[0] == 1):
+            self.deep_learning ^= True
             deep_lane_following_msg = BoolStamped()
             rospy.loginfo('start deep learning lane following')
             deep_lane_following_msg.header.stamp = self.joy.header.stamp
-            deep_lane_following_msg.data = True
+            deep_lane_following_msg.data = self.deep_learning
             self.pub_deep_lane_following.publish(deep_lane_following_msg) 
 
         # Y button
