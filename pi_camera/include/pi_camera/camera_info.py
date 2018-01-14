@@ -1,3 +1,4 @@
+
 '''
     Collecting all versions of load_camera_info...
 '''
@@ -6,11 +7,12 @@ import os
 import yaml
 
 import duckietown_utils as dtu
-from sensor_msgs.msg import CameraInfo  # @UnresolvedImport
+from sensor_msgs.msg import CameraInfo
 
 
 class NoCameraInfoAvailable(dtu.DTException):
     pass
+
 
 class InvalidCameraInfo(dtu.DTException):
     pass
@@ -45,20 +47,21 @@ projection_matrix:
 
 """
 
+
 @dtu.contract(robot_name=str, returns=CameraInfo)
 def get_camera_info_for_robot(robot_name):
-    """ 
+    """
         Returns a CameraInfo object for the given robot.
-        
+
         This is in a good format to pass to PinholeCameraModel:
-            
+
             self.pcm = PinholeCameraModel()
             self.pcm.fromCameraInfo(self.ci)
-        
+
         The fields are simply lists (not array or matrix).
-    
+
         Raises:
-        
+
             NoCameraInfoAvailable  if no info available
             InvalidCameraInfo   if the info exists but is invalid
     """
@@ -68,28 +71,30 @@ def get_camera_info_for_robot(robot_name):
     else:
         # find the file
         fn = get_camera_info_config_file(robot_name)
-        
+
         # load the YAML
-        
+
         calib_data = dtu.yaml_load_file(fn, plain_yaml=True)
-    
+
     # convert the YAML
     try:
         camera_info = camera_info_from_yaml(calib_data)
     except InvalidCameraInfo as e:
-        msg = 'Invalid data in file %s'  % fn
-        dtu.raise_wrapped(InvalidCameraInfo, e, msg) 
-    
+        msg = 'Invalid data in file %s' % fn
+        dtu.raise_wrapped(InvalidCameraInfo, e, msg)
+
     check_camera_info_sane_for_DB17(camera_info)
-    
+
     return camera_info
+
 
 def check_camera_info_sane_for_DB17(camera_info):
     """ Raises an exception if the calibration is way off with respect
         to platform DVB17 """
-        
+
     # TODO: to write
     pass
+
 
 @dtu.contract(calib_data=dict, returns=CameraInfo)
 def camera_info_from_yaml(calib_data):
@@ -99,7 +104,7 @@ def camera_info_from_yaml(calib_data):
         cam_info.height = calib_data['image_height']
 #         cam_info.K = np.matrix(calib_data['camera_matrix']['data']).reshape((3,3))
 #         cam_info.D = np.matrix(calib_data['distortion_coefficients']['data']).reshape((1,5))
-#         cam_info.R = np.matrix(calib_data['rectification_matrix']['data']).reshape((3,3))        
+#         cam_info.R = np.matrix(calib_data['rectification_matrix']['data']).reshape((3,3))
 #         cam_info.P = np.matrix(calib_data['projection_matrix']['data']).reshape((3,4))
         cam_info.K = calib_data['camera_matrix']['data']
         cam_info.D = calib_data['distortion_coefficients']['data']
@@ -113,22 +118,22 @@ def camera_info_from_yaml(calib_data):
         msg += '\n\n' + dtu.indent(yaml.dump(calib_data), '   ')
         dtu.raise_wrapped(InvalidCameraInfo, e, msg)
 
+
 def get_camera_info_config_file(robot_name):
     roots = [os.path.join(dtu.get_duckiefleet_root(), 'calibrations'),
              os.path.join(dtu.get_ros_package_path('duckietown'), 'config', 'baseline', 'calibration')]
-    
+
     for df in roots:
     # Load camera information
-        fn = os.path.join(df,  'camera_intrinsic', robot_name + '.yaml')
+        fn = os.path.join(df, 'camera_intrinsic', robot_name + '.yaml')
         if os.path.exists(fn):
             return fn
         else:
             print('%s does not exist' % fn)
-    
-    msg = 'Cannot find intrinsic file for robot %r;\n%s' % (robot_name, roots) 
+
+    msg = 'Cannot find intrinsic file for robot %r;\n%s' % (robot_name, roots)
     raise NoCameraInfoAvailable(msg)
-    
-            
+
 
 # from cam_info_reader_node
 def load_camera_info_2(filename):
@@ -143,6 +148,7 @@ def load_camera_info_2(filename):
     cam_info.P = calib_data['projection_matrix']['data']
     cam_info.distortion_model = calib_data['distortion_model']
     return cam_info
+
 
 # This one is used by the controllers...
 def load_camera_info_3(robot):
