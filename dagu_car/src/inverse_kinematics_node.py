@@ -16,7 +16,7 @@ class InverseKinematicsNode(object):
     def __init__(self):
         # Get node name and vehicle name
         self.node_name = rospy.get_name()
-        self.veh_name = self.node_name.split("/")[1]        
+        self.veh_name = self.node_name.split("/")[1]
 
         # Set parameters using yaml file
         self.readParamFromFile()
@@ -48,7 +48,7 @@ class InverseKinematicsNode(object):
         self.sub_actuator_limits_received = rospy.Subscriber("~actuator_limits_received", BoolStamped, self.updateActuatorLimitsReceived, queue_size=1)
         self.pub_wheels_cmd = rospy.Publisher("~wheels_cmd", WheelsCmdStamped, queue_size=1)
         self.pub_actuator_limits = rospy.Publisher("~actuator_limits", Twist2DStamped, queue_size=1)
-        
+
         self.msg_actuator_limits = Twist2DStamped()
         self.msg_actuator_limits.v = self.v_max     # TODO: Calculate v_max !
         self.msg_actuator_limits.omega = self.omega_max     # TODO: Calculate omega_max !
@@ -91,7 +91,7 @@ class InverseKinematicsNode(object):
 
     def updateActuatorLimitsReceived(self, msg_actuator_limits_received):
         self.actuator_limits_received = msg_actuator_limits_received.data
-            
+
     def saveCalibration(self):
         # Write to yaml
         data = {
@@ -189,10 +189,10 @@ class InverseKinematicsNode(object):
         # adjusting k by gain and trim
         k_r_inv = (self.gain + self.trim) / k_r
         k_l_inv = (self.gain - self.trim) / k_l
-        
+
         omega_r = (msg_car_cmd.v + 0.5 * msg_car_cmd.omega * self.baseline) / self.radius
         omega_l = (msg_car_cmd.v - 0.5 * msg_car_cmd.omega * self.baseline) / self.radius
-        
+
         # conversion from motor rotation rate to duty cycle
         # u_r = (gain + trim) (v + 0.5 * omega * b) / (r * k_r)
         u_r = omega_r * k_r_inv

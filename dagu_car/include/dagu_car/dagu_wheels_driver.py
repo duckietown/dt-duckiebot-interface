@@ -13,9 +13,9 @@ from Adafruit_MotorHAT import Adafruit_MotorHAT
 from math import fabs, floor
 
 class DaguWheelsDriver:
-    LEFT_MOTOR_MIN_PWM = 60        # Minimum speed for left motor  
+    LEFT_MOTOR_MIN_PWM = 60        # Minimum speed for left motor
     LEFT_MOTOR_MAX_PWM = 255       # Maximum speed for left motor  
-    RIGHT_MOTOR_MIN_PWM = 60       # Minimum speed for right motor  
+    RIGHT_MOTOR_MIN_PWM = 60       # Minimum speed for right motor
     RIGHT_MOTOR_MAX_PWM = 255      # Maximum speed for right motor  
     # AXEL_TO_RADIUS_RATIO = 1.0     # The axel length and turning radius ratio
     SPEED_TOLERANCE = 1.e-2       # speed tolerance level
