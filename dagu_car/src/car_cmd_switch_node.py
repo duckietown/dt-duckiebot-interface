@@ -33,7 +33,6 @@ class CarCmdSwitchNode(object):
             rospy.loginfo("[%s] Car cmd switched to %s in state %s." %(self.node_name,self.current_src_name,fsm_state_msg.state))
 
     def cbWheelsCmd(self,msg,src_name):
-        rospy.loginfo ("src_name is "+ str(src_name) + " self.current_src_name is " + str(self.current_src_name))
         if src_name == self.current_src_name:
             rospy.loginfo(str(msg))
             self.pub_cmd.publish(msg)
