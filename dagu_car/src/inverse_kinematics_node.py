@@ -22,7 +22,7 @@ class InverseKinematicsNode(object):
         self.readParamFromFile()
 
         # Set local variable by reading parameters
-        self.gain = self.setup_parameter("~gain", 1.0)
+        self.gain = self.setup_parameter("~gain", 0.6)
         self.trim = self.setup_parameter("~trim", 0.0)
         self.baseline = self.setup_parameter("~baseline", 0.1)
         self.radius = self.setup_parameter("~radius", 0.0318)
