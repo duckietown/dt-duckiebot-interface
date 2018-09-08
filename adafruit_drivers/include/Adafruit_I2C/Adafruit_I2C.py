@@ -54,7 +54,7 @@ class Adafruit_I2C(object):
     return val
 
   def errMsg(self):
-    print "Error accessing 0x%02X: Check your I2C address" % self.address
+    #OMFG stop this error print "Error accessing 0x%02X: Check your I2C address" % self.address
     return -1
 
   def write8(self, reg, value):
@@ -134,7 +134,7 @@ class Adafruit_I2C(object):
     "Reads an unsigned 16-bit value from the I2C device"
     try:
       result = self.bus.read_word_data(self.address,reg)
-      # Swap bytes if using big endian because read_word_data assumes little 
+      # Swap bytes if using big endian because read_word_data assumes little
       # endian on ARM (little endian) systems.
       if not little_endian:
         result = ((result << 8) & 0xFF00) + (result >> 8)

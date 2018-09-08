@@ -13,7 +13,7 @@ class CarCmdSwitchNode(object):
 
         # Construct publisher
         self.pub_cmd = rospy.Publisher("~cmd",Twist2DStamped,queue_size=1)
-        
+
         # Construct subscribers
         self.sub_fsm_state = rospy.Subscriber(rospy.get_param("~mode_topic"),FSMState,self.cbFSMState)
 
@@ -29,7 +29,7 @@ class CarCmdSwitchNode(object):
             rospy.loginfo("[%s] Car cmd switched to STOP in state %s." %(self.node_name,fsm_state_msg.state))
         elif self.current_src_name is None:
             rospy.logwarn("[%s] FSMState %s not handled. No msg pass through the switch." %(self.node_name,fsm_state_msg.state))
-        else: 
+        else:
             rospy.loginfo("[%s] Car cmd switched to %s in state %s." %(self.node_name,self.current_src_name,fsm_state_msg.state))
 
     def cbWheelsCmd(self,msg,src_name):
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     rospy.init_node('car_cmd_switch_node', anonymous=False)
     # Create the DaguCar object
     node = CarCmdSwitchNode()
-    # Setup proper shutdown behavior 
+    # Setup proper shutdown behavior
     rospy.on_shutdown(node.on_shutdown)
     # Keep it spinning to keep the node alive
     rospy.spin()

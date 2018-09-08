@@ -5,18 +5,19 @@ import cv2
 import numpy as np
 from sensor_msgs.msg import CompressedImage,Image
 from duckietown_msgs.msg import BoolStamped
- 
+
 
 class DecoderNode(object):
     def __init__(self):
         self.node_name = rospy.get_name()
         self.active = True
         self.bridge = CvBridge()
-        
-        self.publish_freq = self.setupParam("~publish_freq",1.0)
+
+        self.publish_freq = self.setupParam("~publish_freq", 30.0)
         self.publish_duration = rospy.Duration.from_sec(1.0/self.publish_freq)
         self.pub_raw = rospy.Publisher("~image/raw",Image,queue_size=1)
-        self.last_stamp = rospy.Time.now()        
+        self.pub_compressed = rospy.Publisher("~image/compressed", CompressedImage, queue_size=1)
+        self.last_stamp = rospy.Time.now()
         self.sub_compressed_img = rospy.Subscriber("~compressed_image",CompressedImage,self.cbImg,queue_size=1)
         self.sub_switch = rospy.Subscriber("~switch",BoolStamped, self.cbSwitch, queue_size=1)
 
@@ -46,14 +47,13 @@ class DecoderNode(object):
         img_msg.header.stamp = msg.header.stamp
         img_msg.header.frame_id = msg.header.frame_id
         self.pub_raw.publish(img_msg)
-
+        self.pub_compressed.publish(msg)
         # time_3 = time.time()
         # rospy.loginfo("[%s] Took %f sec to decompress."%(self.node_name,time_1 - time_start))
         # rospy.loginfo("[%s] Took %f sec to conver to Image."%(self.node_name,time_2 - time_1))
         # rospy.loginfo("[%s] Took %f sec to publish."%(self.node_name,time_3 - time_2))
 
-if __name__ == '__main__': 
+if __name__ == '__main__':
     rospy.init_node('decoder_low_freq',anonymous=False)
     node = DecoderNode()
     rospy.spin()
-
