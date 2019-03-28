@@ -1,0 +1,37 @@
+<launch>
+	<arg name="pkg_name" value="led_emitter"/>
+	<arg name="src_name" value="led_emitter_node.py"/>
+	<arg name="node_name" value="led_emitter_node"/>
+	<arg name="veh" doc="Name of vehicle. ex: megaman"/>
+	<include file="$(find duckietown)/machines"/>
+	<arg name="joystick" default="true" doc="true for listening to the joystick. False for listening to the coordination."/>
+	<arg name="local" default="false" doc="true for running everything you possibly can on laptop. false for everything running on vehicle."/>
+	<arg name="config" default="baseline" doc="Specify a config."/>
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman"/>
+
+	<group ns="$(arg veh)">
+
+		<!-- run local -->
+	    	<node if="$(arg local)" pkg="$(arg pkg_name)" type="$(arg src_name)"  name="$(arg node_name)" output="screen" clear_params="true" required="true">
+			<rosparam command="load" file="$(find duckietown)/config/$(arg config)/led_interpreter/LED_protocol.yaml"/>
+
+        		<!-- run with joystick -->
+		    	<remap from="~change_color_pattern" to="led_joy_mapper_node/change_color_pattern" if="$(arg joystick)"/>
+		    	<!-- run with coordination node -->
+		    	<remap from="~change_color_pattern" to="explicit_coordination/change_color_pattern" unless="$(arg joystick)"/>
+		</node>
+
+		<!-- run on vehicle -->
+		<node unless="$(arg local)" machine="$(arg veh)" pkg="$(arg pkg_name)" type="$(arg src_name)"  name="$(arg node_name)" output="screen" clear_params="true" required="true">
+			<rosparam command="load" file="$(find duckietown)/config/$(arg config)/led_interpreter/LED_protocol.yaml"/>
+
+        		<!-- run with joystick -->
+		    	<remap from="~change_color_pattern" to="led_joy_mapper_node/change_color_pattern" if="$(arg joystick)"/>
+		    	<!-- run with coordination node -->
+		   	<remap from="~change_color_pattern" to="explicit_coordination/change_color_pattern" unless="$(arg joystick)"/>
+				<remap from="~change_color_pattern" to="coordinator_node/change_color_pattern" />
+				<!-- TODO cleanup -->
+		</node>
+
+	</group>
+</launch>
