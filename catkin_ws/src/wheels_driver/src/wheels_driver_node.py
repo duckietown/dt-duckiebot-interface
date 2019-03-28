@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
-from dagu_car.dagu_wheels_driver import DaguWheelsDriver
+from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 import numpy as np
 
 class WheelsDriverNode(object):
