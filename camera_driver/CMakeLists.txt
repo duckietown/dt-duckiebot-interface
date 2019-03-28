@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(pi_camera)
+project(camera_driver)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -7,9 +7,6 @@ find_package(catkin REQUIRED COMPONENTS
   duckietown_msgs # Every duckietown packages should use this.
   std_msgs
 )
-
-catkin_python_setup()
-
 
 
 catkin_package()
