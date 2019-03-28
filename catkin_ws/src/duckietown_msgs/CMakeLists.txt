@@ -18,6 +18,7 @@ add_message_files(
   FILES
   WheelsCmd.msg
   WheelsCmdStamped.msg
+  BoolStamped.msg
 )
 
 

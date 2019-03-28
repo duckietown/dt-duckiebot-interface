@@ -13,7 +13,7 @@
 
 
 	    	<node pkg="$(arg pkg_name)" type="$(arg src_name)"  name="$(arg node_name)" output="screen" clear_params="true" required="true">
-			<rosparam command="load" file="$(find duckietown)/config/$(arg config)/led_interpreter/LED_protocol.yaml"/>
+			<rosparam command="load" file="$(find duckietown)/config/$(arg config)/$(arg pkg_name)/$(arg node_name)/LED_protocol.yaml"/>
 
         		<!-- run with joystick -->
 		    	<remap from="~change_color_pattern" to="led_joy_mapper_node/change_color_pattern" if="$(arg joystick)"/>

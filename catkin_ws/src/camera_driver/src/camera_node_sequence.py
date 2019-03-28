@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 import io
 import thread
-
+import os
 import yaml
 
 from duckietown_msgs.msg import BoolStamped
-from duckietown_utils import get_duckiefleet_root
+#from duckietown_utils import get_duckiefleet_root
 from picamera import PiCamera
 from picamera.array import PiRGBArray
 import rospkg
@@ -35,7 +35,12 @@ class CameraNode(object):
         self.camera.resolution = (self.res_w, self.res_h)
 
         # For intrinsic calibration
-        self.cali_file_folder = get_duckiefleet_root() + "/calibrations/camera_intrinsic/"
+        if not 'DUCKIEFLEET_ROOT' in os.environ:
+            msg = 'DUCKIEFLEET_ROOT not defined - setting calibration dir to default /data/config'
+            duckiefleet_root='/data/config'
+        else:
+            duckiefleet_root = os.environ['DUCKIEFLEET_ROOT']
+        self.cali_file_folder = duckiefleet_root + "/calibrations/camera_intrinsic/"
 
         self.frame_id = rospy.get_namespace().strip('/') + "/camera_optical_frame"
 

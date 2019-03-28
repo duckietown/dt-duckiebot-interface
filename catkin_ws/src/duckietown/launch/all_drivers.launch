@@ -19,15 +19,16 @@
     </include>
 
 
-    <include file="$(find joy_mapper)/launch/wheels_driver_node.launch">
+    <include file="$(find wheels_driver)/launch/wheels_driver_node.launch">
         <arg name="veh" value="$(arg veh)"/>
         <arg name="config" value="$(arg config)"/>
         <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
 
 
-    <include file="$(find joy_mapper)/launch/led_emitter_node.launch">
+    <include file="$(find led_emitter)/launch/led_emitter_node.launch">
         <arg name="veh" value="$(arg veh)"/>
         <arg name="config" value="$(arg config)"/>
-        <arg name="param_file_name" value="$(arg param_file_name)"
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
+</launch>

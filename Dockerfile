@@ -11,7 +11,6 @@ RUN mkdir /home/duckiebot-interface/
 COPY . /home/duckiebot-interface
 
 ENV ROS_LANG_DISABLE=gennodejs:geneus:genlisp
-RUN /bun/bash -c
 RUN /bin/bash -c "cd /home/duckiebot-interface/ && source /opt/ros/kinetic/setup.bash && catkin_make -j -C catkin_ws/"
 
 RUN echo "source /home/duckiebot-interface/docker_setup.sh" >> ~/.bashrc
@@ -21,4 +20,4 @@ RUN [ "cross-build-end" ]
 
 WORKDIR /home/duckiebot-interface
 
-CMD [ "roslaunch duckietown all_drivers.launch veh:=$(VEHICLE_NAME)" ]
+CMD [ "./run_all_drivers.sh" ]

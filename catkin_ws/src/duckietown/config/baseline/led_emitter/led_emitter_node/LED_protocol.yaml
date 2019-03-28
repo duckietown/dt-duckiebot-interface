@@ -1,0 +1,60 @@
+LED_protocol:
+
+  colors:
+    green: [0,1,0]
+    red: [1,0,0]
+    blue: [0,0,1]
+    white: [1,1,1]
+    yellow: [1,1,0]
+    purple: [1,0,1]
+    cyan: [0,1,1]
+    black: [0,0,0]
+
+  frequencies:
+    f1: &f1 1.9
+    f2: &f2 4
+    f3: &f3 5.7
+    f4: &f4 7.8
+    f5: &f5 10.6
+
+
+  signals:
+    CAR_SIGNAL_PRIORITY:
+      frequency: *f3
+      color: "purple"
+
+    CAR_SIGNAL_SACRIFICE_FOR_PRIORITY:
+      frequency: *f1
+      color: "white"
+
+    CAR_SIGNAL_A:
+      frequency: *f2
+      color: "white"
+
+    CAR_SIGNAL_GREEN:
+      frequency: *f3
+      color: "green"
+
+    CAR_SIGNAL_A_OLD:
+      frequency: *f1
+      color: "green"
+
+    CAR_SIGNAL_B:
+      frequency: *f4
+      color: "purple"
+
+    CAR_SIGNAL_C:
+      frequency: *f5
+      color: "yellow"
+
+    light_off:
+      frequency: *f1
+      color: "black"
+
+    traffic_light_go:
+      frequency: *f4
+      color: "green"
+
+    traffic_light_stop:
+      frequency: *f3
+      color: "red"
