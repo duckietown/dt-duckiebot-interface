@@ -19,6 +19,7 @@ add_message_files(
   WheelsCmd.msg
   WheelsCmdStamped.msg
   BoolStamped.msg
+  CoordinationSignal.msg
 )
 
 
