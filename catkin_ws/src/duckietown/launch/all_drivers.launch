@@ -1,0 +1,33 @@
+<launch>
+    <arg name="veh" doc="Name of vehicle. ex: megaman"/>
+    <arg name="config" default="baseline" doc="Specify a config."/>
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex:default." />
+
+
+
+    <include file="$(find joystick_driver)/launch/joy_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="config" value="$(arg config)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+    </include>
+
+
+    <include file="$(find camera_driver)/launch/camera_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="config" value="$(arg config)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+    </include>
+
+
+    <include file="$(find joy_mapper)/launch/wheels_driver_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="config" value="$(arg config)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+    </include>
+
+
+    <include file="$(find joy_mapper)/launch/led_emitter_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="config" value="$(arg config)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"
+    </include>
