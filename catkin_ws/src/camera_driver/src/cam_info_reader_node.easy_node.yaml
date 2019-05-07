@@ -1,0 +1,34 @@
+description: |
+    Publishes a CameraInfo message every time it receives an image.
+
+parameters:
+    config:
+        desc:
+        default: "baseline"
+        type: str
+    cali_file_name:
+        desc:
+        default: "default"
+        type: str
+    image_type:
+        desc:
+        default: compressed
+        type: str
+
+subscriptions:
+    compressed_image:
+        topic: ~compressed_image
+        desc: If image_type is "compressed" then it's CompressedImage, otherwise Image.
+        type: sensor_msgs/CompressedImage
+
+publishers:
+    camera_info:
+        topic: ~camera_info
+        type: sensor_msgs/CameraInfo
+
+contracts: {}
+ #
+ #
+ # self.config         = self.setupParam("~config","baseline")
+ # self.cali_file_name = self.setupParam("~cali_file_name","default")
+ # self.image_type = self.setupParam("~image_type", "compressed")

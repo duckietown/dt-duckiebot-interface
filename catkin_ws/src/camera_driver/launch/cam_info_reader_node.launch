@@ -1,0 +1,24 @@
+<launch>
+       	<arg name="veh"/>
+	<arg name="config" default="baseline"/>
+	<arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman"/>
+	<arg name="pkg_name" value="camera_driver"/>
+	<arg name="node_name" default="cam_info_reader_node"/>
+	<arg name="image_type" default="compressed" />
+    <arg name="cali_file_name" default="$(arg veh)" />
+
+	<node  ns="$(arg veh)" pkg="pi_camera" type="cam_info_reader_node.py" name="$(arg node_name)" output="screen" clear_params="true" required="true">
+		<!-- These are special in that the configs are set as parameter and should alway obey the arg -->
+		<rosparam command="load" file="$(find duckietown)/config/$(arg config)/$(arg pkg_name)/cam_info_reader_node/$(arg param_file_name).yaml"/>
+		<param name="~config" value="$(arg config)"/>
+		<param name="~cali_file_name" value="$(arg cali_file_name)"/>
+		<param name="~image_type" value="$(arg image_type)"/>
+	</node>
+
+
+	<!-- Publication -->
+	<!-- "~camera_info": sensor_msgs/CameraInfo. Publishing camera info load from yaml file specified by parameters-->
+	
+	<!-- Subscription -->
+	<!-- "~compressed_image": sensor_msgs/CompressedImage. Input compressed image for the time stamp of the camera_info-->
+</launch>
