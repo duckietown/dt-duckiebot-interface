@@ -2,7 +2,7 @@
 <package>
   <name>camera_driver</name>
   <version>1.0.0</version>
-  <description>TODO: Add a description of package `pi_camera` in `package.xml`.</description>
+  <description>TODO: Add a description of package `camera_driver` in `package.xml`.</description>
 
   <maintainer email="acensi@idsc.mavt.ethz.ch">Andrea Censi</maintainer>
   

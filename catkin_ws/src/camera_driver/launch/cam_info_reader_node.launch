@@ -7,7 +7,7 @@
 	<arg name="image_type" default="compressed" />
     <arg name="cali_file_name" default="$(arg veh)" />
 
-	<node  ns="$(arg veh)" pkg="pi_camera" type="cam_info_reader_node.py" name="$(arg node_name)" output="screen" clear_params="true" required="true">
+	<node  ns="$(arg veh)" pkg="$(arg pkg_name)" type="cam_info_reader_node.py" name="$(arg node_name)" output="screen" clear_params="true" required="true">
 		<!-- These are special in that the configs are set as parameter and should alway obey the arg -->
 		<rosparam command="load" file="$(find duckietown)/config/$(arg config)/$(arg pkg_name)/cam_info_reader_node/$(arg param_file_name).yaml"/>
 		<param name="~config" value="$(arg config)"/>

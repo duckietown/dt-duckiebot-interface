@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 import os.path
 
-from duckietown_utils import get_duckiefleet_root
-from pi_camera.camera_info import load_camera_info_2
+from camera_driver.camera_info import load_camera_info_2
 import rospkg
 import rospy
 from sensor_msgs.msg import CameraInfo, CompressedImage, Image
@@ -21,8 +20,15 @@ class CamInfoReader(object):
         # Setup publisher
         self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
 
+        # For intrinsic calibration
+        if not 'DUCKIEFLEET_ROOT' in os.environ:
+            msg = 'DUCKIEFLEET_ROOT not defined - setting calibration dir to default /data/config'
+            duckiefleet_root='/data/config'
+        else:
+            duckiefleet_root = os.environ['DUCKIEFLEET_ROOT']
+        
         # Get path to calibration yaml file
-        self.cali_file = (get_duckiefleet_root() + "/calibrations/camera_intrinsic/"
+        self.cali_file = (duckiefleet_root + "/calibrations/camera_intrinsic/"
                            + self.cali_file_name + ".yaml")
         self.camera_info_msg = None
 
@@ -30,7 +36,7 @@ class CamInfoReader(object):
         if not os.path.isfile(self.cali_file):
             rospy.logwarn("[%s] Can't find calibration file: %s.\nUsing default calibration instead."
                           % (self.node_name, self.cali_file))
-            self.cali_file = (get_duckiefleet_root() + "/calibrations/camera_intrinsic/default.yaml")
+            self.cali_file = (duckiefleet_root + "/calibrations/camera_intrinsic/default.yaml")
 
         # Shutdown if no calibration file not found
         if not os.path.isfile(self.cali_file):
