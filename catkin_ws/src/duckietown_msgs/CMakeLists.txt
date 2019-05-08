@@ -13,6 +13,8 @@ find_package(catkin REQUIRED COMPONENTS
   tf
 )
 
+
+
 ## Generate messages in the 'msg' folder
 add_message_files(
   FILES
@@ -22,6 +24,15 @@ add_message_files(
   CoordinationSignal.msg
 )
 
+
+## Generate services in the 'srv' folder                                                             
+add_service_files(
+  FILES
+  SetValue.srv
+  SetVariable.srv
+  GetVariable.srv
+  # Service2.srv                                                                                     
+)
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
