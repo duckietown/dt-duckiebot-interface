@@ -107,7 +107,7 @@ class WheelsDriverNode(object):
 
 
     def cbEStop(self,msg):
-        self.estop=not self.estop
+        self.estop=msg.data
         if self.estop:
             rospy.loginfo("[%s] Emergency Stop Activated")
         else:
