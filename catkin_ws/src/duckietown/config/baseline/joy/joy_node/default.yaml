@@ -1,4 +1,4 @@
-# Parameters for joy/joystick_node
+# Parameters for joy/joy_node
 dev: /dev/input/js0
 deadzone: 0.01
 autorepeat_rate: 2.0
