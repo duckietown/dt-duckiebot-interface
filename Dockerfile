@@ -48,4 +48,4 @@ RUN [ "cross-build-end" ]
 
 WORKDIR /home/duckiebot-interface
 
-CMD [ "./run_all_drivers.sh" ]
+# CMD [ "./run_all_drivers.sh" ]

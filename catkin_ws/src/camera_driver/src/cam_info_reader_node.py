@@ -10,6 +10,7 @@ class CamInfoReader(object):
 
     def __init__(self):
         self.node_name = rospy.get_name()
+        rospy.loginfo("[%s] Initializing..." % (self.node_name))
         # Load parameters
         self.config = self.setupParam("~config", "baseline")
         # TODO cali_file_name is not needed and should be the robot name by default
@@ -51,6 +52,8 @@ class CamInfoReader(object):
         typemsg = "CompressedImage" if self.image_type == "compressed" else "Image"
         rospy.logwarn("[%s] ==============%s", self.node_name, typemsg)
         self.sub_img_compressed = rospy.Subscriber("~compressed_image", img_type, self.cbCompressedImage, queue_size=1)
+
+        rospy.loginfo("[%s] Initialized." % (self.node_name))
 
     def cbCompressedImage(self, msg):
         if self.camera_info_msg is not None:

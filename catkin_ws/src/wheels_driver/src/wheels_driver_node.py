@@ -8,7 +8,7 @@ import numpy as np
 class WheelsDriverNode(object):
     def __init__(self):
         self.node_name = rospy.get_name()
-        rospy.loginfo("[%s] Initializing " % (self.node_name))
+        rospy.loginfo("[%s] Initializing..." % (self.node_name))
         self.estop = False
 
         # Setup publishers
@@ -22,7 +22,7 @@ class WheelsDriverNode(object):
         self.sub_topic = rospy.Subscriber("~wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
         self.sub_e_stop = rospy.Subscriber("~emergency_stop", BoolStamped, self.cbEStop, queue_size=1)
 
-        self.params_update = rospy.Timer(rospy.Duration.from_sec(1.0), self.updateParams)
+        rospy.loginfo("[%s] Initialized." % (self.node_name))
 
     def setupParam(self, param_name, default_value):
         value = rospy.get_param(param_name, default_value)
