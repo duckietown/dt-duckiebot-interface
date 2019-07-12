@@ -4,5 +4,3 @@
 
 
 These are the Adafruit drivers.
-
-TODO: What is the original location of this package?

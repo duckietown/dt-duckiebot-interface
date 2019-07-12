@@ -2,7 +2,7 @@
 <package>
   <name>adafruit_drivers</name>
   <version>1.0.0</version>
-  <description>TODO: Add a description of package `adafruit_drivers` in `package.xml`.</description>
+  <description>Module containing all used drivers.</description>
 
   <author email="yershov@mit.edu">Dmitry Yershov</author>
   <maintainer email="mack@duckietown.org">Mack</maintainer>

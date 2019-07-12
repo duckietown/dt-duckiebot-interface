@@ -5,7 +5,6 @@ import os
 import yaml
 
 from duckietown_msgs.msg import BoolStamped
-#from duckietown_utils import get_duckiefleet_root
 from picamera import PiCamera
 from picamera.array import PiRGBArray
 import rospkg
@@ -35,9 +34,9 @@ class CameraNode(object):
         self.camera.resolution = (self.res_w, self.res_h)
 
         # For intrinsic calibration
-        if not 'DUCKIEFLEET_ROOT' in os.environ:
+        if 'DUCKIEFLEET_ROOT' not in os.environ:
             msg = 'DUCKIEFLEET_ROOT not defined - setting calibration dir to default /data/config'
-            duckiefleet_root='/data/config'
+            duckiefleet_root = '/data/config'
         else:
             duckiefleet_root = os.environ['DUCKIEFLEET_ROOT']
         self.cali_file_folder = duckiefleet_root + "/calibrations/camera_intrinsic/"
@@ -53,7 +52,7 @@ class CameraNode(object):
 
         self.stream = io.BytesIO()
 
-        #self.camera.exposure_mode = 'off'
+        # self.camera.exposure_mode = 'off'
         # self.camera.awb_mode = 'off'
 
         self.is_shutdown = False
