@@ -2,6 +2,7 @@
 import yaml
 from sensor_msgs.msg import CameraInfo
 
+
 # from cam_info_reader_node
 def load_camera_info_2(filename):
     stream = file(filename, 'r')
@@ -15,5 +16,3 @@ def load_camera_info_2(filename):
     cam_info.P = calib_data['projection_matrix']['data']
     cam_info.distortion_model = calib_data['distortion_model']
     return cam_info
-
-

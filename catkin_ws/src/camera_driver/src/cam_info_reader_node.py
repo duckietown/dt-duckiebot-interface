@@ -20,15 +20,9 @@ class CamInfoReader(object):
         # Setup publisher
         self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
 
-        if not 'DUCKIEFLEET_ROOT' in os.environ:
-            msg = 'DUCKIEFLEET_ROOT not defined - setting calibration dir to default /data/config'
-            duckiefleet_root='/data/config'
-        else:
-            duckiefleet_root = os.environ['DUCKIEFLEET_ROOT']
-
         # Get path to calibration yaml file
-        self.cali_file = (duckiefleet_root + "/calibrations/camera_intrinsic/"
-                           + self.cali_file_name + ".yaml")
+        self.cali_file = ("/data/config/calibrations/camera_intrinsic/"
+                          + self.cali_file_name + ".yaml")
         self.camera_info_msg = None
 
         # Load calibration yaml file
@@ -62,7 +56,9 @@ class CamInfoReader(object):
 
     def setupParam(self, param_name, default_value):
         value = rospy.get_param(param_name, default_value)
-        rospy.set_param(param_name, value)  #Write to parameter server for transparancy
+
+        # Write to parameter server for transparancy
+        rospy.set_param(param_name, value)
         rospy.loginfo("[%s] %s = %s " % (self.node_name, param_name, value))
         return value
 

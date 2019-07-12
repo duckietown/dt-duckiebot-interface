@@ -3,12 +3,10 @@ import io
 import thread
 import os
 import yaml
+import rospy
 
 from duckietown_msgs.msg import BoolStamped
 from picamera import PiCamera
-from picamera.array import PiRGBArray
-import rospkg
-import rospy
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
@@ -27,21 +25,15 @@ class CameraNode(object):
         self.image_msg = CompressedImage()
 
         # Setup PiCamera
-
         self.camera = PiCamera()
         self.framerate = self.framerate_high  # default to high
         self.camera.framerate = self.framerate
         self.camera.resolution = (self.res_w, self.res_h)
 
         # For intrinsic calibration
-        if 'DUCKIEFLEET_ROOT' not in os.environ:
-            msg = 'DUCKIEFLEET_ROOT not defined - setting calibration dir to default /data/config'
-            duckiefleet_root = '/data/config'
-        else:
-            duckiefleet_root = os.environ['DUCKIEFLEET_ROOT']
-        self.cali_file_folder = duckiefleet_root + "/calibrations/camera_intrinsic/"
+        self.cali_file_folder = '/data/config/calibrations/camera_intrinsic/'
 
-        self.frame_id = rospy.get_namespace().strip('/') + "/camera_optical_frame"
+        self.frame_id = rospy.get_namespace().strip('/') + '/camera_optical_frame'
 
         self.has_published = False
         self.pub_img = rospy.Publisher("~image/compressed", CompressedImage, queue_size=1)
@@ -52,12 +44,9 @@ class CameraNode(object):
 
         self.stream = io.BytesIO()
 
-        # self.camera.exposure_mode = 'off'
-        # self.camera.awb_mode = 'off'
-
         self.is_shutdown = False
         self.update_framerate = False
-        # Setup timer
+
         rospy.loginfo("[%s] Initialized." % (self.node_name))
 
     def cbSwitchHigh(self, switch_msg):
@@ -113,7 +102,9 @@ class CameraNode(object):
 
     def setupParam(self, param_name, default_value):
         value = rospy.get_param(param_name, default_value)
-        rospy.set_param(param_name, value)  #Write to parameter server for transparancy
+
+        # Write to parameter server for transparancy
+        rospy.set_param(param_name, value)
         rospy.loginfo("[%s] %s = %s " % (self.node_name, param_name, value))
         return value
 
@@ -123,12 +114,11 @@ class CameraNode(object):
         rospy.loginfo("[%s] Shutdown." % (self.node_name))
 
     def cbSrvSetCameraInfo(self, req):
-        # TODO: save req.camera_info to yaml file
         rospy.loginfo("[cbSrvSetCameraInfo] Callback!")
         filename = self.cali_file_folder + rospy.get_namespace().strip("/") + ".yaml"
         response = SetCameraInfoResponse()
         response.success = self.saveCameraInfo(req.camera_info, filename)
-        response.status_message = "Write to %s" % filename  #TODO file name
+        response.status_message = "Write to %s" % filename
         return response
 
     def saveCameraInfo(self, camera_info_msg, filename):
@@ -137,13 +127,13 @@ class CameraNode(object):
 
         # Converted from camera_info_manager.py
         calib = {'image_width': camera_info_msg.width,
-        'image_height': camera_info_msg.height,
-        'camera_name': rospy.get_name().strip("/"),  #TODO check this
-        'distortion_model': camera_info_msg.distortion_model,
-        'distortion_coefficients': {'data': camera_info_msg.D, 'rows':1, 'cols':5},
-        'camera_matrix': {'data': camera_info_msg.K, 'rows':3, 'cols':3},
-        'rectification_matrix': {'data': camera_info_msg.R, 'rows':3, 'cols':3},
-        'projection_matrix': {'data': camera_info_msg.P, 'rows':3, 'cols':4}}
+                 'image_height': camera_info_msg.height,
+                 'camera_name': rospy.get_name().strip("/"),  # TODO check this
+                 'distortion_model': camera_info_msg.distortion_model,
+                 'distortion_coefficients': {'data': camera_info_msg.D, 'rows': 1, 'cols': 5},
+                 'camera_matrix': {'data': camera_info_msg.K, 'rows': 3, 'cols': 3},
+                 'rectification_matrix': {'data': camera_info_msg.R, 'rows': 3, 'cols': 3},
+                 'projection_matrix': {'data': camera_info_msg.P, 'rows': 3, 'cols': 4}}
 
         rospy.loginfo("[saveCameraInfo] calib %s" % (calib))
 
