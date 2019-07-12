@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-  <name>joystick_driver</name>
+  <name>joystick</name>
   <version>1.0.0</version>
   <description>Contains only a launch file to interface the joystick driver. Uses the open source joy node</description>
 
