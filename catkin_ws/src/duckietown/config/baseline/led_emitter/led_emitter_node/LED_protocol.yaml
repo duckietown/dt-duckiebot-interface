@@ -35,10 +35,6 @@ LED_protocol:
       frequency: *f3
       color: "green"
 
-    CAR_SIGNAL_A_OLD:
-      frequency: *f1
-      color: "green"
-
     CAR_SIGNAL_B:
       frequency: *f4
       color: "purple"
@@ -58,3 +54,5 @@ LED_protocol:
     traffic_light_stop:
       frequency: *f3
       color: "red"
+
+LED_scale: 0.8

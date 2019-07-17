@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from Adafruit_PWM_Servo_Driver import PWM  # @UnresolvedImport
+
 
 class RGB_LED():
     """Writes commands for LEDs to the microcontroller
@@ -17,7 +19,6 @@ class RGB_LED():
     OFFSET_BLUE = 2
 
     def __init__(self, debug=False):
-        from Adafruit_PWM_Servo_Driver import PWM  # @UnresolvedImport
         self.pwm = PWM(address=0x40, debug=debug)
         for i in range(15):
             # Sets fully off all the pins
@@ -37,22 +38,32 @@ class RGB_LED():
         """
         self.pwm.setPWM(3 * led + offset, brightness << 4, 4095)
 
-    def setRGBint24(self, led, color):
-        r = color >> 16 & 0xFF
-        g = color >> 8 & 0xFF
-        b = color >> 0 & 0xFF
-        self.setRGBvint8(led, [r, g, b])
-
-    def setRGBvint8(self, led, color):
-        self.setLEDBrightness(led, self.OFFSET_RED, color[0])
-        self.setLEDBrightness(led, self.OFFSET_GREEN, color[1])
-        self.setLEDBrightness(led, self.OFFSET_BLUE, color[2])
-
     def setRGB(self, led, color):
-        self.setRGBvint8(led, map(lambda f: int(f * 255), color))
+        """Sets value for brightness for all channels of one LED
+
+        Converts the input color brightness from [0,1] to [0,255] for all
+        channels, then calls self.setLEDBrightness with the right offset
+        corresponding to the color channel in the PWM signal and the color
+        value as int8
+
+        Args:
+            led (int): Port of specific LED
+            color (list): Brightness of all RGB channels, in interval [0,1]
+        """
+        # Maps values in [0,1]^3 to [0,255]^3
+        colorint8 = map(lambda f: int(f * 255), color)
+
+        self.setLEDBrightness(led, self.OFFSET_RED, colorint8[0])
+        self.setLEDBrightness(led, self.OFFSET_GREEN, colorint8[1])
+        self.setLEDBrightness(led, self.OFFSET_BLUE, colorint8[2])
 
     def __del__(self):
+        """Destructur method.
+
+        Turns off all the LEDs and deletes the PWM object.
+
+        """
         for i in range(15):
-            # Sets fully off all the pins
+            # Sets fully off all channels of all the LEDs (3 channles * 5 LEDs)
             self.pwm.setPWM(i, 0, 4095)
         del self.pwm

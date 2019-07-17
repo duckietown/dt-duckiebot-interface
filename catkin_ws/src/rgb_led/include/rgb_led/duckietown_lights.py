@@ -1,3 +1,4 @@
+# this file is just to play around, can delete
 import random
 # __all__ = [
 #     'DuckietownLights',
@@ -70,13 +71,6 @@ def create_patterns():
     add_pattern('mar12special', [
         (0.50, {TOP: BLUE, BACK_LEFT: WHITE, BACK_RIGHT: WHITE, FRONT_LEFT: WHITE, FRONT_RIGHT: WHITE}),
         (0.50, {TOP: OFF, BACK_LEFT: WHITE, BACK_RIGHT: WHITE, FRONT_LEFT: WHITE, FRONT_RIGHT: WHITE}),
-    ])
-
-    add_pattern('trafficlight4way', [
-            {TOP: GREEN, BACK_LEFT: RED, BACK_RIGHT: RED, FRONT_LEFT: RED, FRONT_RIGHT: RED},
-            {TOP: RED, BACK_LEFT: RED, BACK_RIGHT: GREEN, FRONT_LEFT: RED, FRONT_RIGHT: RED},
-            {TOP: RED, BACK_LEFT: RED, BACK_RIGHT: RED, FRONT_LEFT: GREEN, FRONT_RIGHT: RED},
-            {TOP: RED, BACK_LEFT: RED, BACK_RIGHT: RED, FRONT_LEFT:  RED, FRONT_RIGHT: GREEN},
     ])
 
     conf_all_off = {
