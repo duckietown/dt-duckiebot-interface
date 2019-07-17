@@ -5,19 +5,21 @@ import sys
 import time
 from std_msgs.msg import Float32, Int8, String
 from rgb_led import RGB_LED
-from duckietown_msgs.msg import BoolStamped, CoordinationSignal
+from duckietown_msgs.msg import BoolStamped
 
 
 class LEDEmitterNode(object):
     def __init__(self):
-        self.led = RGB_LED()
         self.node_name = rospy.get_name()
+        rospy.loginfo("[%s] Initializing..." % (self.node_name))
+
+        self.led = RGB_LED()
 
         self.active = True
 
         # Initialize LEDs to be off
         self.pattern = [[0, 0, 0]]*5
-        self.current_pattern_name = 'OFF'
+        self.current_pattern_name = 'light_off'
         self.changePattern_(self.current_pattern_name)
 
         # Import protocol
@@ -34,10 +36,10 @@ class LEDEmitterNode(object):
             self.is_on = False
             self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.cycle/(2.0)), self.cycleTimer)
 
-        # Publish
+        # Publishers
         self.pub_state = rospy.Publisher("~current_led_state", String, queue_size=1)
 
-        # Subscribe
+        # Subscribers
         self.sub_pattern = rospy.Subscriber("~change_color_pattern", String, self.changePattern)
         self.sub_switch = rospy.Subscriber("~switch", BoolStamped, self.cbSwitch)
 
@@ -45,6 +47,8 @@ class LEDEmitterNode(object):
         for _, c in self.protocol['colors'].items():
             for i in range(3):
                 c[i] = c[i] * self.scale
+
+        rospy.loginfo("[%s] Initialized." % (self.node_name))
 
     def cbSwitch(self, switch_msg):
         """Callback that turns on/off the node
@@ -75,7 +79,7 @@ class LEDEmitterNode(object):
         elif not self.onOff:
             # No oscillation
             for i in range(5):
-                colors = [self.pattern[i][0],
+                colors = [self.pattern[i][0],
                           self.pattern[i][1],
                           self.pattern[i][2]]
                 self.led.setRGB(i, colors)
@@ -88,7 +92,7 @@ class LEDEmitterNode(object):
 
             else:
                 for i in range(5):
-                    colors = [self.pattern[i][0],
+                    colors = [self.pattern[i][0],
                               self.pattern[i][1],
                               self.pattern[i][2]]
                     self.led.setRGB(i, colors)
@@ -115,40 +119,17 @@ class LEDEmitterNode(object):
             else:
                 self.current_pattern_name = pattern_name
 
-            # With joystick
-            if self.current_pattern_name == 'ON_WHITE':
-                self.pattern = [self.protocol['colors']['white']]*5
-            elif self.current_pattern_name == 'ON_RED':
-                self.pattern = [self.protocol['colors']['red']]*5
-            elif self.current_pattern_name == 'ON_BLUE':
-                self.pattern = [self.protocol['colors']['blue']]*5
-            elif self.current_pattern_name == 'ON_GREEN':
-                self.pattern = [self.protocol['colors']['green']]*5
-            elif self.current_pattern_name == 'CAR_SIGNAL_A':
-                self.current_pattern_name = CoordinationSignal.SIGNAL_A
-
-            elif self.current_pattern_name == 'SIGNAL_GREEN':
-                self.current_pattern_name = CoordinationSignal.SIGNAL_GREEN
-            elif self.current_pattern_name == 'OFF':
-                self.current_pattern_name = CoordinationSignal.OFF
-            else:
-                self.pattern = [self.protocol['colors']['black']]*5
-
-            # With coordination (new)
-            if self.current_pattern_name == CoordinationSignal.SIGNAL_GREEN:
-                color = self.protocol['signals'][pattern_name]['color']
-                self.pattern = [self.protocol['colors'][color]]*5
-            elif self.current_pattern_name == CoordinationSignal.OFF:
-                self.pattern = [self.protocol['colors']['black']]*5
-            else:
-                color = self.protocol['signals'][pattern_name]['color']
-                self.pattern = [self.protocol['colors']['black']]*5
-                self.pattern[2] = self.protocol['colors'][color]
-                self.pattern[0] = self.protocol['colors'][color]
-                self.pattern[4] = self.protocol['colors'][color]
+            # Extract the color from the protocol config file
+            color = self.protocol['signals'][pattern_name]['color']
+            self.pattern = [color]*5
+            try:
+                # Extract the frequency from the config file, if not static
+                self.cycle = self.protocol['signals'][pattern_name]['frequency']
+            except KeyError:
+                # If static, no timer
+                self.cycle = []
 
             # Change frequency (frequency does not change)
-            self.cycle = self.protocol['signals'][pattern_name]['frequency']
             self.changeFrequency()
 
             # Change LEDs
@@ -182,5 +163,5 @@ class LEDEmitterNode(object):
 
 if __name__ == '__main__':
     rospy.init_node('led_emitter', anonymous=False)
-    LED_emitter_node = LEDEmitterNode()
+    led_emitter_node = LEDEmitterNode()
     rospy.spin()
