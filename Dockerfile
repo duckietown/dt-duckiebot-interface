@@ -28,4 +28,4 @@ RUN ["cross-build-end"]
 
 LABEL maintainer="Andrea F. Daniele (afdaniele@ttic.edu)"
 
-# CMD ["./run_all_drivers.sh"]
+CMD ["./run_all_drivers.sh"]
