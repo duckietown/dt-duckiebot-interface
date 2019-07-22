@@ -5,7 +5,8 @@ import sys
 import time
 from std_msgs.msg import Float32, Int8, String
 from rgb_led import RGB_LED
-from duckietown_msgs.msg import BoolStamped
+from duckietown_msgs.msg import BoolStamped, LEDPattern
+from led_emitter.srv import SetCustomLED
 
 
 class LEDEmitterNode(object):
@@ -65,6 +66,11 @@ class LEDEmitterNode(object):
         self.sub_pattern = rospy.Subscriber("~change_color_pattern", String, self.changePattern)
         self.sub_switch = rospy.Subscriber("~switch", BoolStamped, self.cbSwitch)
 
+        # Services
+
+        self.srv_set_LED_ = rospy.Service("~change_led", SetCustomLED, self.set_custom_LED)
+        self.srv_set_pattern_ = rospy.Service("~set_pattern", ChangePattern, self.changePattern)
+
         # Scale intensity of the LEDs
         for _, c in self.protocol['colors'].items():
             for i in range(3):
@@ -74,6 +80,25 @@ class LEDEmitterNode(object):
         self.changePattern_('ON_WHITE')
 
         rospy.loginfo("[%s] Initialized." % (self.node_name))
+
+    def setCustomLED(self, LED_pattern):
+        """Service to set a custom pattern.
+
+            Sets the LEDs to a custom pattern (colors+frequency)
+            Args:
+                LED_pattern (LEDPattern): requested pattern
+
+            Example: .......([....],12)
+        """
+        rospy.loginfo("Changing LEDs to custom pattern")
+        self.current_pattern_name = 'custom_pattern'
+        self.pattern = LED_pattern.pattern
+        self.cycle = LED_pattern.frequency
+
+        if self.cycle == 0:
+            self.updateLEDs()
+        else:
+            self.changeFrequency()
 
     def cbSwitch(self, switch_msg):
         """Callback that turns on/off the node

@@ -22,16 +22,17 @@ add_message_files(
   WheelsCmdStamped.msg
   BoolStamped.msg
   CoordinationSignal.msg
+  LEDPattern.msg
 )
 
 
-## Generate services in the 'srv' folder                                                             
+## Generate services in the 'srv' folder
 add_service_files(
   FILES
   SetValue.srv
   SetVariable.srv
   GetVariable.srv
-  # Service2.srv                                                                                     
+  # Service2.srv
 )
 
 ## Generate added messages and services with any dependencies listed here

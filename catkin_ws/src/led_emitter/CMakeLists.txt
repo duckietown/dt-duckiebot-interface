@@ -6,13 +6,19 @@ find_package(catkin REQUIRED COMPONENTS
   duckietown_msgs
   roscpp
   rospy
+  message_generation
 )
 
 # catkin_python_setup()
 
+## Generate services in the 'srv' folder
+add_service_files(
+  FILES
+  ChangePattern.srv
+  SetCustomLED.srv
+)
 
 catkin_package()
-
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
