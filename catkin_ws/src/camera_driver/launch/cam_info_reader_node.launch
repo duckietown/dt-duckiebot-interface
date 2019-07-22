@@ -8,7 +8,6 @@
 	<node  ns="$(arg veh)" pkg="camera_driver" type="$(arg node_name).py" name="$(arg node_name)" output="screen" clear_params="true" required="true">
 		<!-- These are special in that the configs are set as parameter and should alway obey the arg -->
 		<rosparam command="load" file="$(find camera_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
-		<param name="~config" value="$(arg config)"/>
 		<param name="~cali_file_name" value="$(arg cali_file_name)"/>
 		<param name="~image_type" value="$(arg image_type)"/>
 	</node>
