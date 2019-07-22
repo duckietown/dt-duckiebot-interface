@@ -5,7 +5,7 @@
 
 	<!-- This launches a node in /opt/ros/kinetic/share/joy -->
 	<node  ns="$(arg veh)"  pkg="joy" type="$(arg node_name)" name="$(arg node_name)" output="screen" clear_params="true" required="true">
-		<rosparam command="load" file="$(find joy)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+		<rosparam command="load" file="$(find joystick)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
 	</node>
 
 </launch>
