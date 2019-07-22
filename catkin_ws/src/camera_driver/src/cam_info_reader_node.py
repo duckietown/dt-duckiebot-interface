@@ -29,7 +29,7 @@ class CamInfoReader(object):
         if not os.path.isfile(self.cali_file):
             rospy.logwarn("[%s] Can't find calibration file: %s.\nUsing default calibration instead."
                           % (self.node_name, self.cali_file))
-            self.cali_file = (duckiefleet_root + "/calibrations/camera_intrinsic/default.yaml")
+            self.cali_file = ("/data/config/calibrations/camera_intrinsic/default.yaml")
 
         # Shutdown if no calibration file not found
         if not os.path.isfile(self.cali_file):

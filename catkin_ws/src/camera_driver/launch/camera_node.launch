@@ -1,11 +1,12 @@
 <launch>
 	<arg name="veh"/>
-	<arg name="config" default="baseline"/>
+	<arg name="pkg_name" value="camera_driver"/>
+	<arg name="node_name" default="camera_node"/>
 	<arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman"/>
 
 	<group ns="$(arg veh)">
-		<node  name="camera_node" pkg="camera_driver" type="camera_node_sequence.py" output="screen" clear_params="true" required="true">
-			<rosparam command="load" file="$(find duckietown)/config/$(arg config)/camera_driver/camera_node/$(arg param_file_name).yaml"/>
+		<node  name="camera_node" pkg="$(arg pkg_name)" type="camera_node_sequence.py" output="screen" clear_params="true" required="true">
+			<rosparam command="load" file="$(find $(arg pkg_name))/config/$(arg node_name)/$(arg param_file_name).yaml"/>
 		</node>
 	</group>
 
