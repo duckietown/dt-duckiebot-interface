@@ -50,7 +50,7 @@ class CameraNode(object):
         rospy.loginfo("[%s] Initialized." % (self.node_name))
 
     def cbSwitchHigh(self, switch_msg):
-        print switch_msg
+        print(switch_msg)
         if switch_msg.data and self.framerate != self.framerate_high:
             self.framerate = self.framerate_high
             self.update_framerate = True

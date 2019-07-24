@@ -16,6 +16,7 @@ FRONT_RIGHT = 'fr'
 
 
 class DuckietownLights():
+    """Some info here"""
 
     # Configuration (calibration) - needs to be in a yaml.file
     name2port = {

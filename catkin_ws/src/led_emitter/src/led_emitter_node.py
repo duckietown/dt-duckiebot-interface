@@ -1,11 +1,11 @@
 #!/usr/bin/env python
-import rospy
-from rgb_led import *
-import sys
-import time
-from std_msgs.msg import Float32, Int8, String
-from rgb_led import RGB_LED
-from duckietown_msgs.msg import BoolStamped
+# import rospy
+# from rgb_led import *
+# import sys
+# import time
+# from std_msgs.msg import Float32, Int8, String
+# from rgb_led import RGB_LED
+# from duckietown_msgs.msg import BoolStamped
 
 
 class LEDEmitterNode(object):

@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-import rospy
-from rgb_led import *
-import sys
-import time
-from std_msgs.msg import Float32, Int8
-import random
+# import rospy
+# from rgb_led import *
+# import sys
+# import time
+# from std_msgs.msg import Float32, Int8
+# import random
 
 class LEDEmitterTest(object):
     def __init__(self):
@@ -29,4 +29,3 @@ if __name__ == '__main__':
     rospy.init_node('led_emitter',anonymous=False)
     node = LEDEmitterTest()
     rospy.spin()
-
