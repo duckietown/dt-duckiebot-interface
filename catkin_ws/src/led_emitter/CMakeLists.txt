@@ -18,6 +18,12 @@ add_service_files(
   SetCustomLED.srv
 )
 
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+  duckietown_msgs
+)
+
 catkin_package()
 
 include_directories(

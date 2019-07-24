@@ -6,7 +6,8 @@ import time
 from std_msgs.msg import Float32, Int8, String
 from rgb_led import RGB_LED
 from duckietown_msgs.msg import BoolStamped, LEDPattern
-from led_emitter.srv import SetCustomLED
+from led_emitter.srv import SetCustomLED, ChangePattern
+from led_emitter.srv import SetCustomLEDResponse, ChangePatternResponse
 
 
 class LEDEmitterNode(object):
@@ -51,13 +52,9 @@ class LEDEmitterNode(object):
         self.current_pattern_name = 'OFF'
         self.changePattern_(self.current_pattern_name)
 
-        # If True, the LED turn on and off. Else, they are always on
-        self.onOff = True
-
-        if self.onOff:
-            self.cycle = 1.0/self.protocol['signals']['CAR_SIGNAL_A']['frequency']
-            self.is_on = False
-            self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.cycle/(2.0)), self.cycleTimer)
+        self.frequency = 1.0/self.protocol['signals']['CAR_SIGNAL_A']['frequency']
+        self.is_on = False
+        self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/(2.0)), self.cycleTimer_)
 
         # Publishers
         self.pub_state = rospy.Publisher("~current_led_state", String, queue_size=1)
@@ -67,9 +64,8 @@ class LEDEmitterNode(object):
         self.sub_switch = rospy.Subscriber("~switch", BoolStamped, self.cbSwitch)
 
         # Services
-
-        self.srv_set_LED_ = rospy.Service("~change_led", SetCustomLED, self.set_custom_LED)
-        self.srv_set_pattern_ = rospy.Service("~set_pattern", ChangePattern, self.changePattern)
+        self.srv_set_LED_ = rospy.Service("~change_led", SetCustomLED, self.srvSetCustomLED)
+        self.srv_set_pattern_ = rospy.Service("~set_pattern", ChangePattern, self.srvSetPattern)
 
         # Scale intensity of the LEDs
         for _, c in self.protocol['colors'].items():
@@ -77,11 +73,11 @@ class LEDEmitterNode(object):
                 c[i] = c[i] * self.scale
 
         # Turn on the LEDs
-        self.changePattern_('ON_WHITE')
+        self.changePattern_('WHITE')
 
         rospy.loginfo("[%s] Initialized." % (self.node_name))
 
-    def setCustomLED(self, LED_pattern):
+    def srvSetCustomLED(self, LED_pattern):
         """Service to set a custom pattern.
 
             Sets the LEDs to a custom pattern (colors+frequency)
@@ -93,12 +89,12 @@ class LEDEmitterNode(object):
         rospy.loginfo("Changing LEDs to custom pattern")
         self.current_pattern_name = 'custom_pattern'
         self.pattern = LED_pattern.pattern
-        self.cycle = LED_pattern.frequency
 
-        if self.cycle == 0:
+        if self.frequency == 0:
             self.updateLEDs()
         else:
             self.changeFrequency()
+        return SetCustomLEDResponse()
 
     def cbSwitch(self, switch_msg):
         """Callback that turns on/off the node
@@ -111,7 +107,7 @@ class LEDEmitterNode(object):
         """
         self.active = switch_msg.data
 
-    def cycleTimer(self, event):
+    def cycleTimer_(self, event):
         """Timer.
 
             Calls updateLEDs according to the frequency of the current pattern.
@@ -133,30 +129,32 @@ class LEDEmitterNode(object):
         if not self.active:
             return
 
-        elif not self.onOff:
+        elif not self.frequency:
             # No oscillation
             for i in range(5):
-                colors = [self.pattern[i][0],
-                          self.pattern[i][1],
-                          self.pattern[i][2]]
-                self.led.setRGB(i, colors)
+                if self.color_mask[i] == True:
+                    colors = self.pattern[i]
+                    self.led.setRGB(i, colors)
         else:
             # Oscillate
             if self.is_on:
                 for i in range(5):
-                    self.led.setRGB(i, [0, 0, 0])
+                    if self.frequency_mask[i] == True:
+                        self.led.setRGB(i, [0, 0, 0])
                 self.is_on = False
 
             else:
                 for i in range(5):
-                    colors = [self.pattern[i][0],
-                              self.pattern[i][1],
-                              self.pattern[i][2]]
+                    colors = self.pattern[i]
                     self.led.setRGB(i, colors)
                 self.is_on = True
 
     def changePattern(self, msg):
         self.changePattern_(msg.data)
+
+    def srvSetPattern(self, msg):
+        self.changePattern_(msg.data)
+        return ChangePatternResponse()
 
     def changePattern_(self, pattern_name):
         """Change the current LED pattern.
@@ -177,30 +175,37 @@ class LEDEmitterNode(object):
                 self.current_pattern_name = pattern_name
 
             # Extract the color from the protocol config file
-            color_name = self.protocol['signals'][pattern_name]['color']
-            color = self.protocol['colors'][color_name]
-            self.pattern = [color]*5
+            color_mask = self.protocol['signals'][pattern_name]['color_mask']
+            color_list = self.protocol['signals'][pattern_name]['color_list']
 
-            try:
-                # Extract the frequency from the config file, if not static
-                self.cycle = self.protocol['signals'][pattern_name]['frequency']
-                self.onOff = True
+            # If color mask is not specified, we want to change all of the LEDs
+            if len(color_mask) < 5:
+                self.color_mask = [1]*5
+            else:
+                self.color_mask = color_mask
 
-            except KeyError:
-                # If static, no timer
-                self.cycle = None
-                self.onOff = False
+            # Extract the frequency from the protocol
+            self.frequency_mask = self.protocol['signals'][pattern_name]['frequency_mask']
+            self.frequency = self.protocol['signals'][pattern_name]['frequency']
 
-            # Change frequency
-            self.changeFrequency()
+            if type(color_list) is str:
+                self.pattern = [self.protocol['colors'][color_list]]*5
+            else:
+                assert (len(color_list) == 5), "color_list needs 5 entries"
+                self.pattern = [[0, 0, 0]]*5
+                for i in range(len(color_list)):
+                    self.pattern[i] = self.protocol['colors'][color_list[i]]
 
-            # Change LEDs, only if static pattern, else the timer will do it
-            if not self.onOff:
+            # If static behavior, updated LEDs
+            if self.frequency == 0:
                 self.updateLEDs()
+
+            # Anyway modify the frequency (to stop timer if static)
+            self.changeFrequency()
 
             # Loginfo
             rospy.loginfo('[%s] Pattern changed to (%r), cycle: %s '
-                          % (self.node_name, pattern_name, self.cycle))
+                          % (self.node_name, pattern_name, self.frequency))
 
             # Publish current pattern
             self.pub_state.publish(self.current_pattern_name)
@@ -211,18 +216,18 @@ class LEDEmitterNode(object):
         Stops the current cycle_timer, and starts a new one with the right
         frequency.
         """
-        if self.cycle is None:
+        if self.frequency == 0:
             self.cycle_timer.shutdown()
 
         else:
             try:
                 self.cycle_timer.shutdown()
                 # below, convert to hz
-                d = 1.0/(2.0*self.cycle)
-                self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(d), self.cycleTimer)
+                d = 1.0/(2.0*self.frequency)
+                self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(d), self.cycleTimer_)
 
             except ValueError as e:
-                self.cycle = None
+                self.frequency = None
                 self.current_pattern_name = None
 
     def onShutdown(self):

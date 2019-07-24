@@ -1,2 +1,2 @@
-std_msgs/String pattern_name
+std_msgs/String data
 ---

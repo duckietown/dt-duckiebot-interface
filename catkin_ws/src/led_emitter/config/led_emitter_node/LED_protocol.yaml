@@ -17,54 +17,65 @@ LED_protocol:
     f4: &f4 7.8
     f5: &f5 10.6
 
-
   signals:
     CAR_SIGNAL_PRIORITY:
+      color_mask: []
+      color_list: ["purple","red","purple","red","purple"]
+      frequency_mask: [1,0,1,0,1]
       frequency: *f3
-      color: "purple"
 
     CAR_SIGNAL_SACRIFICE_FOR_PRIORITY:
+      color_mask: []
+      color_list: ["white","red","white","red","white"]
+      frequency_mask: [1,0,1,0,1]
       frequency: *f1
-      color: "white"
 
     CAR_SIGNAL_A:
+      color_mask: []
+      color_list: ["white","red","white","red","white"]
+      frequency_mask: [1,0,1,0,1]
       frequency: *f2
-      color: "white"
 
     CAR_SIGNAL_GREEN:
+      color_mask: []
+      color_list: "green"
+      frequency_mask: [1,1,1,1,1]
       frequency: *f3
-      color: "green"
 
-    CAR_SIGNAL_B:
-      frequency: *f4
-      color: "purple"
+    CAR_DRIVING:
+      color_mask: []
+      color_list: ["white","red","white","red","white"]
+      frequency_mask: []
+      frequency:  0
 
-    CAR_SIGNAL_C:
-      frequency: *f5
-      color: "yellow"
+    WHITE:
+      color_mask: []
+      color_list: "white"
+      frequency_mask: []
+      frequency:  0
 
-    ON_WHITE:
-      color: "white"
+    RED:
+      color_mask: []
+      color_list: "red"
+      frequency_mask: []
+      frequency:  0
 
-    ON_RED:
-      color: "red"
+    GREEN:
+      color_mask: []
+      color_list: "green"
+      frequency_mask: []
+      frequency:  0
 
-    ON_GREEN:
-      color: "green"
-
-    ON_BLUE:
-      color: "blue"
+    BLUE:
+      color_mask: []
+      color_list: "blue"
+      frequency_mask: []
+      frequency:  0
 
     light_off:
-      frequency: *f1
-      color: "black"
-
-    traffic_light_go:
-      frequency: *f4
-      color: "green"
-
-    traffic_light_stop:
-      frequency: *f3
-      color: "red"
+      color_mask: []
+      color_list: "black"
+      frequency_mask: []
+      frequency:  0
 
 LED_scale: 0.8
