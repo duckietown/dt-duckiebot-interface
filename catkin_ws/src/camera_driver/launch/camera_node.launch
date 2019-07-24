@@ -6,7 +6,7 @@
 
 	<group ns="$(arg veh)">
 		<node  name="camera_node" pkg="$(arg pkg_name)" type="camera_node_sequence.py" output="screen" clear_params="true" required="true">
-			<rosparam command="load" file="$(find $(arg pkg_name))/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+			<rosparam command="load" file="$(find camera_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
 		</node>
 	</group>
 
