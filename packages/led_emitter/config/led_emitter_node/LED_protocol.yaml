@@ -72,6 +72,13 @@ LED_protocol:
       frequency_mask: []
       frequency:  0
 
+    # The masks change, so we simply initialize them here
+    TL_GO:
+      color_mask: []
+      color_list: "green"
+      frequency_mask: []
+      frequency: *f4
+
     light_off:
       color_mask: []
       color_list: "black"

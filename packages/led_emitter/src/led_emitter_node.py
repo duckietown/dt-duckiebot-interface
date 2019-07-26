@@ -54,18 +54,30 @@ class LEDEmitterNode(object):
 
         self.frequency = 1.0/self.protocol['signals']['CAR_SIGNAL_A']['frequency']
         self.is_on = False
-        self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/(2.0)), self.cycleTimer_)
+        self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/(2.0)),
+                                       self.cycleTimer_)
 
         # Publishers
-        self.pub_state = rospy.Publisher("~current_led_state", String, queue_size=1)
-
+        self.pub_state = rospy.Publisher("~current_led_state",
+                                         String,
+                                         queue_size=1)
         # Subscribers
-        self.sub_pattern = rospy.Subscriber("~change_color_pattern", String, self.changePattern)
-        self.sub_switch = rospy.Subscriber("~switch", BoolStamped, self.cbSwitch)
-
+        self.sub_pattern = rospy.Subscriber("~change_color_pattern",
+                                            String,
+                                            self.changePattern)
+        self.sub_switch = rospy.Subscriber("~switch",
+                                           BoolStamped,
+                                           self.cbSwitch)
+        self.sub_custom_pattern = rospy.Subscriber("~custom_pattern",
+                                                   LEDPattern,
+                                                   self.cbCustomPattern)
         # Services
-        self.srv_set_LED_ = rospy.Service("~change_led", SetCustomLED, self.srvSetCustomLED)
-        self.srv_set_pattern_ = rospy.Service("~set_pattern", ChangePattern, self.srvSetPattern)
+        self.srv_set_LED_ = rospy.Service("~change_led",
+                                          SetCustomLED,
+                                          self.srvSetCustomLED)
+        self.srv_set_pattern_ = rospy.Service("~set_pattern",
+                                              ChangePattern,
+                                              self.srvSetPattern)
 
         # Scale intensity of the LEDs
         for _, c in self.protocol['colors'].items():
@@ -95,6 +107,13 @@ class LEDEmitterNode(object):
         else:
             self.changeFrequency()
         return SetCustomLEDResponse()
+
+    def cbCustomPattern(self, msg_pattern):
+        self.color_list = msg_pattern.color_list
+        self.color_mask = msg_pattern.color_mask
+        self.frequency = msg_pattern.frequency
+        self.frequency_mask = msg_pattern.frequency_mask
+        self.updateLEDs()
 
     def cbSwitch(self, switch_msg):
         """Callback that turns on/off the node
@@ -149,12 +168,12 @@ class LEDEmitterNode(object):
                     self.led.setRGB(i, colors)
                 self.is_on = True
 
-    def changePattern(self, msg):
-        self.changePattern_(msg.data)
-
     def srvSetPattern(self, msg):
         self.changePattern_(msg.data)
         return ChangePatternResponse()
+
+    def changePattern(self, msg):
+        self.changePattern_(msg.data)
 
     def changePattern_(self, pattern_name):
         """Change the current LED pattern.
