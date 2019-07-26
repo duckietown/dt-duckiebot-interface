@@ -1,14 +1,12 @@
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:default." />
-
-
+    <arg name="robot_type" default="duckiebot" doc="The type of the robot"/>
 
     <include file="$(find joystick)/launch/joystick_node.launch">
         <arg name="veh" value="$(arg veh)"/>
         <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
-
 
     <include file="$(find camera_driver)/launch/camera_node.launch">
         <arg name="veh" value="$(arg veh)"/>
@@ -31,4 +29,11 @@
     <include file="$(find led_emitter)/launch/led_emitter_node.launch">
         <arg name="veh" value="$(arg veh)"/>
     </include>
+
+    <group if="$(arg robot_type)" == "traffic_light">
+      <remap from="led_emitter_node/custom_pattern" to="~custom_pattern"/>
+    	<include file="$(find traffic_light)/launch/traffic_light_node.launch">
+    </include>
+
+    </group>
 </launch>

@@ -1,19 +1,18 @@
 #!/usr/bin/python
 
-# Wrapping the Adafruit API to talk to DC motors with a simpler interface
-#
-# date:    11/17/2015
-#
-# authors: Valerio Varricchio <valerio@mit.edu>
-#          Luca Carlone <lcarlone@mit.edu>
-#          Dmitry Yershov <dmitry.s.yershov@gmail.com>
-#          Shih-Yuan Liu <syliu@mit.edu>
-
 from Adafruit_MotorHAT import Adafruit_MotorHAT
 from math import fabs, floor
+from time import sleep
 
 
 class DaguWheelsDriver:
+    """Class handling communication with motors.
+
+        Wraps the Adafruit API to talk to DC motors with a simpler interface.
+        The class contains methods for creating PWM signals according to
+        requested velocities. Also contains hardware addresses related to the
+        motors.
+    """
     LEFT_MOTOR_MIN_PWM = 60        # Minimum speed for left motor
     LEFT_MOTOR_MAX_PWM = 255       # Maximum speed for left motor
     RIGHT_MOTOR_MIN_PWM = 60       # Minimum speed for right motor
@@ -32,20 +31,37 @@ class DaguWheelsDriver:
         self.updatePWM()
 
     def PWMvalue(self, v, minPWM, maxPWM):
+        """Transforms the requested speed into an int8 number.
+
+            Args:
+                v (float): requested speed
+                minPWM (int8): minimum speed as int8
+                maxPWM (int8): maximum speed as int8
+        """
         pwm = 0
         if fabs(v) > self.SPEED_TOLERANCE:
             pwm = int(floor(fabs(v) * (maxPWM - minPWM) + minPWM))
         return min(pwm, maxPWM)
 
     def updatePWM(self):
+        """Sends commands to the microcontroller.
+
+            Updates the current PWM signals (left and right) according to the
+            linear velocities of the motors. The requested speed gets
+            tresholded.
+        """
         vl = self.leftSpeed
         vr = self.rightSpeed
 
-        pwml = self.PWMvalue(vl, self.LEFT_MOTOR_MIN_PWM, self.LEFT_MOTOR_MAX_PWM)
-        pwmr = self.PWMvalue(vr, self.RIGHT_MOTOR_MIN_PWM, self.RIGHT_MOTOR_MAX_PWM)
+        pwml = self.PWMvalue(vl,
+                             self.LEFT_MOTOR_MIN_PWM,
+                             self.LEFT_MOTOR_MAX_PWM)
+        pwmr = self.PWMvalue(vr,
+                             self.RIGHT_MOTOR_MIN_PWM,
+                             self.RIGHT_MOTOR_MAX_PWM)
 
         if self.debug:
-            print "v = %5.3f, u = %5.3f, vl = %5.3f, vr = %5.3f, pwml = %3d, pwmr = %3d" % (v, u, vl, vr, pwml, pwmr)
+            print ("v = %5.3f, u = %5.3f, vl = %5.3f, vr = %5.3f, pwml = %3d, pwmr = %3d" % (v, u, vl, vr, pwml, pwmr))
 
         if fabs(vl) < self.SPEED_TOLERANCE:
             leftMotorMode = Adafruit_MotorHAT.RELEASE
@@ -69,11 +85,16 @@ class DaguWheelsDriver:
         self.rightMotor.run(rightMotorMode)
 
     def setWheelsSpeed(self, left, right):
+        """Sets speed of motors."""
         self.leftSpeed = left
         self.rightSpeed = right
         self.updatePWM()
 
     def __del__(self):
+        """Destructor method.
+
+            Releases the motors and deletes tho object.
+        """
         self.leftMotor.run(Adafruit_MotorHAT.RELEASE)
         self.rightMotor.run(Adafruit_MotorHAT.RELEASE)
         del self.motorhat
@@ -81,7 +102,6 @@ class DaguWheelsDriver:
 
 # Simple example to test motors
 if __name__ == '__main__':
-    from time import sleep
 
     N = 10
     delay = 100. / 1000.

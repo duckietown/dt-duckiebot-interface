@@ -9,8 +9,5 @@
 			<rosparam command="load" file="$(find camera_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
 		</node>
 	</group>
-
-	<!-- Publications -->
-	<!-- "~image/compressed": sensor_msgs/CompressedImage. Image from the camera in jpeg format-->
-
+	
 </launch>

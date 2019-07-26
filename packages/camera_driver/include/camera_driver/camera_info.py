@@ -1,10 +1,14 @@
-
 import yaml
 from sensor_msgs.msg import CameraInfo
 
 
-# from cam_info_reader_node
 def load_camera_info_2(filename):
+    """Loads the camera calibration files.
+
+    Loads the intrinsic and extrinsic camera matrices.
+
+    Args:
+        filename (String): filename of calibration files."""
     stream = file(filename, 'r')
     calib_data = yaml.load(stream)
     cam_info = CameraInfo()

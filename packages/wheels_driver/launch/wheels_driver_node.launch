@@ -7,7 +7,4 @@
         <rosparam command="load" file="$(find wheels_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
     </node>
 
-    <!-- Subscriptions -->
-    <!-- "~wheels_cmd": duckietown_msgs/WheelsCmd. Command for the wheels -->
-
 </launch>

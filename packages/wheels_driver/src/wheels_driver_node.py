@@ -6,7 +6,23 @@ import numpy as np
 
 
 class WheelsDriverNode(object):
-    """Sends commands to the motors."""
+    """Node handling the motor velocities communication.
+
+        Subscribes to the requested wheels commands (linear velocities) and
+        to an emergency stop flag. Publishes the execution of the commands
+
+        Subscribers:
+            sub_topic:
+                topic: ~wheels_cmd
+                type: WheelsCmdStamped
+            sub_e_stop:
+                topic: ~emergency_stop
+                type: BoolStamped
+        Publishers:
+            pub_wheels_cmd:
+                topic: ~wheels_cmd_executed
+                type: WheelsCmdStamped
+    """
 
     def __init__(self):
         self.node_name = rospy.get_name()
@@ -27,8 +43,13 @@ class WheelsDriverNode(object):
         rospy.loginfo("[%s] Initialized." % (self.node_name))
 
     def cbWheelsCmd(self, msg):
-        """Callback that sends motor command and publishes them with their
-        timestamp
+        """Callback that sets wheels' speeds.
+
+            Creates the wheels' speed message and publishes it. If the
+            emergency stop flag is activated, publishes zero command.
+
+            Args:
+                msg (WheelsCmdStamped): velocity command
         """
 
         if self.estop:
@@ -45,7 +66,11 @@ class WheelsDriverNode(object):
         self.pub_wheels_cmd.publish(self.msg_wheels_cmd)
 
     def cbEStop(self, msg):
-        """Callback that enables/disables emergency stop"""
+        """Callback that enables/disables emergency stop
+
+            Args:
+                msg (BoolStamped): emergency_stop flag
+        """
 
         self.estop = msg.data
         if self.estop:
@@ -54,7 +79,9 @@ class WheelsDriverNode(object):
             rospy.loginfo("[%s] Emergency Stop Released")
 
     def on_shutdown(self):
-        """Shutdown procedure"""
+        """Shutdown procedure.
+
+        Publishes a zero velocity command at shutdown."""
 
         self.driver.setWheelsSpeed(left=0.0, right=0.0)
         rospy.loginfo("[%s] Shutting down." % (rospy.get_name()))

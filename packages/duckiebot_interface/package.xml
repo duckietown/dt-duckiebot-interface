@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>duckietown</name>
+  <name>duckiebot_interface</name>
   <version>1.0.0</version>
-  <description>The duckietown meta package</description>
+  <description>The duckiebot_interface meta package</description>
 
   <license>GPLv3</license>
 <maintainer email="mack@duckietown.org">Mack</maintainer>

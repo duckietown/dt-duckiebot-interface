@@ -28,10 +28,24 @@ class LEDEmitterNode(object):
                 topic: ~switch
                 type: BoolStamped
 
+            sub_custom_pattern:
+                topic: ~custom_pattern
+                type: LEDPattern
+
         Publishers:
             pub_state:
                 topic: ~current_led_state
                 type: ~String
+
+        Services:
+            srv_set_LED_:
+                topic: ~change_led
+                type: SetCustomLED
+
+            srv_set_pattern_:
+                topic: ~set_pattern
+                type: ChangePattern
+
         """
 
         self.node_name = rospy.get_name()
@@ -52,6 +66,7 @@ class LEDEmitterNode(object):
         self.current_pattern_name = 'OFF'
         self.changePattern_(self.current_pattern_name)
 
+        # Initialize the timer
         self.frequency = 1.0/self.protocol['signals']['CAR_SIGNAL_A']['frequency']
         self.is_on = False
         self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/(2.0)),
@@ -93,6 +108,7 @@ class LEDEmitterNode(object):
         """Service to set a custom pattern.
 
             Sets the LEDs to a custom pattern (colors+frequency)
+
             Args:
                 LED_pattern (LEDPattern): requested pattern
 
@@ -109,6 +125,15 @@ class LEDEmitterNode(object):
         return SetCustomLEDResponse()
 
     def cbCustomPattern(self, msg_pattern):
+        """Changes LEDs to received custom pattern.
+
+            Callback that updates the current object according to the message
+            received. After that calls the uptadeLEDs function, that sends
+            the signal to the LEDs.
+
+            Args:
+                msg_pattern (LEDPattern): requested pattern
+        """
         self.color_list = msg_pattern.color_list
         self.color_mask = msg_pattern.color_mask
         self.frequency = msg_pattern.frequency
@@ -116,7 +141,7 @@ class LEDEmitterNode(object):
         self.updateLEDs()
 
     def cbSwitch(self, switch_msg):
-        """Callback that turns on/off the node
+        """Callback that turns on/off the node.
 
             Reads the switch from the Finite State Machine and sets
             self.active accordingly.
@@ -137,11 +162,12 @@ class LEDEmitterNode(object):
         self.updateLEDs()
 
     def updateLEDs(self):
-        """Switches the LEDs on/off
+        """Switches the LEDs to the requested signal.
 
-        If on oscillation mode (on/off) toggles the LEDs and changes color
-        according to the current pattern.
-        Otherwise only changes the color of the LEDs.
+            If the pattern is static, changes the color of LEDs according to
+            the color specified in self.color_list on the LEDs specified
+            on self.color_mask. If a nonzero frequency is set, toggles on/off
+            the LEDs specified on self.frequency_mask.
         """
 
         # Do nothing if inactive
@@ -169,21 +195,27 @@ class LEDEmitterNode(object):
                 self.is_on = True
 
     def srvSetPattern(self, msg):
+        """Changes the current pattern according to msg.
+
+            Args:
+                msg (String): requested pattern name
+        """
         self.changePattern_(msg.data)
         return ChangePatternResponse()
 
     def changePattern(self, msg):
+        """Calls the private function with data from message"""
         self.changePattern_(msg.data)
 
     def changePattern_(self, pattern_name):
         """Change the current LED pattern.
 
-        Checks if the requested pattern is different from the current one,
-        if so changes colors and frequency of LEDs accordingly and publishes
-        the new current pattern.
+            Checks if the requested pattern is different from the current one,
+            if so changes colors and frequency of LEDs accordingly and
+            publishes the new current pattern.
 
-        Args:
-            pattern_name (string): Name of the wanted pattern
+            Args:
+                pattern_name (string): Name of the wanted pattern
 
         """
         if pattern_name:
@@ -232,8 +264,9 @@ class LEDEmitterNode(object):
     def changeFrequency(self):
         """Changes current frequency of LEDs
 
-        Stops the current cycle_timer, and starts a new one with the right
-        frequency.
+            Stops the current cycle_timer, and starts a new one with the
+            frequency specified in self.frequency. If the frequency is zero,
+            stops the callback timer.
         """
         if self.frequency == 0:
             self.cycle_timer.shutdown()
