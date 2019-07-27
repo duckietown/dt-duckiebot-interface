@@ -15,9 +15,7 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../../catkin_ws/src/'))
-import led_emitter
 print(sys.path)
-
 
 
 # -- Project information -----------------------------------------------------
@@ -34,7 +32,7 @@ release = '0.0.1'
 
 
 # Napoleon (for Google-style docstrings)
-extensions = ['sphinx.ext.napoleon']
+extensions = ['sphinxcontrib.napoleon']
 
 # Autodocs
 extensions += ['sphinx.ext.autodoc']
@@ -46,7 +44,6 @@ extensions += ['sphinx.ext.autodoc']
 #   ('http://otamachan.github.io/sphinxros/indigo/', None)}
 
 # Autodocs Configuration
-autoclass_content = 'both'
 autodoc_mock_imports = ['cv2',
                         'numpy',
                         'rospy',
@@ -59,13 +56,29 @@ autodoc_mock_imports = ['cv2',
                         'yaml',
                         'duckietown_msgs',
                         'wheels_driver',
-                        'Adafruit_MotorHAT']
-autodoc_typehints = 'signature'
-autodoc_default_options = {'show-inheritance': False}
+                        'Adafruit_MotorHAT',
+                        'yaml',
+                        'std_msgs',
+                        'led_emitter.srv']
+
+# Napoleon settings
 napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = False
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = False
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_notes = True
+napoleon_use_admonition_for_references = True
+napoleon_use_ivar = False
 napoleon_use_param = False
-napoleon_use_ivar = True
-napoleon_include_init_with_doc = True
+napoleon_use_rtype = True
+napoleon_use_keyword = True
+napoleon_custom_sections = [('Subscribers', 'Parameters'),
+                            ('Subscriber', 'Parameters'),
+                            ('Publishers', 'Parameters'),
+                            ('Publisher', 'Parameters')]
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -84,6 +97,30 @@ master_doc = 'index'
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
+
+html_theme_options = {
+    # 'canonical_url': '',
+    # 'analytics_id': 'UA-XXXXXXX-1',  #  Provided by Google in your dashboard
+    # 'logo_only': False,
+    # 'display_version': True,
+    'prev_next_buttons_location': 'bottom',
+    # 'style_external_links': False,
+    # 'vcs_pageview_mode': '',
+    'style_nav_header_background': '#fbc10b',
+    # Toc options
+    'collapse_navigation': False,
+    'sticky_navigation': True,
+    'navigation_depth': 4,
+    'includehidden': False,
+    'titles_only': False,
+    # 'github_url': True
+}
+
+html_logo = "logo_textonly.png"
+html_favicon = "favicon.png"
+# html_style = 'dt_style.css'
+
+
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,

@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 import rospy
 from rgb_led import *
-import sys
-import time
 from std_msgs.msg import Float32, Int8, String
 from rgb_led import RGB_LED
 from duckietown_msgs.msg import BoolStamped, LEDPattern
@@ -10,29 +8,25 @@ from led_emitter.srv import SetCustomLED
 
 
 class LEDEmitterNode(object):
+    """Class for LEDs managment.
+
+    Calls the low-level functions of class RGB_LED that create the PWM
+    signal used to steer the LEDs. According to the requested pattern
+    (pattern = color + frequency), changes the frequency of calling the
+    update and the color.
+
+    Subscribers:
+
+        ~change_color_pattern (String): A string that...
+
+        ~switch (BoolStamped): A BoolStamped that...
+
+    Publisher:
+
+        ~current_led_state (String): A string that...
+    """
+
     def __init__(self):
-        """Class for LEDs managment.
-
-        Calls the low-level functions of class RGB_LED that create the PWM
-        signal used to steer the LEDs. According to the requested pattern
-        (pattern = color + frequency), changes the frequency of calling the
-        update and the color.
-
-        Subscribers:
-            sub_pattern:
-                topic: ~change_color_pattern
-                type: String
-
-            sub_switch:
-                topic: ~switch
-                type: BoolStamped
-
-        Publishers:
-            pub_state:
-                topic: ~current_led_state
-                type: ~String
-        """
-
         self.node_name = rospy.get_name()
         rospy.loginfo("[%s] Initializing..." % (self.node_name))
 
@@ -85,10 +79,15 @@ class LEDEmitterNode(object):
         """Service to set a custom pattern.
 
             Sets the LEDs to a custom pattern (colors+frequency)
+
             Args:
                 LED_pattern (LEDPattern): requested pattern
 
-            Example: .......([....],12)
+            Example:
+
+                To do bla::
+
+                .......([....],12)
         """
         rospy.loginfo("Changing LEDs to custom pattern")
         self.current_pattern_name = 'custom_pattern'

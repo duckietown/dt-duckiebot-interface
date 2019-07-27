@@ -14,6 +14,9 @@ from math import fabs, floor
 
 
 class DaguWheelsDriver:
+    """
+    Description for DaguWheelsDriver should come here.
+    """
     LEFT_MOTOR_MIN_PWM = 60        # Minimum speed for left motor
     LEFT_MOTOR_MAX_PWM = 255       # Maximum speed for left motor
     RIGHT_MOTOR_MIN_PWM = 60       # Minimum speed for right motor

@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from Adafruit_PWM_Servo_Driver import PWM  # @UnresolvedImport
+from Adafruit_PWM_Servo_Driver import PWM
 
 
 class RGB_LED():

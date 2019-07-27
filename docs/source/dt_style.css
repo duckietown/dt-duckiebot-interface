@@ -1,0 +1,5 @@
+@import 'theme.css'
+
+p.caption, h1, h2 {
+  color: #f14720;
+}

@@ -1,10 +1,7 @@
 #!/usr/bin/env python
-# import rospy
-# from rgb_led import *
-# import sys
-# import time
-# from std_msgs.msg import Float32, Int8
-# import random
+import rospy
+from rgb_led import *
+from std_msgs.msg import Float32, Int8
 
 class LEDEmitterTest(object):
     def __init__(self):

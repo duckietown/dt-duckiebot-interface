@@ -1,8 +1,8 @@
 """
-    camera_driver
+    wheels_driver
     -------------
 
-    .. automodule:: wheels_driver.include.wheel_driver
+    .. automodule:: wheels_driver.include.wheels_driver
         :members:
         :undoc-members:
         :show-inheritance:
