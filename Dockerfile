@@ -31,5 +31,4 @@ RUN ["cross-build-end"]
 
 LABEL maintainer="Andrea F. Daniele (afdaniele@ttic.edu)"
 
-RUN echo
 CMD ["${REPO_PATH}/run_all_drivers.sh"]
