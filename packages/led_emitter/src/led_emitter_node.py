@@ -198,7 +198,7 @@ class LEDEmitterNode(object):
         """Changes the current pattern according to msg.
 
             Args:
-                msg (String): requested pattern name
+                msg (String): requested pattern name
         """
         self.changePattern_(msg.data)
         return ChangePatternResponse()

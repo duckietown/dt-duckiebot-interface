@@ -32,7 +32,7 @@ class CamInfoReaderNode(object):
         self.image_type = self.setupParam("~image_type", "compressed")
 
         # Get path to calibration yaml file
-        intrinsics_folder = "/data/config/calibrations/camera_intrinsic/"
+        intrinsics_folder = "/data/config/calibrations/camera_intrinsic/"
         self.cali_file = (intrinsics_folder + self.cali_file_name + ".yaml")
         self.camera_info_msg = None
 

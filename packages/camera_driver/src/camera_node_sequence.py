@@ -79,7 +79,7 @@ class CameraNode(object):
         Increases / decreases the frequency of imagery.
 
         Args:
-            switch_msg (BoolStamped): switch_msg
+            switch_msg (BoolStamped): switch_msg
         """
         rospy.loginfo("[%s] frequency switch to %s." % (self.node_name,
                                                         switch_msg.data))
@@ -149,7 +149,6 @@ class CameraNode(object):
             rospy.sleep(rospy.Duration.from_sec(0.001))
 
     def setupParam(self, param_name, default_value):
-        value = rospy.get_param(param_name, value)
         """Parameter server handler.
 
             Sets value of parameter and file and prints it.
@@ -158,6 +157,7 @@ class CameraNode(object):
                 param_name (String): name of the parameter
                 value(String): value of the paramter
         """
+        value = rospy.get_param(param_name, default_value)
         # Write to parameter server for transparancy
         rospy.set_param(param_name, value)
         rospy.loginfo("[%s] %s = %s " % (self.node_name, param_name, value))

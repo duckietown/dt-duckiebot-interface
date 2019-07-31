@@ -30,7 +30,7 @@
         <arg name="veh" value="$(arg veh)"/>
     </include>
 
-    <group if="$(arg robot_type)" == "traffic_light">
+    <group if="$(eval arg('robot_type') == 'traffic_light')">
       <remap from="led_emitter_node/custom_pattern" to="~custom_pattern"/>
     	<include file="$(find traffic_light)/launch/traffic_light_node.launch">
     </include>

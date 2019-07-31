@@ -24,7 +24,6 @@ RUN pip install -r ${REPO_PATH}/requirements.txt
 # build packages
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
   catkin build \
-    --verbose \
     --workspace ${CATKIN_WS_DIR}/
 
 # turn off ARM emulation
@@ -32,4 +31,5 @@ RUN ["cross-build-end"]
 
 LABEL maintainer="Andrea F. Daniele (afdaniele@ttic.edu)"
 
+RUN echo
 CMD ["${REPO_PATH}/run_all_drivers.sh"]

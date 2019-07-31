@@ -8,7 +8,7 @@ def load_camera_info_2(filename):
     Loads the intrinsic and extrinsic camera matrices.
 
     Args:
-        filename (String): filename of calibration files."""
+        filename (String): filename of calibration files."""
     stream = file(filename, 'r')
     calib_data = yaml.load(stream)
     cam_info = CameraInfo()

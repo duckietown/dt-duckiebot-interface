@@ -15,7 +15,7 @@ class TrafficLightNode(object):
         The class creates an object which handles the timers for managing
         a traffic light at an intersection. By default a 4-way intersection
         is assumed, this can be modified by the `self.number_leds` parameter.
-        The LED protocol used is the same as LED emitter node, for coherence.
+        The LED protocol used is the same as LED emitter node, for coherence.
         An additional protocol defines the lenght of the periods of green light
         and the order of the directions. The changes are made by publishing
         to a special topic of LedEmitterNode.
@@ -56,7 +56,7 @@ class TrafficLightNode(object):
         # Scale intensity of the LEDs & convert to right order
         for _, c in self.LED_protocol['colors'].items():
             # RGB to BGR (TL currently has BGR leds)
-            c[1], c[3] = c[3], c[1]
+            c[1], c[3] = c[3], c[1]
             for i in range(3):
                 c[i] = c[i] * self.scale
 
