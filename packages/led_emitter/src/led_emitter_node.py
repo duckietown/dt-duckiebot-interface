@@ -11,42 +11,31 @@ from led_emitter.srv import SetCustomLEDResponse, ChangePatternResponse
 
 
 class LEDEmitterNode(object):
+    """Class for LEDs managment.
+
+            Calls the low-level functions of class RGB_LED that create the PWM
+            signal used to steer the LEDs. According to the requested pattern
+            (pattern = color + frequency), changes the frequency of calling the
+            update and the color.
+
+            Subscribers:
+                ~change_color_pattern (String): A string that...
+
+                ~switch (BoolStamped): A BoolStamped that...
+
+                ~custom_pattern (LEDPattern): An LEDPattern that...
+
+            Publishers:
+                ~current_led_state (String): A string that...
+
+            Services:
+                ~change_led (SetCustomLED): Description of the service
+
+                ~set_pattern (ChangePattern): Description of the service
+
+            """
+
     def __init__(self):
-        """Class for LEDs managment.
-
-        Calls the low-level functions of class RGB_LED that create the PWM
-        signal used to steer the LEDs. According to the requested pattern
-        (pattern = color + frequency), changes the frequency of calling the
-        update and the color.
-
-        Subscribers:
-            sub_pattern:
-                topic: ~change_color_pattern
-                type: String
-
-            sub_switch:
-                topic: ~switch
-                type: BoolStamped
-
-            sub_custom_pattern:
-                topic: ~custom_pattern
-                type: LEDPattern
-
-        Publishers:
-            pub_state:
-                topic: ~current_led_state
-                type: ~String
-
-        Services:
-            srv_set_LED_:
-                topic: ~change_led
-                type: SetCustomLED
-
-            srv_set_pattern_:
-                topic: ~set_pattern
-                type: ChangePattern
-
-        """
 
         self.node_name = rospy.get_name()
         rospy.loginfo("[%s] Initializing..." % (self.node_name))
@@ -112,7 +101,11 @@ class LEDEmitterNode(object):
             Args:
                 LED_pattern (LEDPattern): requested pattern
 
-            Example: .......([....],12)
+            Example:
+
+                To do bla::
+
+                .......([....],12)
         """
         rospy.loginfo("Changing LEDs to custom pattern")
         self.current_pattern_name = 'custom_pattern'

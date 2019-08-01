@@ -12,26 +12,22 @@ from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
 
 class CameraNode(object):
+    """Handles the imagery.
+
+    The node handles the image stream, initializing it, publishing frames
+    according to the required frequency and stops it at shutdown.
+
+    Subscribers:
+        ~framerate_high_switch (BoolStamped): Description
+
+    Publishers:
+        ~image/compressed (CompressedImage): Description
+
+    Services:
+        ~set_camera_info (SetCameraInfo): Description
+    """
 
     def __init__(self):
-        """Handles the imagery.
-
-        The node handles the image stream, initializing it, publishing frames
-        according to the required frequency and stops it at shutdown.
-
-        Subscribers:
-            sub_switch_high:
-                topic: ~framerate_high_switch
-                type: BoolStamped
-        Publishers:
-            pub_img:
-                topic: ~image/compressed
-                type: CompressedImage
-        Services:
-            srv_set_camera_info:
-                topic: ~set_camera_info
-                type: SetCameraInfo
-        """
         self.node_name = rospy.get_name()
         rospy.loginfo("[%s] Initializing......" % (self.node_name))
 

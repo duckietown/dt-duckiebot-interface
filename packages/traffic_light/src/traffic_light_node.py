@@ -8,23 +8,21 @@ from duckietown_msgs.msg import LEDPattern
 
 
 class TrafficLightNode(object):
+    """Handles the LED patterns for the traffic lights.
+
+    The class creates an object which handles the timers for managing
+    a traffic light at an intersection. By default a 4-way intersection
+    is assumed, this can be modified by the `self.number_leds` parameter.
+    The LED protocol used is the same as LED emitter node, for coherence.
+    An additional protocol defines the lenght of the periods of green light
+    and the order of the directions. The changes are made by publishing
+    to a special topic of LedEmitterNode.
+
+    Publishers:
+        ~custom_pattern (LEDPattern): Description
+    """
 
     def __init__(self):
-        """Handles the LED patterns for the traffic lights.
-
-        The class creates an object which handles the timers for managing
-        a traffic light at an intersection. By default a 4-way intersection
-        is assumed, this can be modified by the `self.number_leds` parameter.
-        The LED protocol used is the same as LED emitter node, for coherence.
-        An additional protocol defines the lenght of the periods of green light
-        and the order of the directions. The changes are made by publishing
-        to a special topic of LedEmitterNode.
-
-        Publishers:
-            pub_pattern:
-                topic: ~custom_pattern
-                type: LEDPattern
-            """
         self.node_name = rospy.get_name()
         rospy.loginfo("[%s] Initializing..." % (self.node_name))
 

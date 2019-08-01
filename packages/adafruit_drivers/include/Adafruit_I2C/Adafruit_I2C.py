@@ -62,7 +62,7 @@ class Adafruit_I2C(object):
     try:
       self.bus.write_byte_data(self.address, reg, value)
       if self.debug:
-        print "I2C: Wrote 0x%02X to register 0x%02X" % (value, reg)
+        print ("I2C: Wrote 0x%02X to register 0x%02X" % (value, reg))
     except IOError, err:
       return self.errMsg()
 
@@ -81,7 +81,7 @@ class Adafruit_I2C(object):
     try:
       self.bus.write_byte(self.address, value)
       if self.debug:
-        print "I2C: Wrote 0x%02X" % value
+        print ("I2C: Wrote 0x%02X" % value)
     except IOError, err:
       return self.errMsg()
 
@@ -89,8 +89,8 @@ class Adafruit_I2C(object):
     "Writes an array of bytes using I2C format"
     try:
       if self.debug:
-        print "I2C: Writing list to register 0x%02X:" % reg
-        print list
+        print ("I2C: Writing list to register 0x%02X:" % reg)
+        print (list)
       self.bus.write_i2c_block_data(self.address, reg, list)
     except IOError, err:
       return self.errMsg()
@@ -102,7 +102,7 @@ class Adafruit_I2C(object):
       if self.debug:
         print ("I2C: Device 0x%02X returned the following from reg 0x%02X" %
          (self.address, reg))
-        print results
+        print (results)
       return results
     except IOError, err:
       return self.errMsg()
@@ -139,7 +139,7 @@ class Adafruit_I2C(object):
       if not little_endian:
         result = ((result << 8) & 0xFF00) + (result >> 8)
       if (self.debug):
-        print "I2C: Device 0x%02X returned 0x%04X from reg 0x%02X" % (self.address, result & 0xFFFF, reg)
+        print ("I2C: Device 0x%02X returned 0x%04X from reg 0x%02X" % (self.address, result & 0xFFFF, reg))
       return result
     except IOError, err:
       return self.errMsg()
@@ -156,6 +156,6 @@ class Adafruit_I2C(object):
 if __name__ == '__main__':
   try:
     bus = Adafruit_I2C(address=0)
-    print "Default I2C bus is accessible"
+    print ("Default I2C bus is accessible")
   except:
-    print "Error accessing default I2C bus"
+    print ("Error accessing default I2C bus")
