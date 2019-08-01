@@ -11,21 +11,24 @@ RUN apt-get update && apt-get install -y \
     ros-kinetic-tf-conversions \
     ros-kinetic-joy
 
-COPY requirements.txt /requirements.txt
+ARG REPO_PATH="${CATKIN_WS_DIR}/src/duckiebot-interface"
 
-RUN pip install -r /requirements.txt
+# create repo directory
+RUN mkdir -p "${REPO_PATH}"
 
-COPY ./catkin_ws "${SOURCE_DIR}/catkin_ws"
-COPY ["docker_setup.sh", "run_all_drivers.sh", "${SOURCE_DIR}/"]
+# copy entire repo
+COPY . "${REPO_PATH}/"
+
+RUN pip install -r ${REPO_PATH}/requirements.txt
 
 # build packages
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
   catkin build \
-    --workspace ${SOURCE_DIR}/catkin_ws/
+    --workspace ${CATKIN_WS_DIR}/
 
 # turn off ARM emulation
 RUN ["cross-build-end"]
 
 LABEL maintainer="Andrea F. Daniele (afdaniele@ttic.edu)"
 
-CMD ["./run_all_drivers.sh"]
+CMD ["${REPO_PATH}/run_all_drivers.sh"]
