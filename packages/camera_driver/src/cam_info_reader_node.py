@@ -6,24 +6,23 @@ from sensor_msgs.msg import CameraInfo, CompressedImage, Image
 
 
 class CamInfoReaderNode(object):
+    """Node containing the camera calibration file.
+
+        The node publishes a message containing the camera intrinsic
+        calibration. At startup looks for robot specific calibration, if
+        not found uses a default file.
+
+        Subscribers:
+            sub_img_compressed:
+                topic: ~compressed_image
+                type: ImageCompressed/Image
+        Publishers:
+            pub_camera_info:
+                topic: ~camera_info
+                type: CameraInfo
+    """
 
     def __init__(self):
-        """Node containing the camera calibration file.
-
-            The node publishes a message containing the camera intrinsic
-            calibration. At startup looks for robot specific calibration, if
-            not found uses a default file.
-
-            Subscribers:
-                sub_img_compressed:
-                    topic: ~compressed_image
-                    type: ImageCompressed/Image
-            Publishers:
-                pub_camera_info:
-                    topic: ~camera_info
-                    type: CameraInfo
-        """
-
         self.node_name = rospy.get_name()
         rospy.loginfo("[%s] Initializing..." % (self.node_name))
 

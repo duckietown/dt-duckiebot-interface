@@ -14,7 +14,7 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('../../catkin_ws/src/'))
+sys.path.insert(0, os.path.abspath('../../packages/'))
 print(sys.path)
 
 
@@ -44,26 +44,19 @@ extensions += ['sphinx.ext.autodoc']
 #   ('http://otamachan.github.io/sphinxros/indigo/', None)}
 
 # Autodocs Configuration
-autodoc_mock_imports = ['cv2',
-                        'numpy',
-                        'rospy',
-                        'Adafruit_PWM_Servo_Driver',
-                        'camera_driver',
-                        'sensor_msgs',
-                        'cv_bridge',
-                        'picamera',
-                        'thread',
-                        'yaml',
-                        'duckietown_msgs',
-                        'wheels_driver',
-                        'Adafruit_MotorHAT',
-                        'yaml',
-                        'std_msgs',
-                        'led_emitter.srv']
+with open('mock_imports') as f:
+    autodoc_mock_imports = f.readlines()
+for idx in range(len(autodoc_mock_imports)):
+    autodoc_mock_imports[idx] = autodoc_mock_imports[idx].strip(' ').strip('\n')
+print(autodoc_mock_imports)
+
+autodoc_default_flags = {'members': True,
+                         'member-order': 'bysource',
+                         'undoc-members': True}
 
 # Napoleon settings
 napoleon_google_docstring = True
-napoleon_numpy_docstring = True
+napoleon_numpy_docstring = False
 napoleon_include_init_with_doc = False
 napoleon_include_private_with_doc = False
 napoleon_include_special_with_doc = False
@@ -77,7 +70,10 @@ napoleon_use_keyword = True
 napoleon_custom_sections = [('Subscribers', 'Parameters'),
                             ('Subscriber', 'Parameters'),
                             ('Publishers', 'Parameters'),
-                            ('Publisher', 'Parameters')]
+                            ('Publisher', 'Parameters'),
+                            ('Services', 'Parameters'),
+                            ('Service', 'Parameters')
+                            ]
 
 
 # Add any paths that contain templates here, relative to this directory.
