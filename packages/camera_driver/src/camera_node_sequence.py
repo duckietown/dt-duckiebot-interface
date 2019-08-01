@@ -18,17 +18,13 @@ class CameraNode(object):
     according to the required frequency and stops it at shutdown.
 
     Subscribers:
-        sub_switch_high:
-            topic: ~framerate_high_switch
-            type: BoolStamped
+        ~framerate_high_switch (BoolStamped): Description
+
     Publishers:
-        pub_img:
-            topic: ~image/compressed
-            type: CompressedImage
+        ~image/compressed (CompressedImage): Description
+
     Services:
-        srv_set_camera_info:
-            topic: ~set_camera_info
-            type: SetCameraInfo
+        ~set_camera_info (SetCameraInfo): Description
     """
 
     def __init__(self):

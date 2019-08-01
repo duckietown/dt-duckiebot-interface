@@ -19,9 +19,7 @@ class TrafficLightNode(object):
     to a special topic of LedEmitterNode.
 
     Publishers:
-        pub_pattern:
-            topic: ~custom_pattern
-            type: LEDPattern
+        ~custom_pattern (LEDPattern): Description
     """
 
     def __init__(self):

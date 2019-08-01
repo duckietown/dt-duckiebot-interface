@@ -13,13 +13,9 @@ class CamInfoReaderNode(object):
         not found uses a default file.
 
         Subscribers:
-            sub_img_compressed:
-                topic: ~compressed_image
-                type: ImageCompressed/Image
+            ~compressed_image (ImageCompressed/Image): Description...
         Publishers:
-            pub_camera_info:
-                topic: ~camera_info
-                type: CameraInfo
+            ~camera_info (CameraInfo): Description
     """
 
     def __init__(self):
@@ -80,7 +76,7 @@ class CamInfoReaderNode(object):
             gets published.
 
             Args:
-                msg (img_type): iamge message
+                msg (img_type): image message
         """
         if self.camera_info_msg is not None:
             self.camera_info_msg.header.stamp = msg.header.stamp
