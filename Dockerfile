@@ -1,51 +1,34 @@
-FROM arm32v7/ros:kinetic-ros-base-xenial
+ARG ARCH=arm32v7
 
-ENV INITSYSTEM off
-ENV QEMU_EXECVE 1
-# setup environment
-ENV TERM "xterm"
-ENV LANG C.UTF-8
-ENV LC_ALL C.UTF-8
-ENV ROS_DISTRO kinetic
+FROM duckietown/dt-ros-commons:master19-${ARCH}
 
-COPY ./qemu/bin/ /usr/bin/
-
-RUN [ "cross-build-start" ]
+RUN ["cross-build-start"]
 
 # setup keys
-RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 421C365BD9FF1F717815A3895523BAEEB01FA116
-
-# setup sources.list
-RUN echo "deb http://packages.ros.org/ros/ubuntu `lsb_release -sc` main" > /etc/apt/sources.list.d/ros-latest.list
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C1CF6E31E6BADE8868B172B4F42ED6FBAB17C654
 
 RUN apt-get update && apt-get install -y \
     ros-kinetic-tf-conversions \
-    ros-kinetic-joy \
-    python-pip \
-    python-smbus
+    ros-kinetic-joy
 
-# RPi libs
-ADD qemu/vc.tgz /opt/
-COPY qemu/00-vmcs.conf /etc/ld.so.conf.d
-RUN ldconfig
+ARG REPO_PATH="${CATKIN_WS_DIR}/src/duckiebot-interface"
 
+# create repo directory
+RUN mkdir -p "${REPO_PATH}"
 
-COPY requirements.txt /requirements.txt
+# copy entire repo
+COPY . "${REPO_PATH}/"
 
-ENV READTHEDOCS True
-RUN pip install -r /requirements.txt
+RUN pip install -r ${REPO_PATH}/requirements.txt
 
-RUN mkdir /home/duckiebot-interface/
-COPY . /home/duckiebot-interface
+# build packages
+RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
+  catkin build \
+    --workspace ${CATKIN_WS_DIR}/
 
-ENV ROS_LANG_DISABLE=gennodejs:geneus:genlisp
-RUN /bin/bash -c "cd /home/duckiebot-interface/ && source /opt/ros/kinetic/setup.bash && catkin_make -j -C catkin_ws/"
+# turn off ARM emulation
+RUN ["cross-build-end"]
 
-RUN echo "source /home/duckiebot-interface/docker_setup.sh" >> ~/.bashrc
-RUN bash -c "source /home/duckiebot-interface/docker_setup.sh"
+LABEL maintainer="Andrea F. Daniele (afdaniele@ttic.edu)"
 
-RUN [ "cross-build-end" ]
-
-WORKDIR /home/duckiebot-interface
-
-CMD [ "./run_all_drivers.sh" ]
+CMD ["${REPO_PATH}/run_all_drivers.sh"]
