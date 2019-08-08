@@ -1,4 +1,4 @@
 adafruit\_drivers package
 =========================
 
-.. automodule:: adafruit_drivers
+#.. automodule:: adafruit_drivers

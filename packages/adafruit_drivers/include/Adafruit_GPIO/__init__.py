@@ -4,6 +4,7 @@
 
     .. automodule:: adafruit_drivers.include.Adafruit_GPIO.GPIO
         :show-inheritance:
+        :no-undoc-members:
 
 """
 

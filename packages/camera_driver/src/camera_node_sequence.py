@@ -16,15 +16,39 @@ class CameraNode(object):
 
     The node handles the image stream, initializing it, publishing frames
     according to the required frequency and stops it at shutdown.
+    `Picamera <https://picamera.readthedocs.io/>`_ is used for handling the image stream.
 
-    Subscribers:
-        ~framerate_high_switch (BoolStamped): Description
+    Note that only one :obj:`PiCamera` object should be used at a time. If another node tries to start
+    an instance while this node is running, it will likely fail with an `Out of resource` exception.
 
-    Publishers:
-        ~image/compressed (CompressedImage): Description
+    The node can publish both at high and low framerate settings which are configurable parameters. Publishing to
+    the `~framerate_high_switch` topic can switch between the two settings. The high setting is used by default.
 
-    Services:
-        ~set_camera_info (SetCameraInfo): Description
+    Configuration:
+        ~framerate_high (float): The high setting for the camera framerate, default is 30.0 fps
+        ~framerate_low (float): The low setting for the camera framerate, default is 15.0 fps
+        ~res_w (int): The desired width of the acquired image, default is 640px
+        ~res_h (int): The desired height of the acquired image, default is 480px
+
+    Subscriber:
+        ~framerate_high_switch (BoolStamped): If `True` is published to this topic, the framerate
+            will be switched to the `~framerate_high` value. If `False` is published to this topic,
+            the framerate will be switched to the `~framerate_low` value.
+
+    Publisher:
+        ~image/compressed (CompressedImage): The acquired camera images
+
+    Service:
+        ~set_camera_info:
+            Saves a provided camera info to `/data/config/calibrations/camera_intrinsic/NAMESPACE.yaml`.
+
+            input:
+                camera_info (sensor_msgs/CameraInfo) The camera information to save
+
+            outputs:
+                success (bool): `True` if the call succeeded
+                status_message (string): Used to give details about success
+
     """
 
     def __init__(self):

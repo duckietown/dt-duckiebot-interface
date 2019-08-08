@@ -16,3 +16,4 @@ std_msgs
 led_emitter.srv
 Adafruit_GPIO
 Adafruit_I2C
+smbus

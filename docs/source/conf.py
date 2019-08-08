@@ -16,6 +16,7 @@ sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../../packages/'))
 print(sys.path)
+sys.setrecursionlimit(1500)
 
 
 # -- Project information -----------------------------------------------------
@@ -36,6 +37,8 @@ extensions = ['sphinxcontrib.napoleon']
 
 # Autodocs
 extensions += ['sphinx.ext.autodoc']
+extensions += ['sphinx.ext.autosummary']
+autosummary_generate = True
 
 
 # Add intersphynx to connect with the base ROS
@@ -48,11 +51,11 @@ with open('mock_imports') as f:
     autodoc_mock_imports = f.readlines()
 for idx in range(len(autodoc_mock_imports)):
     autodoc_mock_imports[idx] = autodoc_mock_imports[idx].strip(' ').strip('\n')
-print(autodoc_mock_imports)
 
 autodoc_default_flags = {'members': True,
                          'member-order': 'bysource',
                          'undoc-members': True}
+add_module_names = False
 
 # Napoleon settings
 napoleon_google_docstring = True
@@ -67,12 +70,18 @@ napoleon_use_ivar = False
 napoleon_use_param = False
 napoleon_use_rtype = True
 napoleon_use_keyword = True
-napoleon_custom_sections = [('Subscribers', 'Parameters'),
+napoleon_custom_sections = [('Configuration', 'Parameters'),
+                            ('Subscribers', 'Parameters'),
                             ('Subscriber', 'Parameters'),
                             ('Publishers', 'Parameters'),
                             ('Publisher', 'Parameters'),
                             ('Services', 'Parameters'),
-                            ('Service', 'Parameters')
+                            ('Service', 'Parameters'),
+                            ('Fields', 'Parameters'),
+                            ('inputs', 'Parameters'),
+                            ('input', 'Parameters'),
+                            ('outputs', 'Parameters'),
+                            ('output', 'Parameters'),
                             ]
 
 
