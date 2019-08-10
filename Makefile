@@ -1,45 +1,24 @@
-# DO NOT MODIFY - it is auto written from duckietown-env-developer
+VERSION=1
 
-default_arch=arm32v7
-arch=$(default_arch)
+root_dir:=$(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-branch=$(shell git rev-parse --abbrev-ref HEAD)
+build_mk=$(root_dir)/docker-tools/build.mk
 
-# name of the repo
-repo=$(shell basename -s .git `git config --get remote.origin.url`)
-
-default_tag=duckietown/$(repo):$(branch)
-tag=duckietown/$(repo):$(branch)-$(arch)
-
-labels=$(shell ./labels.py)
-
-build: no_cache=0
-build-no-cache: no_cache=1
-
-build build-no-cache:
-	docker build \
-		--pull \
-		$(labels) \
-		-t $(tag) \
-		--build-arg ARCH=$(arch) \
-		--no-cache=$(no_cache) \
-		.
-
-	@if [ "$(arch)" = "$(default_arch)" ]; then \
-		echo "Tagging image $(tag) as $(default_tag)."; \
-		docker tag $(tag) $(default_tag); \
-		echo "Done!"; \
-	else \
-		echo "Tagging image $(tag) as $(default_tag)-no-arm."; \
-		docker tag $(tag) $(default_tag)-no-arm; \
-		echo "Done!"; \
+env_check:
+	@# check if the docker-tools repo is initialized
+	@if [ ! -f "$(build_mk)" ]; then \
+		echo "The submodule 'docker-tools' is not initialized. Initializing now..."; \
+		git submodule init; \
+		git submodule update; \
 	fi
 
-push:
-	docker push $(tag)
+build build-no-cache push: env_check
+	@$(MAKE) -f $(build_mk) _$@
 
-	@if [ "$(arch)" = "$(default_arch)" ]; then \
-		docker push $(default_tag); \
-	else \
-		docker push $(default_tag)-no-arm; \
-	fi
+build-all:
+	@$(MAKE) build arch=amd64
+	@$(MAKE) build arch=arm32v7
+
+push-all:
+	@$(MAKE) push arch=amd64
+	@$(MAKE) push arch=arm32v7
