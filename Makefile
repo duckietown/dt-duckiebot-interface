@@ -12,7 +12,7 @@ env_check:
 		git submodule update; \
 	fi
 
-build build-no-cache push: env_check
+build push: env_check
 	@$(MAKE) -f $(build_mk) _$@
 
 build-all:
