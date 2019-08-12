@@ -46,7 +46,7 @@ __IMPORTANT:__ DO NOT CHANGE THIS SECTION!
 - [ ] Functionality (is the change necessary and is it implemented in the most appropriate way): @reviewer
 - [ ] Integration testing (verify the tests and run additional if necessary): @reviewer
 - [ ] Code style compliance: @reviewer
-- [ ] Documentation compliance: @reviewer
+- [ ] Documentation compliance: @aleksandarpetrov
 
 _To the reviewers:_ If you deem necessary, request code edits, more tests, documentation update, or additional reviewing. __Do not review your own code!__
 
