@@ -2,10 +2,16 @@
 	<arg name="veh"/>
 	<arg name="config" default="baseline"/>
 	<arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman"/>
+	<arg name="image_type" default="compressed" />
+    <arg name="cali_file_name" default="$(arg veh)" />
 
 	<group ns="$(arg veh)">
 		<node  name="camera_node" pkg="camera_driver" type="camera_node_sequence.py" output="screen" clear_params="true" required="true">
 			<rosparam command="load" file="$(find duckietown)/config/$(arg config)/camera_driver/camera_node/$(arg param_file_name).yaml"/>
+			<param name="~cali_file_name" value="$(arg cali_file_name)"/>
+			<param name="~image_type" value="$(arg image_type)"/>
+			<param name="~config" value="$(arg config)"/>
+
 		</node>
 	</group>
 

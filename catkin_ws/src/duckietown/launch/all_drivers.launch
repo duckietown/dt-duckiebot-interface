@@ -18,13 +18,6 @@
         <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
 
-    <remap from="cam_info_reader_node/camera_info" to="camera_node/camera_info"/>
-    <remap from="cam_info_reader_node/compressed_image" to="camera_node/image/compressed"/>
-    <include file="$(find camera_driver)/launch/cam_info_reader_node.launch">
-        <arg name="veh" value="$(arg veh)"/>
-        <arg name="config" value="$(arg config)"/>
-        <arg name="param_file_name" value="$(arg param_file_name)"/>
-     </include>
 
     <include file="$(find wheels_driver)/launch/wheels_driver_node.launch">
         <arg name="veh" value="$(arg veh)"/>
