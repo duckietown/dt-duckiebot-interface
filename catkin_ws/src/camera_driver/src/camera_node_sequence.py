@@ -161,7 +161,7 @@ class CameraNode(object):
                               (self.node_name))
                 self.has_published = True
 
-            rospy.sleep(rospy.Duration.from_sec(0.001))
+            rospy.sleep(rospy.Duration.from_sec(0.005))
 
     def setupParam(self, param_name, default_value):
         value = rospy.get_param(param_name, default_value)
