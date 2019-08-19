@@ -1,4 +1,0 @@
-[submodule "docker-tools"]
-	path = docker-tools
-	url = git@github.com:duckietown/docker-tools
-  branch = v1
