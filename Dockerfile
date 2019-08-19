@@ -1,5 +1,6 @@
 ARG ARCH=arm32v7
-ARG BASE_TAG=devel20-${ARCH}
+ARG MAJOR=devel20
+ARG BASE_TAG=${MAJOR}-${ARCH}
 
 FROM duckietown/dt-ros-commons:${BASE_TAG}
 
