@@ -24,6 +24,6 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
   catkin build \
     --workspace ${CATKIN_WS_DIR}/
 
-CMD "./run_all_drivers.sh"
+CMD "${REPO_PATH}/run_all_drivers.sh"
 
 LABEL maintainer="Andrea F. Daniele (afdaniele@ttic.edu)"
