@@ -4,9 +4,11 @@ ARG BASE_TAG=${MAJOR}-${ARCH}
 
 FROM duckietown/dt-ros-commons:${BASE_TAG}
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update \
+  && apt-get install -y \
     ros-${ROS_DISTRO}-tf-conversions \
-    ros-${ROS_DISTRO}-joy
+    ros-${ROS_DISTRO}-joy \
+  && rm -rf /var/lib/apt/lists/*
 
 ARG REPO_PATH="${CATKIN_WS_DIR}/src/duckiebot-interface"
 WORKDIR "${REPO_PATH}"
