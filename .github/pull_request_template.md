@@ -43,11 +43,11 @@ Please describe if you have any questions, comments, or doubts towards the Ducki
 ## FOR THE REVIEWERS
 __IMPORTANT:__ DO NOT CHANGE THIS SECTION!
 
-- [ ] Functionality (is the change necessary and is it implemented in the most appropriate way): @reviewer
-- [ ] Integration testing (verify the tests and run additional if necessary): @reviewer
-- [ ] Code style compliance: @reviewer
+- [ ] Functionality (is the change necessary and is it implemented in the most appropriate way): @liampaull or @afdaniele
+- [ ] Integration testing (verify the tests and run additional if necessary): @?
+- [ ] Code style compliance: @gibernas
 - [ ] Documentation compliance: @aleksandarpetrov
 
 _To the reviewers:_ If you deem necessary, request code edits, more tests, documentation update, or additional reviewing. __Do not review your own code!__
 
-_PR Template, last edit 9 Aug 2019_
+_PR Template, last edit 23 Aug 2019_
