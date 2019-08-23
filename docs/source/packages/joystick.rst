@@ -1,0 +1,8 @@
+joystick package
+================
+
+.. automodule:: joystick
+
+
+
+

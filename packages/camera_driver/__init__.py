@@ -14,12 +14,6 @@
     
     .. automodule:: camera_driver.src
 
-    Included libraries
-    ------------------
-
-    .. automodule:: camera_driver.include
-
-
 """
 
 from .src import *

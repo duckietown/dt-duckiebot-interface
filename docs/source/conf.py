@@ -15,6 +15,9 @@ import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('..'))
 sys.path.insert(0, os.path.abspath('../../packages/'))
+sys.path.insert(0, os.path.abspath('/dt-ros-commons/packages'))
+sys.path.insert(0, os.path.abspath('/dt-ros-commons/packages/duckietown/include'))
+
 print(sys.path)
 sys.setrecursionlimit(1500)
 
@@ -37,8 +40,8 @@ extensions = ['sphinxcontrib.napoleon']
 
 # Autodocs
 extensions += ['sphinx.ext.autodoc']
-extensions += ['sphinx.ext.autosummary']
-autosummary_generate = True
+# extensions += ['sphinx.ext.autosummary']
+# autosummary_generate = True
 
 
 # Add intersphynx to connect with the base ROS
@@ -53,8 +56,10 @@ for idx in range(len(autodoc_mock_imports)):
     autodoc_mock_imports[idx] = autodoc_mock_imports[idx].strip(' ').strip('\n')
 
 autodoc_default_flags = {'members': True,
-                         'member-order': 'bysource',
-                         'undoc-members': True}
+                         'member-order': 'alphabetical',
+                         'undoc-members': True,
+                         'inherited-members': True,
+                         'show-inheritance': True}
 add_module_names = False
 
 # Napoleon settings
