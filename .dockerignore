@@ -1,0 +1,8 @@
+# Ignore everything
+**
+
+# Allow files and directories
+!packages
+!run_all_drivers.sh
+!requirements.txt
+!docker_setup.sh
