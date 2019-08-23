@@ -1,0 +1,9 @@
+<launch>
+    <arg name="pkg_name" value="dagu_car"/>
+    <arg name="node_name" default="velocity_to_pose_node"/>
+    <arg name="veh" doc="Name of vehicle. ex: megaman"/>
+
+    <group ns="$(arg veh)">
+        <node  name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" clear_params="true" required="true"/>
+    </group>
+</launch>
