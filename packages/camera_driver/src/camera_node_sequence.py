@@ -5,13 +5,14 @@ import os
 import yaml
 import rospy
 
-from duckietown_msgs.msg import BoolStamped
+from dtros import DTROS
+# from duckietown_msgs.msg import BoolStamped
 from picamera import PiCamera
 from sensor_msgs.msg import CompressedImage
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
 
-class CameraNode(object):
+class CameraNode(DTROS):
     """Handles the imagery.
 
     The node handles the image stream, initializing it, publishing frames
@@ -54,17 +55,15 @@ class CameraNode(object):
     """
 
     def __init__(self):
-        self.node_name = rospy.get_name()
-        rospy.loginfo("[%s] Initializing......" % (self.node_name))
 
-        # Get the parameters and set the parameter update cycle
-        self.parameters = {'~framerate': None,
-                           '~res_w': None,
-                           '~res_h': None,
-                           '~exposure_mode': None}
-        self.parametersChanged = True
-        self.updateParameters()
-        self.updateParametersTimer = rospy.Timer(period=1.0, callback=self.updateParameters(), oneshot=False)
+        # Initialize the DTROS parent class
+        super(CameraNode, self).__init__()
+
+        # Add the node parameters to the parameters dictionary
+        self.parameters['~framerate'] = None
+        self.parameters['~res_w'] = None
+        self.parameters['~res_h'] = None
+        self.parameters['~exposure_mode'] = None
 
         # self.framerate_high = self.setupParam("~framerate_high", 30.0)
         # self.framerate_low = self.setupParam("~framerate_low", 15.0)
@@ -103,7 +102,7 @@ class CameraNode(object):
         self.is_shutdown = False
         # self.update_framerate = False
 
-        rospy.loginfo("[%s] Initialized." % (self.node_name))
+        self.log("Initialized.")
 
     # def cbSwitchHigh(self, switch_msg):
     #     """Callback for the imagery frequency switch.
@@ -128,7 +127,7 @@ class CameraNode(object):
             Begin the camera capturing. When the node shutdowns, closes the
             image stream.
         """
-        rospy.loginfo("[%s] Start capturing." % (self.node_name))
+        self.log("Start capturing.")
         while not self.is_shutdown and not rospy.is_shutdown():
             gen = self.grabAndPublish(self.stream, self.pub_img)
             try:
@@ -144,9 +143,10 @@ class CameraNode(object):
             self.camera.resolution = (self.parameters['~res_w'], self.parameters['~res_h'])
             self.camera.exposure_mode = self.parameters['~exposure_mode']
             self.parametersChanged = False
+            self.log("Parameters updated.")
 
         self.camera.close()
-        rospy.loginfo("[%s] Capture Ended." % (self.node_name))
+        self.log("Capture Ended.")
 
     def grabAndPublish(self, stream, publisher):
         """Captures a frame from stream and publishes it.
@@ -182,7 +182,7 @@ class CameraNode(object):
             stream.truncate()
 
             if not self.has_published:
-                rospy.loginfo("[%s] Published the first image." % (self.node_name))
+                self.log("Published the first image.")
                 self.has_published = True
 
             rospy.sleep(rospy.Duration.from_sec(0.001))
@@ -202,38 +202,38 @@ class CameraNode(object):
     #     rospy.loginfo("[%s] %s = %s " % (self.node_name, param_name, value))
     #     return value
 
-    def updateParameters(self):
-        """Keeping the node parameters up to date with the parameter server.
+    # def updateParameters(self):
+    #     """Keeping the node parameters up to date with the parameter server.
+    #
+    #     Goes through all the node parameters and check if the value for any of them is changed
+    #     in the parameter server. If there is a parameter that wasn't found, it will throw an `KeyError`
+    #     exception.
+    #
+    #     If a value of a parameter is changed, it will be updated and `self.parametersChanged` will be set
+    #     to `True` in order to inform other methods to adjust their behavior.
+    #
+    #     Raises:
+    #         KeyError: if one of the parameters is not found in the parameter server
+    #
+    #     """
+    #
+    #     for param_name in self.parameters:
+    #         new_value = rospy.get_param(param_name)
+    #         if new_value != self.parameters[param_name]:
+    #             self.parameters[param_name] = new_value
+    #             self.parametersChanged = True
+    #             rospy.loginfo("[%s] Setting parameter %s = %s " % (self.node_name, param_name, new_value))
 
-        Goes through all the node parameters and check if the value for any of them is changed
-        in the parameter server. If there is a parameter that wasn't found, it will throw an `KeyError`
-        exception.
 
-        If a value of a parameter is changed, it will be updated and `self.parametersChanged` will be set
-        to `True` in order to inform other methods to adjust their behavior.
-
-        Raises:
-            KeyError: if one of the parameters is not found in the parameter server
-
-        """
-
-        for param_name in self.parameters:
-            new_value = rospy.get_param(param_name)
-            if new_value != self.parameters[param_name]:
-                self.parameters[param_name] = new_value
-                self.parametersChanged = True
-                rospy.loginfo("[%s] Setting parameter %s = %s " % (self.node_name, param_name, new_value))
-
-
-    def onShutdown(self):
-        """Shutdown procedure."""
-        rospy.loginfo("[%s] Closing camera." % (self.node_name))
-        self.is_shutdown = True
-        self.updateParametersTimer.shutdown()
-        rospy.loginfo("[%s] Shutdown." % (self.node_name))
+    # def onShutdown(self):
+    #     """Shutdown procedure."""
+    #     self.log("Closing camera.")
+    #     self.is_shutdown = True
+    #     self.updateParametersTimer.shutdown()
+    #     self.log("Shutdown.")
 
     def cbSrvSetCameraInfo(self, req):
-        rospy.loginfo("[cbSrvSetCameraInfo] Callback!")
+        self.log("[cbSrvSetCameraInfo] Callback!")
         filename = self.cali_file_folder + rospy.get_namespace().strip("/") + ".yaml"
         response = SetCameraInfoResponse()
         response.success = self.saveCameraInfo(req.camera_info, filename)
@@ -248,7 +248,7 @@ class CameraNode(object):
                 filename (String): filename where to save calibration
         """
         # Convert camera_info_msg and save to a yaml file
-        rospy.loginfo("[saveCameraInfo] filename: %s" % (filename))
+        self.log("[saveCameraInfo] filename: %s" % (filename))
 
         # Converted from camera_info_manager.py
         calib = {'image_width': camera_info_msg.width,
@@ -268,7 +268,7 @@ class CameraNode(object):
                                        'rows': 3,
                                        'cols': 4}}
 
-        rospy.loginfo("[saveCameraInfo] calib %s" % (calib))
+        self.log("[saveCameraInfo] calib %s" % (calib))
 
         try:
             f = open(filename, 'w')
