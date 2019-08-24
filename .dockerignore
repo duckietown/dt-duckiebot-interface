@@ -9,4 +9,3 @@
 
 # Add your repo-specific files here
 !run_all_drivers.sh
-!docker_setup.sh
