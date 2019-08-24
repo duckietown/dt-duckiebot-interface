@@ -1,5 +1,5 @@
 # parameters
-ARG REPO_NAME="duckiebot-interface"
+ARG REPO_NAME="dt-duckiebot-interface"
 
 # ==================================================>
 # ==> Do not change this code
@@ -11,6 +11,7 @@ ARG BASE_TAG=${MAJOR}-${ARCH}
 FROM duckietown/dt-ros-commons:${BASE_TAG}
 
 # define repository path
+ARG REPO_NAME
 ARG REPO_PATH="${CATKIN_WS_DIR}/src/${REPO_NAME}"
 WORKDIR "${REPO_PATH}"
 
@@ -34,8 +35,11 @@ RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
 # <== Do not change this code
 # <==================================================
 
+# configure environment
+ENV LAUNCHFILE "${REPO_PATH}/run_all_drivers.sh"
+
 # define command
-CMD "${REPO_PATH}/run_all_drivers.sh"
+CMD ["bash", "-c", "${LAUNCHFILE}"]
 
 # maintainer
 LABEL maintainer="Andrea F. Daniele (afdaniele@ttic.edu)"
