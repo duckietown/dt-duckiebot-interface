@@ -43,7 +43,6 @@
     <!-- Joy Mapper: reads raw joy commands and trigger actions in Duckietown (e.g., move robot, start LF) -->
     <include file="$(find joy_mapper)/launch/joy_mapper_node.launch">
         <arg name="veh" value="$(arg veh)"/>
-        <arg name="config" value="$(arg config)"/>
         <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
 
@@ -52,21 +51,18 @@
     <remap from="inverse_kinematics_node/wheels_cmd" to="wheels_driver_node/wheels_cmd" />
     <include file="$(find dagu_car)/launch/inverse_kinematics_node.launch">
         <arg name="veh" value="$(arg veh)"/>
-        <arg name="config" value="$(arg config)"/>
     </include>
 
     <!-- Forward Kinematics: turns wheels-level commands into chassis-level velocities -->
     <remap from="forward_kinematics_node/wheels_cmd" to="wheels_driver_node/wheels_cmd_executed" />
     <include file="$(find dagu_car)/launch/forward_kinematics_node.launch">
         <arg name="veh" value="$(arg veh)"/>
-        <arg name="config" value="$(arg config)"/>
     </include>
 
     <!-- Velocity To Pose (Odometry): turns chassis-level velocities into chassis pose -->
     <remap from="velocity_to_pose_node/velocity" to="forward_kinematics_node/velocity" />
     <include file="$(find dagu_car)/launch/velocity_to_pose_node.launch">
         <arg name="veh" value="$(arg veh)"/>
-        <arg name="config" value="$(arg config)"/>
     </include>
 
 </launch>
