@@ -1,6 +1,4 @@
 """
-    The `joystick` package
-
     The joystick package is a wrapper around the `ROS joy <https://wiki.ros.org/joy>`_ node.
 
     It accepts the following parameters:

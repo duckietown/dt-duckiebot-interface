@@ -25,24 +25,24 @@ class CameraNode(DTROS):
     The configuration parameters can be changed dynamically while the node is running via `rosparam set` commands.
 
     Configuration:
-        ~framerate (float): The camera image acquisition framerate, default is 30.0 fps
-        ~res_w (int): The desired width of the acquired image, default is 640px
-        ~res_h (int): The desired height of the acquired image, default is 480px
-        ~exposure_mode (string): PiCamera exposure mode, one of `these <https://picamera.readthedocs.io/en/latest/api_camera.html?highlight=sport#picamera.PiCamera.exposure_mode>`_, default is `sports`
+        ~framerate (:obj:`float`): The camera image acquisition framerate, default is 30.0 fps
+        ~res_w (:obj:`int`): The desired width of the acquired image, default is 640px
+        ~res_h (:obj:`int`): The desired height of the acquired image, default is 480px
+        ~exposure_mode (:obj:`str`): PiCamera exposure mode, one of `these <https://picamera.readthedocs.io/en/latest/api_camera.html?highlight=sport#picamera.PiCamera.exposure_mode>`_, default is `sports`
 
     Publisher:
-        ~image/compressed (CompressedImage): The acquired camera images
+        ~image/compressed (:obj:`CompressedImage`): The acquired camera images
 
     Service:
         ~set_camera_info:
             Saves a provided camera info to `/data/config/calibrations/camera_intrinsic/HOSTNAME.yaml`.
 
             input:
-                camera_info (sensor_msgs/CameraInfo) The camera information to save
+                camera_info (`CameraInfo`) The camera information to save
 
             outputs:
-                success (bool): `True` if the call succeeded
-                status_message (string): Used to give details about success
+                success (`bool`): `True` if the call succeeded
+                status_message (`str`): Used to give details about success
 
     """
 
@@ -58,9 +58,8 @@ class CameraNode(DTROS):
         self.parameters['~exposure_mode'] = None
         self.updateParameters()
 
-        self.image_msg = CompressedImage()
-
         # Setup PiCamera
+        self.image_msg = CompressedImage()
         self.camera = PiCamera()
         self.camera.framerate = self.parameters['~framerate']
         self.camera.resolution = (self.parameters['~res_w'], self.parameters['~res_h'])
@@ -144,8 +143,8 @@ class CameraNode(DTROS):
             camera parameters and restarts the recording.
 
             Args:
-                stream (BytesIO): imagery stream
-                publisher (Publisher): publisher of topic
+                stream (:obj:`BytesIO`): imagery stream
+                publisher (:obj:`Publisher`): publisher of topic
         """
         while not (self.parametersChanged or self.is_shutdown or rospy.is_shutdown()):
             yield stream
@@ -189,8 +188,8 @@ class CameraNode(DTROS):
         """Saves intrinsic calibration to file.
 
             Args:
-                camera_info_msg (CameraInfo): Camera Info containg calibration
-                filename (String): filename where to save calibration
+                camera_info_msg (:obj:`CameraInfo`): Camera Info containg calibration
+                filename (:obj:`str`): filename where to save calibration
         """
         # Convert camera_info_msg and save to a yaml file
         self.log("[saveCameraInfo] filename: %s" % (filename))
@@ -263,7 +262,7 @@ class CameraNode(DTROS):
         Loads the intrinsic and extrinsic camera matrices.
 
         Args:
-            filename (str): filename of calibration files.
+            filename (:obj:`str`): filename of calibration files.
 
         Returns:
             :obj:`CameraInfo`: a CameraInfo message object

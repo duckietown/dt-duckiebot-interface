@@ -1,16 +1,6 @@
 """
-    Adafruit_MotorHAT
-    -----------------
-
-    .. automodule:: adafruit_drivers.include.Adafruit_MotorHAT.Adafruit_StepperMotor
-        :no-undoc-members:
-
-    .. automodule:: adafruit_drivers.include.Adafruit_MotorHAT.Adafruit_DCMotor
-        :no-undoc-members:
-
-    .. automodule:: adafruit_drivers.include.Adafruit_MotorHAT.Adafruit_MotorHAT
-        :no-undoc-members:
-
+    This is the `Adafruit MotorHAT <https://github.com/adafruit/Adafruit-Motor-HAT-Python-Library>`_ library.
+    We are not maintaining nor documenting it.
 
 """
 

@@ -19,7 +19,7 @@ class TrafficLightNode(object):
     to a special topic of LedEmitterNode.
 
     Publishers:
-        ~custom_pattern (LEDPattern): Description
+        ~custom_pattern (:obj:`LEDPattern`): Description
     """
 
     def __init__(self):

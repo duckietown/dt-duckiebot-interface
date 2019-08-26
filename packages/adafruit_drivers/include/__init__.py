@@ -1,23 +1,30 @@
 """
-    adafruit_drivers
-    ----------------
+    .. contents::
+       :depth: 4
 
-    Notes:
-        These drivers are developed by Adafruit Industries and their documentation
-        is what they have provided with the driver code base.
-
+    Adafruit_GPIO
+    -------------
 
     .. automodule:: adafruit_drivers.include.Adafruit_GPIO
         :special-members:
         :no-undoc-members:
 
+    Adafruit_I2C
+    ------------
+
     .. automodule:: adafruit_drivers.include.Adafruit_I2C
         :special-members:
         :no-undoc-members:
 
+    Adafruit_MotorHAT
+    -----------------
+
     .. automodule:: adafruit_drivers.include.Adafruit_MotorHAT
         :special-members:
         :no-undoc-members:
+
+    Adafruit_PWM_Servo_Driver
+    -------------------------
 
     .. automodule:: adafruit_drivers.include.Adafruit_PWM_Servo_Driver
         :special-members:

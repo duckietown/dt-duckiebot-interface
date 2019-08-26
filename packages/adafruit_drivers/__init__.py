@@ -1,13 +1,12 @@
 """
-    The `adafruit_driver` package blablabla
-
     .. contents::
+       :depth: 4
 
-    Quick start
-    -----------
+    The `adafruit_driver` package contains the drivers that run the Duckiebot hardware.
 
-    TODO: WRITE STUFF
-
+    Note:
+        These drivers are developed by Adafruit Industries and their documentation
+        is what they have provided with the driver code base.
 
     Included libraries
     ------------------

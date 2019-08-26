@@ -1,9 +1,5 @@
 """
-    Adafruit_I2C
-    ------------
-
-    .. automodule:: adafruit_drivers.include.Adafruit_I2C.Adafruit_I2C
-        :no-undoc-members:
+    This is the Adafruit I2C library. We are not maintaining nor documenting it.
 
 
 """
