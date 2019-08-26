@@ -6,6 +6,7 @@
 !packages
 !dependencies-apt.txt
 !dependencies-py.txt
+!launch.sh
 
-# Add your repo-specific files here
-!run_all_drivers.sh
+# YOUR FILES LISTED BELOW THIS LINE (IMPORTANT: PREPEND !)
+# ----------------------------------------------------------------------------
