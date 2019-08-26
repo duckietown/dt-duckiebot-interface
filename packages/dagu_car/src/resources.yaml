@@ -1,0 +1,15 @@
+- dir: minimality.mit.edu
+  url: git@github.com:AndreaCensi/minimality.mit.edu.git
+  branch: gh-pages
+  
+- dir: nerc.mit.edu
+  url: git@github.com:AndreaCensi/nerc15.git
+  branch: gh-pages
+
+- dir: rss16-representations.mit.edu
+  url: git@github.com:AndreaCensi/rss16-representations.git
+  branch: gh-pages
+
+- dir: task-driven-representations.mit.edu
+  url: git@github.com:AndreaCensi/task-driven-representations.git
+  branch: gh-pages

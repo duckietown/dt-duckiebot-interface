@@ -2,7 +2,10 @@
 **
 
 # Allow files and directories
+!assets
 !packages
+!dependencies-apt.txt
+!dependencies-py.txt
+
+# Add your repo-specific files here
 !run_all_drivers.sh
-!requirements.txt
-!docker_setup.sh
