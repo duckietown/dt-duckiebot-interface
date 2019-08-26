@@ -5,9 +5,9 @@ import math
 from duckietown_msgs.msg import Twist2DStamped, BoolStamped
 from sensor_msgs.msg import Joy
 
-from __builtin__ import True
+# from __builtin__ import True
 
-class JoyMapper(object):
+class JoyMapperNode(object):
     def __init__(self):
         self.node_name = rospy.get_name()
         rospy.loginfo("[%s] Initializing " %(self.node_name))
@@ -166,5 +166,5 @@ class JoyMapper(object):
 
 if __name__ == "__main__":
     rospy.init_node("joy_mapper",anonymous=False)
-    joy_mapper = JoyMapper()
+    joy_mapper = JoyMapperNode()
     rospy.spin()

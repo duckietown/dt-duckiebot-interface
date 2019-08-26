@@ -1,7 +1,7 @@
 """
     .. contents::
 
-    The `wheels_driver` package blablabla
+    The `dagu_car` package blablabla
 
     Quick start
     -----------
@@ -11,12 +11,12 @@
     Nodes
     -----
 
-    .. automodule:: wheels_driver.src
+    .. automodule:: dagu_car.src
 
     Included libraries
     ------------------
 
-    .. automodule:: wheels_driver.include
+    .. automodule:: dagu_car.include
 
 
 """

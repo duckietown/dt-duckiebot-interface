@@ -1,6 +1,5 @@
 """
     .. contents::
-       :depth: 4
 
     The `camera_driver` package handles everything camera-related on a Duckiebot. It has a
     single node `CameraNode` that acquires images using `Picamera <https://picamera.readthedocs.io/>`_

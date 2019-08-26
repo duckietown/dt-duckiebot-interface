@@ -1,6 +1,5 @@
 """
     .. contents::
-       :depth: 4
 
     Adafruit_GPIO
     -------------

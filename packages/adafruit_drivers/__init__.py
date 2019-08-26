@@ -1,6 +1,5 @@
 """
     .. contents::
-       :depth: 4
 
     The `adafruit_driver` package contains the drivers that run the Duckiebot hardware.
 

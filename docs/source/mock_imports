@@ -17,3 +17,8 @@ led_emitter.srv
 Adafruit_GPIO
 Adafruit_I2C
 smbus
+std_srvs
+geometry
+rosbag
+duckietown_utils
+duckietown-utils

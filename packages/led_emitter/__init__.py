@@ -1,7 +1,8 @@
 """
+    .. contents::
+
     The `led_emitter` package blablabla
 
-    .. contents::
 
     Quick start
     -----------

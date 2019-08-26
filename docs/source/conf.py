@@ -18,6 +18,14 @@ sys.path.insert(0, os.path.abspath('../../packages/'))
 sys.path.insert(0, os.path.abspath('/dt-ros-commons/packages'))
 sys.path.insert(0, os.path.abspath('/dt-ros-commons/packages/duckietown/include'))
 
+# A trick to handle duckietown_utils as it is not Python3-compatible
+from mock import Mock
+import types
+module_name = 'duckietown_utils'
+bogus_module = types.ModuleType(module_name)
+sys.modules[module_name] = bogus_module
+bogus_module.get_duckiefleet_root = Mock(name=module_name+'.get_duckiefleet_root')
+
 print(sys.path)
 sys.setrecursionlimit(1500)
 

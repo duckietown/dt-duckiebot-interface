@@ -21,21 +21,19 @@
     </include>
 
     <!-- LED Emitter: reads ROS messages and commands the LEDs -->
-    <include file="$(find led_emitter)/launch/led_emitter_node.launch">
-        <arg name="veh" value="$(arg veh)"/>
-    </include>
-
-    <!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
-    <group if="$(eval arg('robot_type') == 'traffic_light')">
-      <remap from="led_emitter_node/custom_pattern" to="~custom_pattern"/>
-    	<include file="$(find traffic_light)/launch/traffic_light_node.launch"></include>
-    </group>
-
-    <!-- Joy Mapper: reads raw joy commands and trigger actions in Duckietown (e.g., move robot, start LF) -->
-    <include file="$(find joy_mapper)/launch/joy_mapper_node.launch">
-        <arg name="veh" value="$(arg veh)"/>
-        <arg name="param_file_name" value="$(arg param_file_name)"/>
-    </include>
+     <include file="$(find led_emitter)/launch/led_emitter_node.launch">
+         <arg name="veh" value="$(arg veh)"/>
+     </include>
+     <!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
+     <group if="$(eval arg('robot_type') == 'traffic_light')">
+       <remap from="led_emitter_node/custom_pattern" to="~custom_pattern"/>
+     	<include file="$(find traffic_light)/launch/traffic_light_node.launch"></include>
+     </group>
+     <!-- Joy Mapper: reads raw joy commands and trigger actions in Duckietown (e.g., move robot, start LF) -->
+     <include file="$(find joy_mapper)/launch/joy_mapper_node.launch">
+         <arg name="veh" value="$(arg veh)"/>
+         <arg name="param_file_name" value="$(arg param_file_name)"/>
+     </include>
 
     <!-- Inverse Kinematics: turns chassis-level commands into wheels-level commands -->
     <remap from="inverse_kinematics_node/car_cmd" to="joy_mapper_node/car_cmd"/>
