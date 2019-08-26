@@ -3,12 +3,14 @@ import io
 import thread
 import os
 import yaml
-import rospy
-
-from duckietown_msgs.msg import BoolStamped
 from picamera import PiCamera
-from sensor_msgs.msg import CompressedImage
+from picamera.array import PiRGBArray
+import rospkg
+import rospy
+from sensor_msgs.msg import CompressedImage, CameraInfo, Image
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
+from camera_driver.camera_info import load_camera_info_2
+from duckietown_msgs.msg import BoolStamped
 
 
 class CameraNode(object):
@@ -31,6 +33,14 @@ class CameraNode(object):
         self.node_name = rospy.get_name()
         rospy.loginfo("[%s] Initializing......" % (self.node_name))
 
+        # from cam_info_reader_node
+        self.config = self.setupParam("~config", "baseline")
+        # TODO cali_file_name is not needed and should be the robot name by default
+        self.cali_file_name = self.setupParam("~cali_file_name", "default")
+        self.image_type = self.setupParam("~image_type", "compressed")
+        self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
+        # from cam_info_reader_node end
+
         self.framerate_high = self.setupParam("~framerate_high", 30.0)
         self.framerate_low = self.setupParam("~framerate_low", 15.0)
         self.res_w = self.setupParam("~res_w", 640)
@@ -45,28 +55,63 @@ class CameraNode(object):
         self.camera.resolution = (self.res_w, self.res_h)
 
         # For intrinsic calibration
-        self.cali_file_folder = '/data/config/calibrations/camera_intrinsic/'
+        if not 'DUCKIEFLEET_ROOT' in os.environ:
+            msg = 'DUCKIEFLEET_ROOT not defined - setting calibration dir to default /data/config'
+            duckiefleet_root = '/data/config'
+        else:
+            duckiefleet_root = os.environ['DUCKIEFLEET_ROOT']
 
-        self.frame_id = rospy.get_namespace().strip('/') + '/camera_optical_frame'
+        # from cam_info_reader_node
+        # Get path to calibration yaml file
+        self.cali_file = (duckiefleet_root + "/calibrations/camera_intrinsic/"
+                          + self.cali_file_name + ".yaml")
+        self.camera_info_msg = None
+        # Load calibration yaml file
+        if not os.path.isfile(self.cali_file):
+            rospy.logwarn("[%s] Can't find calibration file: %s.\nUsing default calibration instead."
+                          % (self.node_name, self.cali_file))
+            self.cali_file = (duckiefleet_root +
+                              "/calibrations/camera_intrinsic/default.yaml")
+
+        # Shutdown if no calibration file not found
+        if not os.path.isfile(self.cali_file):
+            rospy.signal_shutdown("Found no calibration file ... aborting")
+
+        # Print out and prepare message
+        rospy.loginfo("[%s] Using calibration file: %s" %
+                      (self.node_name, self.cali_file))
+        self.camera_info_msg = load_camera_info_2(self.cali_file)
+        self.camera_info_msg.header.frame_id = rospy.get_namespace() + \
+            "camera_optical_frame"
+        rospy.loginfo("[%s] CameraInfo: %s" %
+                      (self.node_name, self.camera_info_msg))
+        # self.timer_pub = rospy.Timer(rospy.Duration.from_sec(1.0/self.pub_freq),self.cbTimer)
+
+        img_type = CompressedImage if self.image_type == "compressed" else Image
+        typemsg = "CompressedImage" if self.image_type == "compressed" else "Image"
+        rospy.logwarn("[%s] ==============%s", self.node_name, typemsg)
+        # from cam_info_reader_node end
+
+        self.cali_file_folder = duckiefleet_root + "/calibrations/camera_intrinsic/"
+
+        self.frame_id = rospy.get_namespace().strip('/') + "/camera_optical_frame"
 
         self.has_published = False
-        self.pub_img = rospy.Publisher("~image/compressed",
-                                       CompressedImage,
-                                       queue_size=1)
-        self.sub_switch_high = rospy.Subscriber("~framerate_high_switch",
-                                                BoolStamped,
-                                                self.cbSwitchHigh,
-                                                queue_size=1)
+        self.pub_img = rospy.Publisher(
+            "~image/compressed", CompressedImage, queue_size=1)
+        self.sub_switch_high = rospy.Subscriber(
+            "~framerate_high_switch", BoolStamped, self.cbSwitchHigh, queue_size=1)
 
         # Create service (for camera_calibration)
-        self.srv_set_camera_info = rospy.Service("~set_camera_info",
-                                                 SetCameraInfo,
-                                                 self.cbSrvSetCameraInfo)
+        self.srv_set_camera_info = rospy.Service(
+            "~set_camera_info", SetCameraInfo, self.cbSrvSetCameraInfo)
+
         self.stream = io.BytesIO()
 
         self.is_shutdown = False
         self.update_framerate = False
 
+        # Setup timer
         rospy.loginfo("[%s] Initialized." % (self.node_name))
 
     def cbSwitchHigh(self, switch_msg):
@@ -77,8 +122,7 @@ class CameraNode(object):
         Args:
             switch_msg (BoolStamped): switch_msg
         """
-        rospy.loginfo("[%s] frequency switch to %s." % (self.node_name,
-                                                        switch_msg.data))
+        rospy.loginfo("[%s] frequency switch to %s." % (self.node_name, switch_msg.data))
         if switch_msg.data and self.framerate != self.framerate_high:
             self.framerate = self.framerate_high
             self.update_framerate = True
@@ -94,12 +138,11 @@ class CameraNode(object):
         """
         rospy.loginfo("[%s] Start capturing." % (self.node_name))
         while not self.is_shutdown and not rospy.is_shutdown():
-            gen = self.grabAndPublish(self.stream, self.pub_img)
+            gen = self.grabAndPublish(
+                self.stream, self.pub_img, self.pub_camera_info)
             try:
-                self.camera.capture_sequence(gen,
-                                             'jpeg',
-                                             use_video_port=True,
-                                             splitter_port=0)
+                self.camera.capture_sequence(
+                    gen, 'jpeg', use_video_port=True, splitter_port=0)
             except StopIteration:
                 pass
             self.camera.framerate = self.framerate
@@ -108,7 +151,8 @@ class CameraNode(object):
         self.camera.close()
         rospy.loginfo("[%s] Capture Ended." % (self.node_name))
 
-    def grabAndPublish(self, stream, publisher):
+
+    def grabAndPublish(self, stream, publisher, cam_info_publisher):
         """Captures a frame from stream and publishes it.
 
             If the stream is stable (no updates in frequency or shutdowns),
@@ -117,8 +161,9 @@ class CameraNode(object):
             Args:
                 stream (BytesIO): imagery stream
                 publisher (Publisher): publisher of topic
+                cam_info_publisher (Publisher): publisher of camera info topic
         """
-        while not (self.update_framerate or self.is_shutdown or rospy.is_shutdown()):
+        while not self.update_framerate and not self.is_shutdown and not rospy.is_shutdown():
             yield stream
             # Construct image_msg
             # Grab image from stream
@@ -134,6 +179,8 @@ class CameraNode(object):
             image_msg.header.frame_id = self.frame_id
             publisher.publish(image_msg)
 
+            self.camera_info_msg.header.stamp = stamp
+            cam_info_publisher.publish(self.camera_info_msg)
             # Clear stream
             stream.seek(0)
             stream.truncate()
@@ -142,7 +189,7 @@ class CameraNode(object):
                 rospy.loginfo("[%s] Published the first image." % (self.node_name))
                 self.has_published = True
 
-            rospy.sleep(rospy.Duration.from_sec(0.001))
+            rospy.sleep(rospy.Duration.from_sec(0.005))
 
     def setupParam(self, param_name, default_value):
         """Parameter server handler.
@@ -166,11 +213,12 @@ class CameraNode(object):
         rospy.loginfo("[%s] Shutdown." % (self.node_name))
 
     def cbSrvSetCameraInfo(self, req):
+        # TODO: save req.camera_info to yaml file
         rospy.loginfo("[cbSrvSetCameraInfo] Callback!")
         filename = self.cali_file_folder + rospy.get_namespace().strip("/") + ".yaml"
         response = SetCameraInfoResponse()
         response.success = self.saveCameraInfo(req.camera_info, filename)
-        response.status_message = "Write to %s" % filename
+        response.status_message = "Write to %s" % filename  # TODO file name
         return response
 
     def saveCameraInfo(self, camera_info_msg, filename):
@@ -188,18 +236,10 @@ class CameraNode(object):
                  'image_height': camera_info_msg.height,
                  'camera_name': rospy.get_name().strip("/"),  # TODO check this
                  'distortion_model': camera_info_msg.distortion_model,
-                 'distortion_coefficients': {'data': camera_info_msg.D,
-                                             'rows': 1,
-                                             'cols': 5},
-                 'camera_matrix': {'data': camera_info_msg.K,
-                                   'rows': 3,
-                                   'cols': 3},
-                 'rectification_matrix': {'data': camera_info_msg.R,
-                                          'rows': 3,
-                                          'cols': 3},
-                 'projection_matrix': {'data': camera_info_msg.P,
-                                       'rows': 3,
-                                       'cols': 4}}
+                 'distortion_coefficients': {'data': camera_info_msg.D, 'rows': 1, 'cols': 5},
+                 'camera_matrix': {'data': camera_info_msg.K, 'rows': 3, 'cols': 3},
+                 'rectification_matrix': {'data': camera_info_msg.R, 'rows': 3, 'cols': 3},
+                 'projection_matrix': {'data': camera_info_msg.P, 'rows': 3, 'cols': 4}}
 
         rospy.loginfo("[saveCameraInfo] calib %s" % (calib))
 
