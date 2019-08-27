@@ -7,7 +7,7 @@ import rospy
 import copy
 import numpy as np
 
-from dtros import DTROS
+from duckietown import DTROS
 from picamera import PiCamera
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
@@ -23,6 +23,9 @@ class CameraNode(DTROS):
     an instance while this node is running, it will likely fail with an `Out of resource` exception.
 
     The configuration parameters can be changed dynamically while the node is running via `rosparam set` commands.
+
+    Args:
+        node_name (str): a unique, descriptive name for the node that ROS will use
 
     Configuration:
         ~framerate (:obj:`float`): The camera image acquisition framerate, default is 30.0 fps
@@ -46,10 +49,10 @@ class CameraNode(DTROS):
 
     """
 
-    def __init__(self):
+    def __init__(self, node_name):
 
         # Initialize the DTROS parent class
-        super(CameraNode, self).__init__()
+        super(CameraNode, self).__init__(node_name=node_name)
 
         # Add the node parameters to the parameters dictionary
         self.parameters['~framerate'] = None
@@ -283,11 +286,8 @@ class CameraNode(DTROS):
 
 if __name__ == '__main__':
     # Initialize the node
-    rospy.init_node('camera', anonymous=False)
-    # Create the TrafficLightNode object
-    camera_node = CameraNode()
-    # Setup proper shutdown behavior
-    rospy.on_shutdown(camera_node.onShutdown)
+    camera_node = CameraNode(node_name='camera')
+    # Start the image capturing in a separate thread
     thread.start_new_thread(camera_node.startCapturing, ())
     # Keep it spinning to keep the node alive
     rospy.spin()
