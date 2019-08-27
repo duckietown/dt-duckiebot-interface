@@ -25,7 +25,7 @@ class CameraNode(DTROS):
     The configuration parameters can be changed dynamically while the node is running via `rosparam set` commands.
 
     Args:
-        node_name (str): a unique, descriptive name for the node that ROS will use
+        node_name (:obj:`str`): a unique, descriptive name for the node that ROS will use
 
     Configuration:
         ~framerate (:obj:`float`): The camera image acquisition framerate, default is 30.0 fps
@@ -41,7 +41,7 @@ class CameraNode(DTROS):
             Saves a provided camera info to `/data/config/calibrations/camera_intrinsic/HOSTNAME.yaml`.
 
             input:
-                camera_info (`CameraInfo`) The camera information to save
+                camera_info (`CameraInfo`): The camera information to save
 
             outputs:
                 success (`bool`): `True` if the call succeeded
@@ -93,8 +93,10 @@ class CameraNode(DTROS):
 
         # Setup publishers
         self.has_published = False
-        self.pub_img = rospy.Publisher("~image/compressed", CompressedImage, queue_size=1)
-        self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
+        # self.pub_img = rospy.Publisher("~image/compressed", CompressedImage, queue_size=1)
+        # self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
+        self.pub_img = self.publisher("~image/compressed", CompressedImage, queue_size=1)
+        self.pub_camera_info = self.publisher("~camera_info", CameraInfo, queue_size=1)
 
         # Setup service (for camera_calibration)
         self.srv_set_camera_info = rospy.Service("~set_camera_info",

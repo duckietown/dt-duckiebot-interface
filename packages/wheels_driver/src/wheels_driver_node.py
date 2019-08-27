@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import rospy
+from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
 
-class WheelsDriverNode(object):
+class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
 
         Subscribes to the requested wheels commands (linear velocities) and
@@ -23,9 +24,11 @@ class WheelsDriverNode(object):
                 type: WheelsCmdStamped
     """
 
-    def __init__(self):
-        self.node_name = rospy.get_name()
-        rospy.loginfo("[%s] Initializing..." % (self.node_name))
+    def __init__(self, node_name):
+
+        # Initialize the DTROS parent class
+        super(WheelsDriverNode, self).__init__(node_name=node_name)
+
         self.estop = False
 
         # Setup publishers
@@ -33,13 +36,13 @@ class WheelsDriverNode(object):
         self.msg_wheels_cmd = WheelsCmdStamped()
 
         # Publisher for wheels command wih execution time
-        self.pub_wheels_cmd = rospy.Publisher("~wheels_cmd_executed", WheelsCmdStamped, queue_size=1)
+        self.pub_wheels_cmd = self.publisher("~wheels_cmd_executed", WheelsCmdStamped, queue_size=1)
 
         # Subscribers
-        self.sub_topic = rospy.Subscriber("~wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
-        self.sub_e_stop = rospy.Subscriber("~emergency_stop", BoolStamped, self.cbEStop, queue_size=1)
+        self.sub_topic = self.subscriber("~wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
+        self.sub_e_stop = self.subscriber("~emergency_stop", BoolStamped, self.cbEStop, queue_size=1)
 
-        rospy.loginfo("[%s] Initialized." % (self.node_name))
+        self.log("Initialized.")
 
     def cbWheelsCmd(self, msg):
         """Callback that sets wheels' speeds.
@@ -73,9 +76,9 @@ class WheelsDriverNode(object):
 
         self.estop = msg.data
         if self.estop:
-            rospy.loginfo("[%s] Emergency Stop Activated")
+            rospy.log("Emergency Stop Activated")
         else:
-            rospy.loginfo("[%s] Emergency Stop Released")
+            rospy.log("Emergency Stop Released")
 
     def on_shutdown(self):
         """Shutdown procedure.
@@ -83,15 +86,12 @@ class WheelsDriverNode(object):
         Publishes a zero velocity command at shutdown."""
 
         self.driver.setWheelsSpeed(left=0.0, right=0.0)
-        rospy.loginfo("[%s] Shutting down." % (rospy.get_name()))
+
+        super(WheelsDriverNode, self).onShutdown()
 
 
 if __name__ == '__main__':
     # Initialize the node with rospy
-    rospy.init_node('wheels_driver_node', anonymous=False)
-    # Create the DaguCar object
-    node = WheelsDriverNode()
-    # Setup proper shutdown behavior
-    rospy.on_shutdown(node.on_shutdown)
+    node = WheelsDriverNode(node_name='wheels_driver_node')
     # Keep it spinning to keep the node alive
     rospy.spin()
