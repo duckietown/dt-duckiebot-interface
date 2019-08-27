@@ -15,6 +15,7 @@
         <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
 
+    <!-- Wheel Drivers: reads ROS messages and spins the motors -->
     <include file="$(find wheels_driver)/launch/wheels_driver_node.launch">
         <arg name="veh" value="$(arg veh)"/>
         <arg name="param_file_name" value="$(arg param_file_name)"/>

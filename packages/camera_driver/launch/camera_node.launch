@@ -1,13 +1,17 @@
 <launch>
 	<arg name="veh"/>
-	<arg name="pkg_name" value="camera_driver"/>
-	<arg name="node_name" default="camera_node"/>
+	<arg name="config" default="baseline"/>
 	<arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman"/>
+  <arg name="cali_file_name" default="$(arg veh)" />
+	<arg name="image_type" default="compressed" />
 
 	<group ns="$(arg veh)">
 		<node  name="camera_node" pkg="$(arg pkg_name)" type="camera_node.py" output="screen" clear_params="true" required="true">
 			<rosparam command="load" file="$(find camera_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
 		</node>
 	</group>
-	
+
+	<!-- Publications -->
+	<!-- "~image/compressed": sensor_msgs/CompressedImage. Image from the camera in jpeg format-->
+
 </launch>
