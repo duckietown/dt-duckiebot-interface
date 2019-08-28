@@ -3,6 +3,14 @@ import rospy
 from duckietown_msgs.msg import Twist2DStamped, FSMState
 
 class CarCmdSwitchNode(object):
+    """
+        <!-- Subscriptions -->
+    <!-- "~mode": duckietown_msgs/FSMState. Current control mode of the duckiebot -->
+    <!-- Other subscriptions specified by the parameters -->
+
+    <!-- Publications -->
+    <!-- "~cmd" duckietown_msgs/Twist2DStamped. -->
+    """
     def __init__(self):
         self.node_name = rospy.get_name()
         # rospy.loginfo("[%s] Initializing " %(self.node_name))
