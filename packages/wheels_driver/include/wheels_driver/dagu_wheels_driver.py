@@ -12,18 +12,24 @@ class DaguWheelsDriver:
         The class contains methods for creating PWM signals according to
         requested velocities. Also contains hardware addresses related to the
         motors.
-    """
-    LEFT_MOTOR_MIN_PWM = 60        # Minimum speed for left motor
-    LEFT_MOTOR_MAX_PWM = 255       # Maximum speed for left motor
-    RIGHT_MOTOR_MIN_PWM = 60       # Minimum speed for right motor
-    RIGHT_MOTOR_MAX_PWM = 255      # Maximum speed for right motor
-    SPEED_TOLERANCE = 1.e-2       # speed tolerance level
 
-    def __init__(self, verbose=False, debug=False):
+        Args:
+            debug (:obj:`bool`): If `True`, will print a debug message every time a PWM
+               signal is sent.
+
+    """
+
+    LEFT_MOTOR_MIN_PWM = 60        #: Minimum speed for left motor
+    LEFT_MOTOR_MAX_PWM = 255       #: Maximum speed for left motor
+    RIGHT_MOTOR_MIN_PWM = 60       #: Minimum speed for right motor
+    RIGHT_MOTOR_MAX_PWM = 255      #: Maximum speed for right motor
+    SPEED_TOLERANCE = 1.e-2        #: Speed tolerance level
+
+    def __init__(self, debug=False):
+
         self.motorhat = Adafruit_MotorHAT(addr=0x60)
         self.leftMotor = self.motorhat.getMotor(1)
         self.rightMotor = self.motorhat.getMotor(2)
-        self.verbose = verbose or debug
         self.debug = debug
 
         self.leftSpeed = 0.0
@@ -34,9 +40,9 @@ class DaguWheelsDriver:
         """Transforms the requested speed into an int8 number.
 
             Args:
-                v (float): requested speed
-                minPWM (int8): minimum speed as int8
-                maxPWM (int8): maximum speed as int8
+                v (:obj:`float`): requested speed, should be between -1 and 1.
+                minPWM (:obj:`int8`): minimum speed as int8
+                maxPWM (:obj:`int8`): maximum speed as int8
         """
         pwm = 0
         if fabs(v) > self.SPEED_TOLERANCE:
@@ -85,7 +91,14 @@ class DaguWheelsDriver:
         self.rightMotor.run(rightMotorMode)
 
     def setWheelsSpeed(self, left, right):
-        """Sets speed of motors."""
+        """Sets speed of motors.
+
+        Args:
+           left (:obj:`float`): speed for the left wheel, should be between -1 and 1
+           right (:obj:`float`): speed for the right wheel, should be between -1 and 1
+
+        """
+
         self.leftSpeed = left
         self.rightSpeed = right
         self.updatePWM()

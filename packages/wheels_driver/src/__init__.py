@@ -2,7 +2,7 @@
     WheelsDriverNode
     ----------------
 
-    .. automodule:: wheels_driver.src.wheel_driver_node
+    .. autoclass:: wheels_driver.src.WheelsDriverNode
 
 """
 

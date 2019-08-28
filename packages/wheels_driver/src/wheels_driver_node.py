@@ -8,20 +8,22 @@ from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
 
-        Subscribes to the requested wheels commands (linear velocities) and
-        to an emergency stop flag. Publishes the execution of the commands
+        Subscribes to the requested wheels commands (linear velocities, i.e. velocity for the left and
+        the right wheels) and to an emergency stop flag. When the emergency flag `~emergency_stop` is set to
+        `False` it actuates the wheel driver with the velocities received from `~wheels_cmd`. Publishes
+        the execution of the commands to `~wheels_cmd_executed`.
+
+        The emergency flag is `False` by default.
 
         Subscribers:
-            sub_topic:
-                topic: ~wheels_cmd
-                type: WheelsCmdStamped
-            sub_e_stop:
-                topic: ~emergency_stop
-                type: BoolStamped
+           ~wheels_cmd (:obj:`WheelsCmdStamped`): The requested wheel command
+           ~emergency_stop (:obj:`BoolStamped`): Emergency stop. Can stop the actual executation of the
+               wheel commands by the motors if set to `True`. Set to `False` for nominal operations.
         Publishers:
-            pub_wheels_cmd:
-                topic: ~wheels_cmd_executed
-                type: WheelsCmdStamped
+           ~wheels_cmd_executed (:obj:`WheelsCmdStamped`): Publishes the actual commands executed, i.e. when
+               the emergency flag is `False` it publishes the requested command, and when it is `True`: zero
+               values for both motors.
+
     """
 
     def __init__(self, node_name):
@@ -31,8 +33,10 @@ class WheelsDriverNode(DTROS):
 
         self.estop = False
 
-        # Setup publishers
+        # Setup the driver
         self.driver = DaguWheelsDriver()
+
+        # Initialize the executed commands message
         self.msg_wheels_cmd = WheelsCmdStamped()
 
         # Publisher for wheels command wih execution time
@@ -54,17 +58,21 @@ class WheelsDriverNode(DTROS):
                 msg (WheelsCmdStamped): velocity command
         """
 
-        if self.estop:
-            self.driver.setWheelsSpeed(left=0.0, right=0.0)
-            return
 
-        self.driver.setWheelsSpeed(left=msg.vel_left, right=msg.vel_right)
+        if self.estop:
+            vel_left = 0.0
+            vel_right = 0.0
+        else:
+            vel_left = msg.vel_left
+            vel_right = msg.vel_right
+
+        self.driver.setWheelsSpeed(left=vel_left, right=vel_right)
         # Put the wheel commands in a message and publish
         self.msg_wheels_cmd.header = msg.header
         # Record the time the command was given to the wheels_driver
         self.msg_wheels_cmd.header.stamp = rospy.get_rostime()
-        self.msg_wheels_cmd.vel_left = msg.vel_left
-        self.msg_wheels_cmd.vel_right = msg.vel_right
+        self.msg_wheels_cmd.vel_left = vel_left
+        self.msg_wheels_cmd.vel_right = vel_right
         self.pub_wheels_cmd.publish(self.msg_wheels_cmd)
 
     def cbEStop(self, msg):
@@ -80,7 +88,7 @@ class WheelsDriverNode(DTROS):
         else:
             rospy.log("Emergency Stop Released")
 
-    def on_shutdown(self):
+    def onShutdown(self):
         """Shutdown procedure.
 
         Publishes a zero velocity command at shutdown."""

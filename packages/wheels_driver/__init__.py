@@ -1,12 +1,8 @@
 """
     .. contents::
 
-    The `wheels_driver` package blablabla
-
-    Quick start
-    -----------
-
-    TODO: WRITE STUFF
+    The `wheels_driver` package handles the actual execution of motor commands by the motors via
+    a motor driver. This is done by the :obj:`WheelsDriverNode`.
 
     Nodes
     -----

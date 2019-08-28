@@ -4,12 +4,10 @@ from duckietown_msgs.msg import Twist2DStamped, FSMState
 
 class CarCmdSwitchNode(object):
     """
-        <!-- Subscriptions -->
-    <!-- "~mode": duckietown_msgs/FSMState. Current control mode of the duckiebot -->
-    <!-- Other subscriptions specified by the parameters -->
+    Subscriptions "~mode": duckietown_msgs/FSMState. Current control mode of the duckiebot
+    Other subscriptions specified by the parameters
 
-    <!-- Publications -->
-    <!-- "~cmd" duckietown_msgs/Twist2DStamped. -->
+    Publications "~cmd" duckietown_msgs/Twist2DStamped.
     """
     def __init__(self):
         self.node_name = rospy.get_name()
@@ -17,7 +15,7 @@ class CarCmdSwitchNode(object):
         # Read parameters
         self.mappings = rospy.get_param("~mappings")
         source_topic_dict = rospy.get_param("~source_topics")
-        self.current_src_name = None
+        self.current_src_name = "joystick"
 
         # Construct publisher
         self.pub_cmd = rospy.Publisher("~cmd",Twist2DStamped,queue_size=1)
@@ -30,6 +28,8 @@ class CarCmdSwitchNode(object):
             self.sub_dict[src_name] = rospy.Subscriber(topic_name,Twist2DStamped,self.cbWheelsCmd,callback_args=src_name)
 
         rospy.loginfo("[%s] Initialized. " %(self.node_name))
+        rospy.loginfo("[%s] Sources: %s" %(self.node_name, str(source_topic_dict)))
+
     def cbFSMState(self,fsm_state_msg):
         self.current_src_name = self.mappings.get(fsm_state_msg.state)
         if self.current_src_name == "stop":

@@ -1,6 +1,4 @@
 """
-    .. contents::
-
     dagu_car
     --------
 
