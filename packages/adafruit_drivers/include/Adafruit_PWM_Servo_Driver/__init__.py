@@ -1,10 +1,5 @@
 """
-    Adafruit_PWM_Servo_Driver
-    -------------------------
-
-    .. automodule:: adafruit_drivers.include.Adafruit_PWM_Servo_Driver.Adafruit_PWM_Servo_Driver
-        :show-inheritance:
-        :no-undoc-members:
+    This is the Adafruit PWM library. We are not maintaining nor documenting it.
 
 """
 

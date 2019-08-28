@@ -1,5 +1,11 @@
 """
+    LEDEmitterNode
+    --------------
+
     .. automodule:: led_emitter.src.led_emitter_node
+
+    LEDEmitterTest
+    --------------
 
     .. automodule:: led_emitter.src.led_emitter_node_test
 

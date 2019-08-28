@@ -1,9 +1,21 @@
 """
-    Adafruit_GPIO
-    -------------
+    This is the `Adafruit GPIO library <https://github.com/adafruit/Adafruit_Python_GPIO>`_. We
+    are not maintaining nor documenting it. These docs are automatically built from the docstrings
+    provided by them.
 
-    .. automodule:: adafruit_drivers.include.Adafruit_GPIO.GPIO
-        :show-inheritance:
+
+    .. autoclass:: adafruit_drivers.include.Adafruit_GPIO.BaseGPIO
+        :no-undoc-members:
+
+    .. autoclass:: adafruit_drivers.include.Adafruit_GPIO.RPiGPIOAdapter
+        :no-undoc-members:
+
+    .. autoclass:: adafruit_drivers.include.Adafruit_GPIO.AdafruitBBIOAdapter
+        :no-undoc-members:
+
+    .. autoclass:: adafruit_drivers.include.Adafruit_GPIO.AdafruitMinnowAdapter
+        :no-undoc-members:
+
 
 """
 

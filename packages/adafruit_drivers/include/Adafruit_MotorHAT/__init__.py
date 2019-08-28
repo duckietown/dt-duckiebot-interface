@@ -1,8 +1,6 @@
 """
-    Adafruit_MotorHAT
-    -----------------
-
-    .. automodule:: adafruit_drivers.include.Adafruit_MotorHAT
+    This is the `Adafruit MotorHAT <https://github.com/adafruit/Adafruit-Motor-HAT-Python-Library>`_ library.
+    We are not maintaining nor documenting it.
 
 """
 

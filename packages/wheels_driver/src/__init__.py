@@ -1,5 +1,8 @@
 """
-    .. automodule:: wheels_driver.src.wheel_driver_node
+    WheelsDriverNode
+    ----------------
+
+    .. autoclass:: wheels_driver.src.WheelsDriverNode
 
 """
 

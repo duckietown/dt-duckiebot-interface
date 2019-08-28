@@ -1,12 +1,9 @@
 """
-    .. automodule:: camera_driver.src.cam_info_reader_node
+    CameraNode
+    ----------
 
-    .. automodule:: camera_driver.src.camera_node_continuous
-
-    .. automodule:: camera_driver.src.camera_node_sequence
+    .. autoclass:: camera_driver.src.camera_node.CameraNode
 
 """
 
-from .cam_info_reader_node import *
-from .camera_node_continuous import *
-from .camera_node_sequence import *
+from .camera_node import *

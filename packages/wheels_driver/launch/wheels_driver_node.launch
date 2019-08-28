@@ -4,7 +4,6 @@
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman." />
 
     <node ns="$(arg veh)"  pkg="wheels_driver" type="$(arg node_name).py" name="$(arg node_name)" output="screen" clear_params="true" required="true">
-        <rosparam command="load" file="$(find wheels_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
     </node>
 
 </launch>

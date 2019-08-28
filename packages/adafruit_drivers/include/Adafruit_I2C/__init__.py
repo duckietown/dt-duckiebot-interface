@@ -1,8 +1,6 @@
 """
-    Adafruit_I2C
-    ------------
+    This is the Adafruit I2C library. We are not maintaining nor documenting it.
 
-    .. automodule:: adafruit_drivers.include.Adafruit_I2C
 
 """
 
