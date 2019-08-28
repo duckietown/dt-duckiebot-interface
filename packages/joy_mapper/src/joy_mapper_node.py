@@ -67,18 +67,6 @@ class JoyMapperNode(DTROS):
         # TODO: No ~ for this topic?
         self.sub_joy_ = self.subscriber("joy", Joy, self.cbJoy, queue_size=1)
 
-        # Setup some holder variales
-        self.state_parallel_autonomy = False
-        self.deep_learning = False
-        self.state_verbose = False
-        self.prev_emergency_msg = False
-
-        # Initialize the msgs
-        pub_msg = BoolStamped()
-        pub_msg.data = self.state_parallel_autonomy
-        pub_msg.header.stamp = self.last_pub_time
-        self.pub_parallel_autonomy.publish(pub_msg)
-
         # Button List index of joy.buttons array:
         # 0: A
         # 1: B
@@ -125,7 +113,7 @@ class JoyMapperNode(DTROS):
             override_msg.data = True
             self.log('override_msg = True')
             self.pub_joy_override.publish(override_msg)
-            
+
         # Start button: Start LF
         elif (joy_msg.buttons[7] == 1):
             override_msg = BoolStamped()
