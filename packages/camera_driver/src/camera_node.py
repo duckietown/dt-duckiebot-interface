@@ -54,7 +54,7 @@ class CameraNode(DTROS):
         # Initialize the DTROS parent class
         super(CameraNode, self).__init__(node_name=node_name)
 
-        # Add the node parameters to the parameters dictionary
+        # Add the node parameters to the parameters dictionary and load their default values
         self.parameters['~framerate'] = None
         self.parameters['~res_w'] = None
         self.parameters['~res_h'] = None

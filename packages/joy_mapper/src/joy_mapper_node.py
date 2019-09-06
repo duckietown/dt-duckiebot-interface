@@ -13,6 +13,8 @@ class JoyMapperNode(DTROS):
     The `JoyMapperNode` receives :obj:`Joy` messages from a phisical joystick or a virtual one,
     interprets the buttons presses and acts accordingly.
 
+    TODO: Add emergency stop back
+
     **Joystick bindings:**
 
     +----------------------+------------------+------------------------------------------------+
@@ -49,9 +51,6 @@ class JoyMapperNode(DTROS):
         # Initialize the DTROS parent class
         super(JoyMapperNode, self).__init__(node_name=node_name)
 
-        self.last_pub_msg = None
-        self.last_pub_time = rospy.Time.now()
-
         # Add the node parameters to the parameters dictionary
         self.parameters['~speed_gain'] = None
         self.parameters['~steer_gain'] = None
@@ -65,19 +64,7 @@ class JoyMapperNode(DTROS):
 
         # Subscription to the joystick command
         # TODO: No ~ for this topic?
-        self.sub_joy_ = self.subscriber("joy", Joy, self.cbJoy, queue_size=1)
-
-        # Setup some holder variales
-        self.state_parallel_autonomy = False
-        self.deep_learning = False
-        self.state_verbose = False
-        self.prev_emergency_msg = False
-
-        # Initialize the msgs
-        pub_msg = BoolStamped()
-        pub_msg.data = self.state_parallel_autonomy
-        pub_msg.header.stamp = self.last_pub_time
-        self.pub_parallel_autonomy.publish(pub_msg)
+        self.sub_joy = self.subscriber("joy", Joy, self.cbJoy, queue_size=1)
 
         # Button List index of joy.buttons array:
         # 0: A

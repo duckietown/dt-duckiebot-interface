@@ -4,6 +4,11 @@ from duckietown_msgs.msg import Twist2DStamped, FSMState
 
 class CarCmdSwitchNode(object):
     """
+
+    Warnings:
+        This node should be seriously revisted such that it uses DTROS to deactivate nodes that are not
+        being listened to and to actively register topics and states instead of using a config file for that!
+
     Subscriptions "~mode": duckietown_msgs/FSMState. Current control mode of the duckiebot
     Other subscriptions specified by the parameters
 

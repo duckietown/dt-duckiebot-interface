@@ -2,8 +2,8 @@
     wheels_driver
     -------------
 
-    .. automodule:: wheels_driver.include.wheels_driver.dagu_wheels_driver
+    .. autoclass:: wheels_driver.include.dagu_wheels_driver.DaguWheelsDriver
         :members:
 
 """
-from .dagu_wheels_driver import *
+from dagu_wheels_driver import DaguWheelsDriver

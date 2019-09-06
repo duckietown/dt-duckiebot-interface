@@ -1,197 +1,218 @@
 #!/usr/bin/env python
+
 import rospy
-from duckietown_msgs.msg import WheelsCmdStamped, Twist2DStamped, BoolStamped
-from duckietown_msgs.srv import SetValueRequest, SetValueResponse, SetValue
-from std_srvs.srv import EmptyRequest, EmptyResponse, Empty
-from numpy import *
 import yaml
 import time
 import os.path
-from duckietown_utils import get_duckiefleet_root
 
-# Inverse Kinematics Node
-# Author: Robert Katzschmann, Shih-Yuan Liu
+from duckietown import DTROS
+from duckietown_msgs.msg import WheelsCmdStamped, Twist2DStamped
+from std_srvs.srv import EmptyResponse, Empty
 
-class InverseKinematicsNode(object):
-    def __init__(self):
-        # Get node name and vehicle name
-        self.node_name = rospy.get_name()
-        self.veh_name = self.node_name.split("/")[1]
+class InverseKinematicsNode(DTROS):
+    """
+    The `InverseKinematicsNode` maps car commands send from various nodes to wheel commands
+    that the robot can execute.
 
-        # Set parameters using yaml file
+    It utilises the car geometry as well as a number of tunining and limiting parameters to
+    calculate the wheel commands that the wheels should execute in order for the robot to
+    perform the desired car commands.
+
+    TODO: Add link/explanation/illustration of the car geometry and the math used
+
+    All the configuration parameters of this node can be changed dynamically while the node
+    is running via `rosparam set` commands.
+
+    Args:
+        node_name (:obj:`str`): a unique, descriptive name for the node that ROS will use
+
+    Configuration:
+        ~gain (:obj:`float`): scaling factor applied to the desired velocity, default is 1.0
+        ~trim (:obj:`float`): trimming factor that is typically used to offset differences in the
+            behaviour of the left and right motors, it is recommended to use a value that results in
+            the robot moving in a straight line when forward command is given, default is 0.0
+        ~baseline (:obj:`float`): the distance between the two wheels of the robot, default is 0.1
+        ~radius (:obj:`float`): radius of the wheel, default is 0.0318
+        ~k (:obj:`float`): motor constant, assumed equal for both motors, default is 27.0
+        ~limit (:obj:`float`): limits the final commands sent to the motors, default is 1.0
+        ~v_max (:obj:`float`): limits the input velocity, default is 1.0
+        ~omega_max (:obj:`float`): limits the input steering angle, default is 8.0
+
+    Subscriber:
+        ~car_cmd (:obj:`Twist2DStamped`): The requested car command
+
+    Publisher:
+        ~wheels_cmd (:obj:`WheelsCmdStamped`): The corresponding resulting wheel commands
+
+    Service:
+        ~save_calibration:
+            Saves the current set of kinematics parameters (the ones in the Configuration section)
+                to `/data/config/calibrations/kinematics/HOSTNAME.yaml`.
+
+    """
+    def __init__(self, node_name):
+
+        # Initialize the DTROS parent class
+        super(InverseKinematicsNode, self).__init__(node_name=node_name)
+
+        # Get the vehicle name
+        self.veh_name = rospy.get_namespace().strip("/")
+
+        # Add the node parameters to the parameters dictionary and load their default values
+        self.parameters['~gain'] = None
+        self.parameters['~trim'] = None
+        self.parameters['~baseline'] = None
+        self.parameters['~radius'] = None
+        self.parameters['~k'] = None
+        self.parameters['~limit'] = None
+        self.parameters['~v_max'] = None
+        self.parameters['~omega_max'] = None
+
+        # Set parameters using a robot-specific yaml file if such exists
         self.readParamFromFile()
+        self.updateParameters()
 
-        # Set local variable by reading parameters
-        self.gain = self.setup_parameter("~gain", 0.6)
-        self.trim = self.setup_parameter("~trim", 0.0)
-        self.baseline = self.setup_parameter("~baseline", 0.1)
-        self.radius = self.setup_parameter("~radius", 0.0318)
-        self.k = self.setup_parameter("~k", 27.0)
-        self.limit = self.setup_parameter("~limit", 1.0)
-        self.limit_max = 1.0
-        self.limit_min = 0.0
-
-        self.v_max = 999.0     # TODO: Calculate v_max !
-        self.omega_max = 999.0     # TODO: Calculate v_max !
-
-        # Prepare services
-        self.srv_set_gain = rospy.Service("~set_gain", SetValue, self.cbSrvSetGain)
-        self.srv_set_trim = rospy.Service("~set_trim", SetValue, self.cbSrvSetTrim)
-        self.srv_set_baseline = rospy.Service("~set_baseline", SetValue, self.cbSrvSetBaseline)
-        self.srv_set_radius = rospy.Service("~set_radius", SetValue, self.cbSrvSetRadius)
-        self.srv_set_k = rospy.Service("~set_k", SetValue, self.cbSrvSetK)
-        self.srv_set_limit = rospy.Service("~set_limit", SetValue, self.cbSrvSetLimit)
+        # Prepare the save calibration service
         self.srv_save = rospy.Service("~save_calibration", Empty, self.cbSrvSaveCalibration)
 
-        # Setup the publisher and subscriber
-        self.sub_car_cmd = rospy.Subscriber("~car_cmd", Twist2DStamped, self.car_cmd_callback)
-        self.sub_actuator_limits_received = rospy.Subscriber("~actuator_limits_received", BoolStamped, self.updateActuatorLimitsReceived, queue_size=1)
-        self.pub_wheels_cmd = rospy.Publisher("~wheels_cmd", WheelsCmdStamped, queue_size=1)
-        self.pub_actuator_limits = rospy.Publisher("~actuator_limits", Twist2DStamped, queue_size=1)
+        # Setup the publishers and subscribers
+        self.sub_car_cmd = self.subscriber("~car_cmd", Twist2DStamped, self.car_cmd_callback)
+        self.pub_wheels_cmd = self.publisher("~wheels_cmd", WheelsCmdStamped, queue_size=1)
 
-        self.msg_actuator_limits = Twist2DStamped()
-        self.msg_actuator_limits.v = self.v_max     # TODO: Calculate v_max !
-        self.msg_actuator_limits.omega = self.omega_max     # TODO: Calculate omega_max !
-        self.actuator_limits_received = False
-        self.pub_actuator_limits.publish(self.msg_actuator_limits)
+        details = "[gain: %s trim: %s baseline: %s radius: %s k: %s limit: %s omega_max: %s v_max: %s]" % \
+                  (self.parameters['~gain'], self.parameters['~trim'], self.parameters['~baseline'],
+                   self.parameters['~radius'], self.parameters['~k'], self.parameters['~limit'],
+                   self.parameters['~omega_max'], self.parameters['~v_max'])
 
-        rospy.loginfo("[%s] Initialized.", self.node_name)
-        self.printValues()
+        self.log("Initialized with: %s" % details)
 
     def readParamFromFile(self):
+        """
+        Reads the saved parameters from `/data/config/calibrations/kinematics/DUCKIEBOTNAME.yaml` or
+        uses the default values if the file doesn't exist. Adjsuts the ROS paramaters for the node
+        with the new values.
+
+        """
         # Check file existence
         fname = self.getFilePath(self.veh_name)
-        # Use default.yaml if file doesn't exsit
+        # Use the default values from the config folder if a robot-specific file does not exist.
         if not os.path.isfile(fname):
-            rospy.logwarn("[%s] %s does not exist. Using default.yaml." %(self.node_name,fname))
-            fname = self.getFilePath("default")
+            self.log("Kinematics calibration file %s does not exist! Using the default values." % fname, type='warn')
+        else:
+            with open(fname, 'r') as in_file:
+                try:
+                    yaml_dict = yaml.load(in_file)
+                except yaml.YAMLError as exc:
+                    self.log("YAML syntax error. File: %s fname. Exc: %s" %(fname, exc), type='fatal')
+                    rospy.signal_shutdown()
+                    return
 
-        with open(fname, 'r') as in_file:
-            try:
-                yaml_dict = yaml.load(in_file)
-            except yaml.YAMLError as exc:
-                rospy.logfatal("[%s] YAML syntax error. File: %s fname. Exc: %s" %(self.node_name, fname, exc))
-                rospy.signal_shutdown()
+            # Set parameters using value in yaml file
+            if yaml_dict is None:
+                # Empty yaml file
                 return
-
-        # Set parameters using value in yaml file
-        if yaml_dict is None:
-            # Empty yaml file
-            return
-        for param_name in ["gain", "trim", "baseline", "k", "radius", "limit"]:
-            param_value = yaml_dict.get(param_name)
-            if param_name is not None:
-                rospy.set_param("~"+param_name, param_value)
-            else:
-                # Skip if not defined, use default value instead.
-                pass
+            for param_name in ["gain", "trim", "baseline", "k", "radius", "limit"]:
+                param_value = yaml_dict.get(param_name)
+                if param_name is not None:
+                    rospy.set_param("~"+param_name, param_value)
+                else:
+                    # Skip if not defined, use default value instead.
+                    pass
 
     def getFilePath(self, name):
-        return (get_duckiefleet_root()+'/calibrations/kinematics/' + name + ".yaml")
+        """
+        Returns the path to the robot-specific configuration file,
+        i.e. `/data/config/calibrations/kinematics/DUCKIEBOTNAME.yaml`.
+        Args:
+            name (:obj:`str`): the Duckiebot name
 
-    def updateActuatorLimitsReceived(self, msg_actuator_limits_received):
-        self.actuator_limits_received = msg_actuator_limits_received.data
+        Returns:
+            :obj:`str`: the full path to the robot-specific calibration file
 
-    def saveCalibration(self):
-        # Write to yaml
+        """
+        cali_file_folder = '/data/config/calibrations/kinematics/'
+        cali_file = cali_file_folder + name + ".yaml"
+        return cali_file
+
+    def cbSrvSaveCalibration(self, req):
+        """
+        Saves the current kinematics paramaters to a robot-specific file at
+         `/data/config/calibrations/kinematics/DUCKIEBOTNAME.yaml`.
+
+        Args:
+            req: dummy variable to be callback-complacent. not used.
+
+        Returns:
+            EmptyResponse
+
+        """
+
+        # Write to a yaml file
+        self.updateParameters()
         data = {
             "calibration_time": time.strftime("%Y-%m-%d-%H-%M-%S"),
-            "gain": self.gain,
-            "trim": self.trim,
-            "baseline": self.baseline,
-            "radius": self.radius,
-            "k": self.k,
-            "limit": self.limit,
+            "gain": self.parameters['~gain'],
+            "trim": self.parameters['~trim'],
+            "baseline": self.parameters['~baseline'],
+            "radius": self.parameters['~radius'],
+            "k": self.parameters['~k'],
+            "limit": self.parameters['~limit'],
+            "v_max": self.parameters['~v_max'],
+            "omega_max": self.parameters['~omega_max'],
         }
 
         # Write to file
         file_name = self.getFilePath(self.veh_name)
         with open(file_name, 'w') as outfile:
             outfile.write(yaml.dump(data, default_flow_style=False))
-        # Printout
-        self.printValues()
-        rospy.loginfo("[%s] Saved to %s" %(self.node_name, file_name))
 
-    def cbSrvSaveCalibration(self, req):
-        self.saveCalibration()
+        # Printout
+        saved_details = "[gain: %s trim: %s baseline: %s radius: %s k: %s limit: %s omega_max: %s v_max: %s]" % \
+        (self.parameters['~gain'], self.parameters['~trim'], self.parameters['~baseline'], self.parameters['~radius'],
+         self.parameters['~k'], self.parameters['~limit'], self.parameters['~omega_max'], self.parameters['~v_max'])
+        self.log("Saved kinematic calibration to %s with values: %s" % (file_name, saved_details))
+
         return EmptyResponse()
 
-    def cbSrvSetGain(self, req):
-        self.gain = req.value
-        self.printValues()
-        self.msg_actuator_limits.v = self.v_max     # TODO: Calculate v_max !
-        self.msg_actuator_limits.omega = self.omega_max     # TODO: Calculate omega_max !
-        self.pub_actuator_limits.publish(self.msg_actuator_limits)
-        return SetValueResponse()
-
-    def cbSrvSetTrim(self, req):
-        self.trim = req.value
-        self.printValues()
-        self.msg_actuator_limits.v = self.v_max     # TODO: Calculate v_max !
-        self.msg_actuator_limits.omega = self.omega_max     # TODO: Calculate omega_max !
-        self.pub_actuator_limits.publish(self.msg_actuator_limits)
-        return SetValueResponse()
-
-    def cbSrvSetBaseline(self, req):
-        self.baseline = req.value
-        self.printValues()
-        self.msg_actuator_limits.v = self.v_max     # TODO: Calculate v_max !
-        self.msg_actuator_limits.omega = self.omega_max     # TODO: Calculate omega_max !
-        self.pub_actuator_limits.publish(self.msg_actuator_limits)
-        return SetValueResponse()
-
-    def cbSrvSetRadius(self, req):
-        self.radius = req.value
-        self.printValues()
-        self.msg_actuator_limits.v = self.v_max     # TODO: Calculate v_max !
-        self.msg_actuator_limits.omega = self.omega_max     # TODO: Calculate omega_max !
-        self.pub_actuator_limits.publish(self.msg_actuator_limits)
-        return SetValueResponse()
-
-    def cbSrvSetK(self, req):
-        self.k = req.value
-        self.printValues()
-        self.msg_actuator_limits.v = self.v_max     # TODO: Calculate v_max !
-        self.msg_actuator_limits.omega = self.omega_max     # TODO: Calculate omega_max !
-        self.pub_actuator_limits.publish(self.msg_actuator_limits)
-        return SetValueResponse()
-
-    def cbSrvSetLimit(self, req):
-        self.limit = self.setLimit(req.value)
-        self.printValues()
-        self.msg_actuator_limits.v = self.v_max     # TODO: Calculate v_max !
-        self.msg_actuator_limits.omega = self.omega_max     # TODO: Calculate omega_max !
-        self.pub_actuator_limits.publish(self.msg_actuator_limits)
-        return SetValueResponse()
-
-    def setLimit(self, value):
-        if value > self.limit_max:
-            rospy.logwarn("[%s] limit (%s) larger than max at %s" % (self.node_name, value, self.limit_max))
-            limit = self.limit_max
-        elif value < self.limit_min:
-            rospy.logwarn("[%s] limit (%s) smaller than allowable min at %s" % (self.node_name, value, self.limit_min))
-            limit = self.limit_min
-        else:
-            limit = value
-        return limit
-
-    def printValues(self):
-        rospy.loginfo("[%s] gain: %s trim: %s baseline: %s radius: %s k: %s limit: %s" % (self.node_name, self.gain, self.trim, self.baseline, self.radius, self.k, self.limit))
-
     def car_cmd_callback(self, msg_car_cmd):
-        if not self.actuator_limits_received:
-            self.pub_actuator_limits.publish(self.msg_actuator_limits)
+        """
+        A callback that reposponds to received `car_cmd` messages by calculating the
+        corresponding wheel commands, taking into account the robot geometry, gain and trim
+        factors, and the set limits. These wheel commands are then published for the motors to use.
+
+        Args:
+            msg_car_cmd (:obj:`Twist2DStamped`): desired car command
+
+        """
+
+        # if the parameters have been updated, check them and warn the user if there's something wrong with them
+        if self.parametersChanged:
+            if self.parameters['~limit'] < 0:
+                self.log("The new limit %s is smaller than min of 0" % self.parameters['~limit'], type='warn')
+            elif self.parameters['~limit'] > 1:
+                self.log("The new limit %s is larger than max of 1" % self.parameters['~limit'], type='warn')
+
+            for param in ['gain', 'baseline', 'radius', 'k', 'v_max', 'omega_max']:
+                if self.parameters['~'+param] < 0:
+                    self.log("The new value of %s is negative, should be positive." % param, type='warn')
+            self.parametersChanged = False
+
+        # trim the desired commands such that they are within the limits:
+        msg_car_cmd.v = self.trim(msg_car_cmd.v,
+                                  low=-self.parameters['~v_max'], high=self.parameters['~v_max'])
+        msg_car_cmd.omega = self.trim(msg_car_cmd.omega,
+                                      low=-self.parameters['~omega_max'], high=self.parameters['~omega_max'])
 
         # assuming same motor constants k for both motors
-        k_r = self.k
-        k_l = self.k
+        k_r = self.parameters['~k']
+        k_l = self.parameters['~k']
 
         # adjusting k by gain and trim
-        k_r_inv = (self.gain + self.trim) / k_r
-        k_l_inv = (self.gain - self.trim) / k_l
+        k_r_inv = (self.parameters['~gain'] + self.parameters['~trim']) / k_r
+        k_l_inv = (self.parameters['~gain'] - self.parameters['~trim']) / k_l
 
-        omega_r = (msg_car_cmd.v + 0.5 * msg_car_cmd.omega * self.baseline) / self.radius
-        omega_l = (msg_car_cmd.v - 0.5 * msg_car_cmd.omega * self.baseline) / self.radius
+        omega_r = (msg_car_cmd.v + 0.5 * msg_car_cmd.omega * self.parameters['~baseline']) / self.parameters['~radius']
+        omega_l = (msg_car_cmd.v - 0.5 * msg_car_cmd.omega * self.parameters['~baseline']) / self.parameters['~radius']
 
         # conversion from motor rotation rate to duty cycle
         # u_r = (gain + trim) (v + 0.5 * omega * b) / (r * k_r)
@@ -200,8 +221,8 @@ class InverseKinematicsNode(object):
         u_l = omega_l * k_l_inv
 
         # limiting output to limit, which is 1.0 for the duckiebot
-        u_r_limited = max(min(u_r, self.limit), -self.limit)
-        u_l_limited = max(min(u_l, self.limit), -self.limit)
+        u_r_limited = self.trim(u_r, -self.parameters['~limit'], self.parameters['~limit'])
+        u_l_limited = self.trim(u_l, -self.parameters['~limit'], self.parameters['~limit'])
 
         # Put the wheel commands in a message and publish
         msg_wheels_cmd = WheelsCmdStamped()
@@ -210,14 +231,23 @@ class InverseKinematicsNode(object):
         msg_wheels_cmd.vel_left = u_l_limited
         self.pub_wheels_cmd.publish(msg_wheels_cmd)
 
-    def setup_parameter(self, param_name, default_value):
-        value = rospy.get_param(param_name, default_value)
-        # Write to parameter server for transparency
-        rospy.set_param(param_name, value)
-        rospy.loginfo("[%s] %s = %s " % (self.node_name, param_name, value))
-        return value
+    def trim(self, value, low, high):
+        """
+        Trims a value to be between some bounds.
+
+        Args:
+            value: the value to be trimmed
+            low: the minimum bound
+            high: the maximum bound
+
+        Returns:
+            the trimmed value
+        """
+
+        return max(min(value, high), low)
 
 if __name__ == '__main__':
-    rospy.init_node('inverse_kinematics_node', anonymous=False)
-    inverse_kinematics_node = InverseKinematicsNode()
+    # Initialize the node
+    inverse_kinematics_node = InverseKinematicsNode(node_name='inverse_kinematics_node')
+    # Keep it spinning to keep the node alive
     rospy.spin()
