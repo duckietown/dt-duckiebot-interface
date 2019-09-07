@@ -1,12 +1,12 @@
 <launch>
     <arg name="pkg_name" value="dagu_car"/>
-    <arg name="node_name" default="inverse_kinematics_node"/>
+    <arg name="node_name" default="kinematics_node"/>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default"/>
 
 
     <group ns="$(arg veh)">
-        <node  name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" clear_params="true" required="true">
+        <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" clear_params="true" required="true">
              <rosparam command="load" file="$(find dagu_car)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
         </node>
     </group>

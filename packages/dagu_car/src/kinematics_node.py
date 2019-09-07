@@ -9,14 +9,19 @@ from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, Twist2DStamped
 from std_srvs.srv import EmptyResponse, Empty
 
-class InverseKinematicsNode(DTROS):
+class KinematicsNode(DTROS):
     """
-    The `InverseKinematicsNode` maps car commands send from various nodes to wheel commands
+    The `KinematicsNode` maps car commands send from various nodes to wheel commands
     that the robot can execute.
 
-    It utilises the car geometry as well as a number of tunining and limiting parameters to
-    calculate the wheel commands that the wheels should execute in order for the robot to
-    perform the desired car commands.
+    The `KinematicsNode` performs both the inverse and forward kinematics calculations. Before
+    these were implemented in separate nodes, but due to their similarity and parameter sharing,
+    they are now combined.
+
+    `KinematicsNode` utilises the car geometry as well as a number of tunining and limiting
+    parameters to calculate the wheel commands that the wheels should execute in order for the
+    robot to perform the desired car commands (inverse kinematics). Then it uses these wheel
+    commands in order to do an open-loop velocity estimation (the forward kinematics part).
 
     TODO: Add link/explanation/illustration of the car geometry and the math used
 
@@ -43,6 +48,7 @@ class InverseKinematicsNode(DTROS):
 
     Publisher:
         ~wheels_cmd (:obj:`WheelsCmdStamped`): The corresponding resulting wheel commands
+        ~velocity (:obj:`Twist2DStamped`): The open-loop estimation of the robot velocity
 
     Service:
         ~save_calibration:
@@ -53,7 +59,7 @@ class InverseKinematicsNode(DTROS):
     def __init__(self, node_name):
 
         # Initialize the DTROS parent class
-        super(InverseKinematicsNode, self).__init__(node_name=node_name)
+        super(KinematicsNode, self).__init__(node_name=node_name)
 
         # Get the vehicle name
         self.veh_name = rospy.get_namespace().strip("/")
@@ -78,6 +84,7 @@ class InverseKinematicsNode(DTROS):
         # Setup the publishers and subscribers
         self.sub_car_cmd = self.subscriber("~car_cmd", Twist2DStamped, self.car_cmd_callback)
         self.pub_wheels_cmd = self.publisher("~wheels_cmd", WheelsCmdStamped, queue_size=1)
+        self.pub_velocity = self.publisher("~velocity", Twist2DStamped, queue_size=1)
 
         details = "[gain: %s trim: %s baseline: %s radius: %s k: %s limit: %s omega_max: %s v_max: %s]" % \
                   (self.parameters['~gain'], self.parameters['~trim'], self.parameters['~baseline'],
@@ -179,6 +186,7 @@ class InverseKinematicsNode(DTROS):
         A callback that reposponds to received `car_cmd` messages by calculating the
         corresponding wheel commands, taking into account the robot geometry, gain and trim
         factors, and the set limits. These wheel commands are then published for the motors to use.
+        The resulting linear and angular velocities are also calculated and published.
 
         Args:
             msg_car_cmd (:obj:`Twist2DStamped`): desired car command
@@ -196,6 +204,8 @@ class InverseKinematicsNode(DTROS):
                 if self.parameters['~'+param] < 0:
                     self.log("The new value of %s is negative, should be positive." % param, type='warn')
             self.parametersChanged = False
+
+        # INVERSE KINEMATICS PART
 
         # trim the desired commands such that they are within the limits:
         msg_car_cmd.v = self.trim(msg_car_cmd.v,
@@ -231,6 +241,24 @@ class InverseKinematicsNode(DTROS):
         msg_wheels_cmd.vel_left = u_l_limited
         self.pub_wheels_cmd.publish(msg_wheels_cmd)
 
+        # FORWARD KINEMATICS PART
+
+        # Conversion from motor duty to motor rotation rate
+        omega_r = msg_wheels_cmd.vel_right / k_r_inv
+        omega_l = msg_wheels_cmd.vel_left / k_l_inv
+
+        # Compute linear and angular velocity of the platform
+        v = (self.parameters['~radius'] * omega_r + self.parameters['~radius'] * omega_l) / 2.0
+        omega = (self.parameters['~radius'] * omega_r - self.parameters['~radius'] * omega_l) / \
+                self.parameters['~baseline']
+
+        # Put the v and omega into a velocity message and publish
+        msg_velocity = Twist2DStamped()
+        msg_velocity.header = msg_wheels_cmd.header
+        msg_velocity.v = v
+        msg_velocity.omega = omega
+        self.pub_velocity.publish(msg_velocity)
+
     def trim(self, value, low, high):
         """
         Trims a value to be between some bounds.
@@ -248,6 +276,6 @@ class InverseKinematicsNode(DTROS):
 
 if __name__ == '__main__':
     # Initialize the node
-    inverse_kinematics_node = InverseKinematicsNode(node_name='inverse_kinematics_node')
+    kinematics_node = KinematicsNode(node_name='kinematics_node')
     # Keep it spinning to keep the node alive
     rospy.spin()
