@@ -4,20 +4,10 @@
     <arg name="robot_type" default="duckiebot" doc="The type of the robot"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
-    <group if="$(eval arg('robot_type') == 'duckiebot')">
-        <include file="$(find camera_driver)/launch/camera_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-        </include>
-    </group>
-
-    <!-- Camera Node: for watchtower, has a higher resolution -->
-    <group unless="$(eval arg('robot_type') == 'duckiebot')">
-        <include file="$(find camera_driver)/launch/camera_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="param_file_name" value="watchtower"/>
-        </include>
-    </group>
+    <include file="$(find camera_driver)/launch/camera_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="param_file_name" value="$(arg robot_type)"/>
+    </include>
 
     <!-- LED Emitter: reads ROS messages and commands the LEDs -->
     <group unless="$(eval arg('robot_type') == 'watchtower')">
@@ -78,10 +68,5 @@
         <include file="$(find traffic_light)/launch/traffic_light_node.launch"></include>
     </group>
 
-    <group unless="$(eval arg('robot_type') == 'duckiebot')">
-        <include file="$(find light_sensor)/launch/light_sensor.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-    </group>
 
 </launch>
