@@ -1,3 +1,4 @@
+<?xml version="1.0"?>
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:default." />
@@ -29,38 +30,7 @@
             <arg name="param_file_name" value="$(arg param_file_name)"/>
         </include>
 
-        <!-- Joy Mapper: reads raw joy commands and trigger actions in Duckietown (e.g., move robot, start LF) -->
-        <include file="$(find joy_mapper)/launch/joy_mapper_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-        </include>
-
-        <!-- Inverse Kinematics: turns chassis-level commands into wheels-level commands -->
-        <!-- <remap from="inverse_kinematics_node/car_cmd" to="joy_mapper_node/car_cmd"/> -->
-        <remap from="inverse_kinematics_node/wheels_cmd" to="wheels_driver_node/wheels_cmd" />
-        <include file="$(find dagu_car)/launch/inverse_kinematics_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-
-        <!-- Forward Kinematics: turns wheels-level commands into chassis-level velocities -->
-        <remap from="forward_kinematics_node/wheels_cmd" to="wheels_driver_node/wheels_cmd_executed" />
-        <include file="$(find dagu_car)/launch/forward_kinematics_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-
-        <!-- Velocity To Pose (Odometry): turns chassis-level velocities into chassis pose -->
-        <remap from="velocity_to_pose_node/velocity" to="forward_kinematics_node/velocity" />
-        <include file="$(find dagu_car)/launch/velocity_to_pose_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-
-        <!-- ??? -->
-        <remap from="car_cmd_switch_node/cmd" to="inverse_kinematics_node/car_cmd"/>
-        <include file="$(find dagu_car)/launch/car_cmd_switch_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-
-    </group>
+   </group>
 
     <!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
     <group if="$(eval arg('robot_type') == 'traffic_light')">
