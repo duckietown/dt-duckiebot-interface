@@ -1,9 +1,5 @@
-TL_protocol:
-
-  leds:
-    number_leds: 4
-    activation_order: [0, 1, 2, 3]
-
-  timings:
-    green_time: 5
-    all_red_time: 4
+number_leds: 4
+activation_order: [0, 1, 2, 3]
+green_time: 5
+all_red_time: 4
+frequency: 7.8

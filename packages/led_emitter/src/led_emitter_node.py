@@ -1,48 +1,106 @@
 #!/usr/bin/env python
 import rospy
-from rgb_led import *
-import sys
-import time
-from std_msgs.msg import Float32, Int8, String
+
+from duckietown import DTROS
+
 from rgb_led import RGB_LED
-from duckietown_msgs.msg import BoolStamped, LEDPattern
+from std_msgs.msg import Float32, Int8, String
 from led_emitter.srv import SetCustomLED, ChangePattern
 from led_emitter.srv import SetCustomLEDResponse, ChangePatternResponse
 
 
-class LEDEmitterNode(object):
-    """Class for LEDs managment.
+class LEDEmitterNode(DTROS):
+    """Node for controlling LEDs.
 
-            Calls the low-level functions of class RGB_LED that create the PWM
-            signal used to steer the LEDs. According to the requested pattern
-            (pattern = color + frequency), changes the frequency of calling the
-            update and the color.
+    Calls the low-level functions of class :obj:`RGB_LED` that creates the PWM
+    signal used to change the color of the LEDs. The desired behavior is specified by
+    the LED index (Duckiebots and watchtowers have multiple of these) and a pattern.
+    A pattern is a combination of colors and blinking frequency.
 
-            Subscribers:
-                ~change_color_pattern (String): A string that...
+    Duckiebots have 5 LEDs that are indexed and positioned as following:
 
-                ~switch (BoolStamped): A BoolStamped that...
+    +------------------+------------------------------------------+
+    | Index            | Position (rel. to direction of movement) |
+    +==================+==========================================+
+    | 0                | Front left                               |
+    +------------------+------------------------------------------+
+    | 1                | Rear left                                |
+    +------------------+------------------------------------------+
+    | 2                | Top / Front middle                       |
+    +------------------+------------------------------------------+
+    | 3                | Rear right                               |
+    +------------------+------------------------------------------+
+    | 4                | Front right                              |
+    +------------------+------------------------------------------+
 
-                ~custom_pattern (LEDPattern): An LEDPattern that...
+    A pattern is specified via 5 parameters:
 
-            Publishers:
-                ~current_led_state (String): A string that...
+    - its name
 
-            Services:
-                ~change_led (SetCustomLED): Description of the service
+    - frequency: blinking frequency in Hz, should be set to 0 for a solid (non-blinking) behavior
 
-                ~set_pattern (ChangePattern): Description of the service
+    - color_list: a list of 5 colour names (see below), one for each LED ordered as above, or a single string with
+      a single color name that would be applied to all LEDs
 
-            """
+    - frequency_mask: a list of 5 binary flags (0 or 1) that specify which of the LEDs should be blinking,
+      used only if the frequency is not 0. The LEDs with the flag set to 0, will maintain their solid color.
 
-    def __init__(self):
+    The defaut patterns are defined in the `LED_protocol.yaml` configuration file for the node.
 
-        self.node_name = rospy.get_name()
-        rospy.loginfo("[%s] Initializing..." % (self.node_name))
+    Currently supported colors are: `green`, `red`, `blue`, `white`, `yellow`, `purple`, `cyan`, `orange`,
+    `pink`, `gray`, `switchedoff`. More colors can be defined in the node's configuration file.
+
+    Examples:
+
+        To change the pattern to one of the predefined patterns (you can see them using `rosparam list`)
+        use a variant of the following::
+
+            rosservice call /HOSTNAME/led_emitter_node/set_pattern "pattern_name: {data: RED}"
+
+        To add a custom pattern and switch to it use a variant of the following::
+
+            rosservice call /HOSTNAME/led_emitter_node/set_custom_pattern "pattern: {color_list: ['green','yellow','pink','orange','blue'], color_mask: [1,1,1,1,1], frequency: 1.0, frequency_mask: [1,0,1,0,1]}"
+
+
+    Configuration:
+        ~LED_protocol (nested dictionary): Nested dictionary that describes the LED protocols (patterns). The
+            default can be seen in the `LED_protocol.yaml` configuration file for the node.
+        ~LED_scale (:obj:`float`): A scaling factor (between 0 and 1) that is applied to the colors in order
+            to reduce the overall LED brightness, default is 0.8.
+
+    Publishers:
+        ~current_led_state (:obj:`String` message): Publishes the name of the current pattern used. Published
+            only when the selected pattern changes.
+
+    Services:
+        ~set_custom_pattern: Allows setting a custom protocol. Will be named `custom`. See an example of a call
+            in :obj:`srvSetCustomLEDPattern`.
+
+            input:
+
+                pattern (:obj:`LEDPattern` message): The desired new LEDPattern
+
+        ~set_pattern: Switch to a different pattern protocol.
+
+            input:
+
+                pattern_name (:obj:`String` message): The new pattern name, should match one of the patterns in
+                   the `LED_protocol` parameter (or be `custom` if a custom pattern has been defined via a call to
+                   the `~change_led` service.
+
+    """
+
+    def __init__(self, node_name):
+
+        # Initialize the DTROS parent class
+        super(LEDEmitterNode, self).__init__(node_name=node_name)
 
         self.led = RGB_LED()
 
-        self.active = True
+        # Add the node parameters to the parameters dictionary and load their default values
+        self.parameters['~LED_protocol'] = None
+        self.parameters['~LED_scale'] = None
+        self.updateParameters()
 
         # Import protocol
         self.protocol = rospy.get_param("~LED_protocol")
@@ -52,97 +110,70 @@ class LEDEmitterNode(object):
 
         # Initialize LEDs to be off
         self.pattern = [[0, 0, 0]]*5
-        self.current_pattern_name = 'OFF'
-        self.changePattern_(self.current_pattern_name)
+        self.current_pattern_name = 'LIGHT_OFF'
+        self.changePattern(self.current_pattern_name)
 
         # Initialize the timer
-        self.frequency = 1.0/self.protocol['signals']['CAR_SIGNAL_A']['frequency']
+        self.frequency = 1.0/self.parameters['~LED_protocol']['signals']['CAR_SIGNAL_A']['frequency']
         self.is_on = False
         self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/(2.0)),
                                        self.cycleTimer_)
 
         # Publishers
-        self.pub_state = rospy.Publisher("~current_led_state",
-                                         String,
-                                         queue_size=1)
-        # Subscribers
-        self.sub_pattern = rospy.Subscriber("~change_color_pattern",
-                                            String,
-                                            self.changePattern)
-        self.sub_switch = rospy.Subscriber("~switch",
-                                           BoolStamped,
-                                           self.cbSwitch)
-        self.sub_custom_pattern = rospy.Subscriber("~custom_pattern",
-                                                   LEDPattern,
-                                                   self.cbCustomPattern)
+        self.pub_state = self.publisher("~current_led_state",
+                                        String,
+                                        queue_size=1)
+
         # Services
-        self.srv_set_LED_ = rospy.Service("~change_led",
+        self.srv_set_LED_ = rospy.Service("~set_custom_pattern",
                                           SetCustomLED,
-                                          self.srvSetCustomLED)
+                                          self.srvSetCustomLEDPattern)
         self.srv_set_pattern_ = rospy.Service("~set_pattern",
                                               ChangePattern,
                                               self.srvSetPattern)
 
         # Scale intensity of the LEDs
-        for _, c in self.protocol['colors'].items():
+        for _, c in self.parameters['~LED_protocol']['colors'].items():
             for i in range(3):
-                c[i] = c[i] * self.scale
+                c[i] = c[i] * self.parameters['~LED_scale']
 
         # Turn on the LEDs
-        self.changePattern_('WHITE')
+        self.changePattern('WHITE')
 
-        rospy.loginfo("[%s] Initialized." % (self.node_name))
+        self.log("Initialized.")
 
-    def srvSetCustomLED(self, LED_pattern):
+    def srvSetCustomLEDPattern(self, req):
         """Service to set a custom pattern.
 
-            Sets the LEDs to a custom pattern (colors+frequency)
+            Sets the LEDs to a custom pattern. The :obj:`LEDPattern` message from
+            :obj:`duckietown_msgs` is used for that.
 
             Args:
-                LED_pattern (LEDPattern): requested pattern
+                LED_pattern (LEDPattern): the requested pattern
 
-            Example:
-
-                To do bla::
-
-                .......([....],12)
         """
-        rospy.loginfo("Changing LEDs to custom pattern")
-        self.current_pattern_name = 'custom_pattern'
-        self.pattern = LED_pattern.pattern
 
-        if self.frequency == 0:
-            self.updateLEDs()
-        else:
-            self.changeFrequency()
+        # Update the protocol
+        protocol = self.parameters['~LED_protocol']
+        protocol['signals']['custom'] = {'color_mask': req.pattern.color_mask,
+                                         'color_list': req.pattern.color_list,
+                                         'frequency_mask': req.pattern.frequency_mask,
+                                         'frequency': req.pattern.frequency}
+        # Set it through rosparam because otherwise the background parameter checker will overwrite it
+        rospy.set_param("~LED_protocol", protocol)
+        self.updateParameters()
+
+        self.log("Custom pattern updated: color_mask: %s, color_list: %s, frequency_mask: %s, frequency: %s" %
+                 (str(self.parameters['~LED_protocol']['signals']['custom']['color_mask']),
+                  str(self.parameters['~LED_protocol']['signals']['custom']['color_list']),
+                  str(self.parameters['~LED_protocol']['signals']['custom']['frequency_mask']),
+                  str(self.parameters['~LED_protocol']['signals']['custom']['frequency'])))
+
+        # Perform the actual change
+        self.changePattern('custom')
+
         return SetCustomLEDResponse()
 
-    def cbCustomPattern(self, msg_pattern):
-        """Changes LEDs to received custom pattern.
-
-            Callback that updates the current object according to the message
-            received. After that calls the uptadeLEDs function, that sends
-            the signal to the LEDs.
-
-            Args:
-                msg_pattern (LEDPattern): requested pattern
-        """
-        self.color_list = msg_pattern.color_list
-        self.color_mask = msg_pattern.color_mask
-        self.frequency = msg_pattern.frequency
-        self.frequency_mask = msg_pattern.frequency_mask
-        self.updateLEDs()
-
-    def cbSwitch(self, switch_msg):
-        """Callback that turns on/off the node.
-
-            Reads the switch from the Finite State Machine and sets
-            self.active accordingly.
-
-            Args:
-                switch_msg (BoolStamped): Switch for the node.
-        """
-        self.active = switch_msg.data
 
     def cycleTimer_(self, event):
         """Timer.
@@ -158,21 +189,19 @@ class LEDEmitterNode(object):
         """Switches the LEDs to the requested signal.
 
             If the pattern is static, changes the color of LEDs according to
-            the color specified in self.color_list on the LEDs specified
-            on self.color_mask. If a nonzero frequency is set, toggles on/off
-            the LEDs specified on self.frequency_mask.
+            the color specified in self.color_list. If a nonzero frequency is set,
+            toggles on/off the LEDs specified on self.frequency_mask.
         """
 
         # Do nothing if inactive
-        if not self.active:
+        if not self.switch:
             return
 
         elif not self.frequency:
             # No oscillation
             for i in range(5):
-                if self.color_mask[i] == True:
-                    colors = self.pattern[i]
-                    self.led.setRGB(i, colors)
+                colors = self.pattern[i]
+                self.led.setRGB(i, colors)
         else:
             # Oscillate
             if self.is_on:
@@ -188,57 +217,60 @@ class LEDEmitterNode(object):
                 self.is_on = True
 
     def srvSetPattern(self, msg):
-        """Changes the current pattern according to msg.
+        """Changes the current pattern according to the pattern name sent in the message.
+
 
             Args:
                 msg (String): requested pattern name
         """
-        self.changePattern_(msg.data)
+        self.changePattern(str(msg.pattern_name.data))
         return ChangePatternResponse()
 
-    def changePattern(self, msg):
-        """Calls the private function with data from message"""
-        self.changePattern_(msg.data)
-
-    def changePattern_(self, pattern_name):
+    def changePattern(self, pattern_name):
         """Change the current LED pattern.
 
             Checks if the requested pattern is different from the current one,
             if so changes colors and frequency of LEDs accordingly and
-            publishes the new current pattern.
+            publishes the new current pattern. If the requested pattern name
+            is not found, it will not change the pattern and will publish ROS
+            Error log message.
 
             Args:
                 pattern_name (string): Name of the wanted pattern
 
         """
         if pattern_name:
-            # No need to change if we already have the right pattern
-            if self.current_pattern_name == pattern_name:
+            # No need to change if we already have the right pattern, unless it is other, because
+            # we might have updated its definition
+            if self.current_pattern_name == pattern_name and pattern_name != 'custom':
                 return
-            else:
+            elif pattern_name.strip("'").strip('"') in self.parameters['~LED_protocol']['signals']:
                 self.current_pattern_name = pattern_name
+            else:
+                self.log("Pattern name %s not found in the list of patterns. Change of "
+                         "pattern not executed." % pattern_name, type='err')
+                self.log(self.parameters['~LED_protocol']['signals'], type='err')
+                return
 
             # Extract the color from the protocol config file
-            color_mask = self.protocol['signals'][pattern_name]['color_mask']
-            color_list = self.protocol['signals'][pattern_name]['color_list']
-
-            # If color mask is not specified, we want to change all of the LEDs
-            if len(color_mask) < 5:
-                self.color_mask = [1]*5
-            else:
-                self.color_mask = color_mask
-
-            # Extract the frequency from the protocol
-            self.frequency_mask = self.protocol['signals'][pattern_name]['frequency_mask']
-            self.frequency = self.protocol['signals'][pattern_name]['frequency']
+            color_list = self.parameters['~LED_protocol']['signals'][pattern_name]['color_list']
 
             if type(color_list) is str:
-                self.pattern = [self.protocol['colors'][color_list]]*5
+                self.pattern = [self.parameters['~LED_protocol']['colors'][color_list]]*5
             else:
-                assert (len(color_list) == 5), "color_list needs 5 entries"
+                if len(color_list) != 5:
+                    self.log("The color list should be a string or a list of length 5. Change of "
+                             "pattern not executed.", type='err')
+                    return
+
                 self.pattern = [[0, 0, 0]]*5
                 for i in range(len(color_list)):
-                    self.pattern[i] = self.protocol['colors'][color_list[i]]
+                    self.pattern[i] = self.parameters['~LED_protocol']['colors'][color_list[i]]
+
+
+            # Extract the frequency from the protocol
+            self.frequency_mask = self.parameters['~LED_protocol']['signals'][pattern_name]['frequency_mask']
+            self.frequency = self.parameters['~LED_protocol']['signals'][pattern_name]['frequency']
 
             # If static behavior, updated LEDs
             if self.frequency == 0:
@@ -248,8 +280,7 @@ class LEDEmitterNode(object):
             self.changeFrequency()
 
             # Loginfo
-            rospy.loginfo('[%s] Pattern changed to (%r), cycle: %s '
-                          % (self.node_name, pattern_name, self.frequency))
+            self.log('Pattern changed to (%r), cycle: %s ' % (pattern_name, self.frequency))
 
             # Publish current pattern
             self.pub_state.publish(self.current_pattern_name)
@@ -275,23 +306,20 @@ class LEDEmitterNode(object):
                 self.frequency = None
                 self.current_pattern_name = None
 
+
     def onShutdown(self):
         """Shutdown procedure.
 
-        At shutdown, changes the LED pattern to `light_off`."""
+        At shutdown, changes the LED pattern to `LIGHT_OFF`."""
 
         # Turn off the lights when the node dies
-        self.changePattern_('light_off')
+        self.changePattern('LIGHT_OFF')
 
-        rospy.loginfo("[%s] Shutting down." % (rospy.get_name()))
+        super(LEDEmitterNode, self).onShutdown()
 
 
 if __name__ == '__main__':
-    # Initialize the node
-    rospy.init_node('led_emitter', anonymous=False)
     # Create the LEDEmitterNode object
-    led_emitter_node = LEDEmitterNode()
-    # Setup proper shutdown behavior
-    rospy.on_shutdown(led_emitter_node.onShutdown)
+    led_emitter_node = LEDEmitterNode(node_name='led_emitter')
     # Keep it spinning to keep the node alive
     rospy.spin()

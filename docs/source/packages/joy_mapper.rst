@@ -1,7 +1,14 @@
 joy\_mapper package
 ===================
 
-.. automodule:: joy_mapper
+.. contents::
+
+The `joy_mapper` package blablabla
+
+
+JoyMapperNode
+-------------
+.. autoclass:: nodes.JoyMapperNode
 
 
 

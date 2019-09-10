@@ -1,14 +1,17 @@
 LED_protocol:
 
   colors:
+    switchedoff: [0,0,0]
+    white: [1,1,1]
     green: [0,1,0]
     red: [1,0,0]
     blue: [0,0,1]
-    white: [1,1,1]
     yellow: [1,1,0]
     purple: [1,0,1]
     cyan: [0,1,1]
-    black: [0,0,0]
+    pink: [1,0,0.5]
+    tl_red: [0,1,0]   # used for the traffic light LEDs as they are differently ordered
+    tl_green: [1,0,0] # used for the traffic light LEDs as they are differently ordered
 
   frequencies:
     f1: &f1 1.9
@@ -72,16 +75,9 @@ LED_protocol:
       frequency_mask: []
       frequency:  0
 
-    # The masks change, so we simply initialize them here
-    TL_GO:
+    LIGHT_OFF:
       color_mask: []
-      color_list: "green"
-      frequency_mask: []
-      frequency: *f4
-
-    light_off:
-      color_mask: []
-      color_list: "black"
+      color_list: "switchedoff"
       frequency_mask: []
       frequency:  0
 

@@ -130,6 +130,7 @@ class KinematicsNode(DTROS):
         """
         Returns the path to the robot-specific configuration file,
         i.e. `/data/config/calibrations/kinematics/DUCKIEBOTNAME.yaml`.
+
         Args:
             name (:obj:`str`): the Duckiebot name
 
@@ -144,7 +145,7 @@ class KinematicsNode(DTROS):
     def cbSrvSaveCalibration(self, req):
         """
         Saves the current kinematics paramaters to a robot-specific file at
-         `/data/config/calibrations/kinematics/DUCKIEBOTNAME.yaml`.
+        `/data/config/calibrations/kinematics/DUCKIEBOTNAME.yaml`.
 
         Args:
             req: dummy variable to be callback-complacent. not used.

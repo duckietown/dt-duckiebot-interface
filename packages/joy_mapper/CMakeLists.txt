@@ -3,7 +3,6 @@ project(joy_mapper)
 
 find_package(catkin REQUIRED COMPONENTS
   duckietown_msgs
-  roscpp
   rospy
   sensor_msgs
 )

@@ -1,49 +1,56 @@
 #!/usr/bin/env python
+
 import rospy
+
+from duckietown import DTROS
 from duckietown_msgs.msg import Twist2DStamped, FSMState
 
-class CarCmdSwitchNode(object):
+class CarCmdSwitchNode(DTROS):
     """
 
     Warnings:
         This node should be seriously revisted such that it uses DTROS to deactivate nodes that are not
         being listened to and to actively register topics and states instead of using a config file for that!
 
+        For the same reason, the documentation of this node is not up to par.
+
     Subscriptions "~mode": duckietown_msgs/FSMState. Current control mode of the duckiebot
     Other subscriptions specified by the parameters
 
     Publications "~cmd" duckietown_msgs/Twist2DStamped.
     """
-    def __init__(self):
-        self.node_name = rospy.get_name()
-        # rospy.loginfo("[%s] Initializing " %(self.node_name))
+    def __init__(self, node_name):
+
+        # Initialize the DTROS parent class
+        super(CarCmdSwitchNode, self).__init__(node_name=node_name)
+
         # Read parameters
         self.mappings = rospy.get_param("~mappings")
         source_topic_dict = rospy.get_param("~source_topics")
         self.current_src_name = "joystick"
 
         # Construct publisher
-        self.pub_cmd = rospy.Publisher("~cmd",Twist2DStamped,queue_size=1)
+        self.pub_cmd = self.publisher("~cmd",Twist2DStamped,queue_size=1)
 
         # Construct subscribers
-        self.sub_fsm_state = rospy.Subscriber(rospy.get_param("~mode_topic"),FSMState,self.cbFSMState)
+        self.sub_fsm_state = self.subscriber(rospy.get_param("~mode_topic"),FSMState,self.cbFSMState)
 
         self.sub_dict = dict()
         for src_name, topic_name in source_topic_dict.items():
-            self.sub_dict[src_name] = rospy.Subscriber(topic_name,Twist2DStamped,self.cbWheelsCmd,callback_args=src_name)
+            self.sub_dict[src_name] = self.subscriber(topic_name,Twist2DStamped,self.cbWheelsCmd,callback_args=src_name)
 
-        rospy.loginfo("[%s] Initialized. " %(self.node_name))
-        rospy.loginfo("[%s] Sources: %s" %(self.node_name, str(source_topic_dict)))
+        self.log("Initialized. ")
+        self.log("Sources: %s"%str(source_topic_dict))
 
     def cbFSMState(self,fsm_state_msg):
         self.current_src_name = self.mappings.get(fsm_state_msg.state)
         if self.current_src_name == "stop":
             self.pubStop()
-            rospy.loginfo("[%s] Car cmd switched to STOP in state %s." %(self.node_name,fsm_state_msg.state))
+            self.log("Car cmd switched to STOP in state %s." %(fsm_state_msg.state))
         elif self.current_src_name is None:
-            rospy.logwarn("[%s] FSMState %s not handled. No msg pass through the switch." %(self.node_name,fsm_state_msg.state))
+            self.log("FSMState %s not handled. No msg pass through the switch." %(fsm_state_msg.state), type='warn')
         else:
-            rospy.loginfo("[%s] Car cmd switched to %s in state %s." %(self.node_name,self.current_src_name,fsm_state_msg.state))
+            self.log("Car cmd switched to %s in state %s." %(self.current_src_name,fsm_state_msg.state))
 
     def cbWheelsCmd(self,msg,src_name):
         if src_name == self.current_src_name:
@@ -55,15 +62,8 @@ class CarCmdSwitchNode(object):
         msg.omega = 0
         self.pub_cmd.publish(msg)
 
-    def on_shutdown(self):
-        rospy.loginfo("[%s] Shutting down." %(self.node_name))
-
 if __name__ == '__main__':
-    # Initialize the node with rospy
-    rospy.init_node('car_cmd_switch_node', anonymous=False)
     # Create the DaguCar object
-    node = CarCmdSwitchNode()
-    # Setup proper shutdown behavior
-    rospy.on_shutdown(node.on_shutdown)
+    car_cmd_switch_node = CarCmdSwitchNode(node_name='car_cmd_switch_node')
     # Keep it spinning to keep the node alive
     rospy.spin()

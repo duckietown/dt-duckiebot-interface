@@ -93,7 +93,7 @@ class JoyMapperNode(DTROS):
 
         # Navigation buttons
         car_cmd_msg = Twist2DStamped()
-        car_cmd_msg.header.stamp = joy_msg.header.stamp
+        car_cmd_msg.header.stamp = rospy.get_rostime()
         car_cmd_msg.v = joy_msg.axes[1] * self.parameters['~speed_gain']  # Left stick V-axis. Up is positive
         if self.parameters['~bicycle_kinematics']:
             # Implements Bicycle Kinematics - Nonholonomic Kinematics

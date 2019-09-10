@@ -12,19 +12,55 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('..'))
-sys.path.insert(0, os.path.abspath('../../packages/'))
-sys.path.insert(0, os.path.abspath('/dt-ros-commons/packages'))
-sys.path.insert(0, os.path.abspath('/dt-ros-commons/packages/duckietown/include'))
+# sys.path.insert(0, os.path.abspath('.'))
+# sys.path.insert(0, os.path.abspath('..'))
+# sys.path.insert(0, os.path.abspath('../../packages/'))
+# sys.path.insert(0, os.path.abspath('/dt-ros-commons/packages'))
+# sys.path.insert(0, os.path.abspath('/dt-ros-commons/packages/duckietown/include'))
+
+
+module_name = 'nodes'
+
+############################# NODE MODULE SETUP ###########################################
+
+import tempfile
+from shutil import copyfile
+
+dirpath = tempfile.mkdtemp()
+module_dir = os.path.join(dirpath, module_name)
+os.makedirs(module_dir)
+print(module_dir)
+
+print("LOOKING FOR NODE SOURCE FILES")
+# Load all the nodes as classes
+node_source_files = []
+for pkg in os.listdir(os.path.abspath('../../packages/')):
+    sys.path.insert(0, os.path.abspath('../../packages/%s/include' % pkg))
+    if os.path.isdir(os.path.abspath('../../packages/%s/src' % pkg)):
+        for node_source_file in os.listdir(os.path.abspath('../../packages/%s/src' % pkg)):
+            if node_source_file[-3:] == '.py' and node_source_file != '__init__.py':
+                node_source_files.append('../../packages/%s/src/%s' % (pkg, node_source_file))
+                copyfile('../../packages/%s/src/%s' % (pkg, node_source_file),
+                         os.path.join(module_dir, node_source_file))
+
+with open(os.path.join(module_dir, '__init__.py'), 'w') as init_file:
+    for node_source_file in node_source_files:
+        init_file.write('from .%s import *\n' % (node_source_file.split('/')[-1][:-3]))
+
+with open(os.path.join(module_dir, '__init__.py')) as f:
+    print(f.readlines())
+
+sys.path.insert(0, dirpath)
+
+############################# END OF NODE MODULE SETUP ###########################################
 
 # A trick to handle duckietown_utils as it is not Python3-compatible
-from mock import Mock
-import types
-module_name = 'duckietown_utils'
-bogus_module = types.ModuleType(module_name)
-sys.modules[module_name] = bogus_module
-bogus_module.get_duckiefleet_root = Mock(name=module_name+'.get_duckiefleet_root')
+# from mock import Mock
+# import types
+# module_name = 'duckietown_utils'
+# bogus_module = types.ModuleType(module_name)
+# sys.modules[module_name] = bogus_module
+# bogus_module.get_duckiefleet_root = Mock(name=module_name+'.get_duckiefleet_root')
 
 print(sys.path)
 sys.setrecursionlimit(1500)

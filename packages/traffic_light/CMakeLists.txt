@@ -3,8 +3,6 @@ project(traffic_light)
 
 find_package(catkin REQUIRED COMPONENTS
   duckietown_msgs
-  rgb_led
-  roscpp
   rospy
 )
 
