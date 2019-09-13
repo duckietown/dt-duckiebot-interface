@@ -6,7 +6,7 @@
 	<arg name="joystick" default="false" doc="true for listening to the joystick. False for listening to the coordination."/>
 
 	<group ns="$(arg veh)">
-	    <node pkg="led_emitter" type="$(arg src_name)"  name="$(arg node_name)" output="screen" clear_params="true" required="true">
+	    <node pkg="led_emitter" type="$(arg src_name)"  name="$(arg node_name)" output="screen" required="true">
 			<rosparam command="load" file="$(find led_emitter)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
         		<!-- run with joystick -->
 		    	<remap from="~change_color_pattern" to="led_joy_mapper_node/change_color_pattern" if="$(arg joystick)"/>
