@@ -1,4 +1,4 @@
-FROM duckietown/duckiebot-interface:devel20
+FROM duckietown/dt-duckiebot-interface:daffy
 
 RUN apt-get update; apt-get install -y git
 
