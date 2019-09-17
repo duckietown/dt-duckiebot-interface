@@ -1,6 +1,6 @@
 LED_protocol:
 
-  colors:
+  colors: # All triplets should be ordered [R,G,B]
     switchedoff: [0,0,0]
     white: [1,1,1]
     green: [0,1,0]
@@ -10,8 +10,6 @@ LED_protocol:
     purple: [1,0,1]
     cyan: [0,1,1]
     pink: [1,0,0.5]
-    tl_red: [0,1,0]   # used for the traffic light LEDs as they are differently ordered
-    tl_green: [1,0,0] # used for the traffic light LEDs as they are differently ordered
 
   frequencies:
     f1: &f1 1.9
@@ -82,3 +80,4 @@ LED_protocol:
       frequency:  0
 
 LED_scale: 0.8
+channel_order: RGB

@@ -67,6 +67,9 @@ class LEDEmitterNode(DTROS):
             default can be seen in the `LED_protocol.yaml` configuration file for the node.
         ~LED_scale (:obj:`float`): A scaling factor (between 0 and 1) that is applied to the colors in order
             to reduce the overall LED brightness, default is 0.8.
+        ~channel_order (:obj:`str`): A string that controls the order in which the 3 color channels should be
+            communicated to the LEDs. Should be one of 'RGB', `RBG`, `GBR`, `GRB`, `BGR`, `BRG`. Typically
+            for a duckiebot this should be the default `RGB` and for traffic lights should be `GRB`, default is `RGB`.
 
     Publishers:
         ~current_led_state (:obj:`String` message): Publishes the name of the current pattern used. Published
@@ -100,6 +103,7 @@ class LEDEmitterNode(DTROS):
         # Add the node parameters to the parameters dictionary and load their default values
         self.parameters['~LED_protocol'] = None
         self.parameters['~LED_scale'] = None
+        self.parameters['~channel_order'] = None
         self.updateParameters()
 
         # Import protocol
@@ -305,6 +309,34 @@ class LEDEmitterNode(DTROS):
             except ValueError as e:
                 self.frequency = None
                 self.current_pattern_name = None
+
+    def remapColors(self, color):
+        """
+        Remaps a color from RGB to the channel ordering currently set in the
+        `channel_order` configuration parameter.
+
+        Args:
+            color (:obj:`list` of :obj:`float`): A color triplet
+
+        Returns:
+            :obj:`list` of :obj:`float`: The triplet with reordered channels
+
+        """
+
+        # Verify that the requested reordering is valid
+        allowed_orderings = ['RGB', 'RBG', 'GBR', 'GRB', 'BGR', 'BRG']
+        if self.parameters['~channel_order'] not in allowed_orderings:
+            self.log("The current channel order %s is not supported, use one of %s. "
+                     "The remapping was not performed." % \
+                     (self.parameters['~channel_order'], str(allowed_orderings)), type='warn')
+            return color
+
+        reordered_triplet = list()
+        rgb_map = {'R':0, 'G':1, 'B':2}
+        for channel_color in self.parameters['~channel_order']:
+            reordered_triplet.append(color[rgb_map[channel_color]])
+
+        return reordered_triplet
 
 
     def onShutdown(self):

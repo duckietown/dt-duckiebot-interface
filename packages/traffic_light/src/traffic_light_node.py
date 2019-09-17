@@ -81,8 +81,8 @@ class TrafficLightNode(DTROS):
         frequency_mask[green_LED] = 1
 
         # Create Protocol (we fake 5 LEDs, but the last will not be updated)
-        color_list = ['tl_red'] * 5
-        color_list[green_LED] = 'tl_green'
+        color_list = ['red'] * 5
+        color_list[green_LED] = 'green'
 
         # Build message
         pattern_msg = LEDPattern()
@@ -97,7 +97,7 @@ class TrafficLightNode(DTROS):
         rospy.sleep(self.parameters["~green_time"])
 
         # Turn all on red for safety
-        pattern_msg.color_list = ['tl_red'] * 5
+        pattern_msg.color_list = ['red'] * 5
         pattern_msg.frequency = 0
         self.changePattern(pattern_msg)
 

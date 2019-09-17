@@ -2,7 +2,7 @@
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:default." />
-    <arg name="robot_type" default="duckiebot" doc="The type of the robot"/>
+    <arg name="robot_type" default="duckiebot" doc="The type of the robot: should be duckiebot, watchtower, or traffic_light"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <include file="$(find camera_driver)/launch/camera_node.launch">
@@ -15,7 +15,17 @@
         <include file="$(find led_emitter)/launch/led_emitter_node.launch">
             <arg name="veh" value="$(arg veh)"/>
         </include>
+
+        <!-- Adjust the ordering of the LED channels for the duckiebot and the traffic light  -->
+        <!-- as their hardware expects different order -->
+        <group if="$(eval arg('robot_type') == 'duckiebot')">
+            <param name="led_emitter_node/channel_order" value="RGB"/>
+        </group>
+        <group if="$(eval arg('robot_type') == 'traffic_light')">
+            <param name="led_emitter_node/channel_order" value="GRB"/>
+        </group>
     </group>
+
 
     <!-- Joystick: reads from a physical joystick and produces ROS messages -->
     <group if="$(eval arg('robot_type') == 'duckiebot')">

@@ -1,17 +1,11 @@
 <launch>
-	<arg name="src_name" value="led_emitter_node.py"/>
 	<arg name="node_name" value="led_emitter_node"/>
 	<arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="LED_protocol" doc="Specify a param file. ex:megaman"/>
-	<arg name="joystick" default="false" doc="true for listening to the joystick. False for listening to the coordination."/>
 
 	<group ns="$(arg veh)">
-	    <node pkg="led_emitter" type="$(arg src_name)"  name="$(arg node_name)" output="screen" required="true">
+	    <node pkg="led_emitter" type="led_emitter_node.py"  name="$(arg node_name)" output="screen" required="true">
 			<rosparam command="load" file="$(find led_emitter)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
-        		<!-- run with joystick -->
-		    	<remap from="~change_color_pattern" to="led_joy_mapper_node/change_color_pattern" if="$(arg joystick)"/>
-		    	<!-- run with coordination node -->
-		    	<remap from="~change_color_pattern" to="coordinator_node/change_color_pattern" unless="$(arg joystick)"/>
 		</node>
 	</group>
 
