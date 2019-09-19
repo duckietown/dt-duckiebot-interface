@@ -80,4 +80,6 @@ LED_protocol:
       frequency:  0
 
 LED_scale: 0.8
-channel_order: RGB
+channel_order:
+  duckiebot: "RGB"
+  traffic_light: "GRB"
