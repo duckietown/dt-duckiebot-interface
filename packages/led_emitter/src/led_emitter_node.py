@@ -100,6 +100,8 @@ class LEDEmitterNode(DTROS):
 
         self.led = RGB_LED()
 
+        self.robot_type = rospy.get_param("~robot_type")
+
         # Add the node parameters to the parameters dictionary and load their default values
         self.parameters['~LED_protocol'] = None
         self.parameters['~LED_scale'] = None
@@ -137,9 +139,20 @@ class LEDEmitterNode(DTROS):
                                               self.srvSetPattern)
 
         # Scale intensity of the LEDs
-        for _, c in self.parameters['~LED_protocol']['colors'].items():
+        for name, c in self.parameters['~LED_protocol']['colors'].items():
             for i in range(3):
                 c[i] = c[i] * self.parameters['~LED_scale']
+
+        # Remap colors if robot does not have an RGB ordering
+        if self.parameters['~channel_order'][self.robot_type] is not "RGB":
+            protocol = self.parameters['~LED_protocol']
+            for name, col in self.parameters['~LED_protocol']['colors'].items():
+                protocol['colors'][name] = self.remapColors(col)
+
+            rospy.set_param("~LED_protocol", protocol)
+            self.updateParameters()
+            self.log("Colors remapped to " +
+                     str(self.parameters['~channel_order'][self.robot_type]))
 
         # Turn on the LEDs
         self.changePattern('WHITE')
@@ -165,7 +178,7 @@ class LEDEmitterNode(DTROS):
                                          'frequency': req.pattern.frequency}
         # Set it through rosparam because otherwise the background parameter checker will overwrite it
         rospy.set_param("~LED_protocol", protocol)
-        self.updateParameters()
+        self.updateParameters(verbose=False)
 
         self.log("Custom pattern updated: color_mask: %s, color_list: %s, frequency_mask: %s, frequency: %s" %
                  (str(self.parameters['~LED_protocol']['signals']['custom']['color_mask']),
@@ -271,7 +284,6 @@ class LEDEmitterNode(DTROS):
                 for i in range(len(color_list)):
                     self.pattern[i] = self.parameters['~LED_protocol']['colors'][color_list[i]]
 
-
             # Extract the frequency from the protocol
             self.frequency_mask = self.parameters['~LED_protocol']['signals'][pattern_name]['frequency_mask']
             self.frequency = self.parameters['~LED_protocol']['signals'][pattern_name]['frequency']
@@ -325,15 +337,16 @@ class LEDEmitterNode(DTROS):
 
         # Verify that the requested reordering is valid
         allowed_orderings = ['RGB', 'RBG', 'GBR', 'GRB', 'BGR', 'BRG']
-        if self.parameters['~channel_order'] not in allowed_orderings:
+        requested_ordering = self.parameters['~channel_order'][self.robot_type]
+        if requested_ordering not in allowed_orderings:
             self.log("The current channel order %s is not supported, use one of %s. "
                      "The remapping was not performed." % \
-                     (self.parameters['~channel_order'], str(allowed_orderings)), type='warn')
+                     (requested_ordering, str(allowed_orderings)), type='warn')
             return color
 
         reordered_triplet = list()
         rgb_map = {'R':0, 'G':1, 'B':2}
-        for channel_color in self.parameters['~channel_order']:
+        for channel_color in requested_ordering:
             reordered_triplet.append(color[rgb_map[channel_color]])
 
         return reordered_triplet

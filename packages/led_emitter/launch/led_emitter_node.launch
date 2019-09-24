@@ -1,11 +1,13 @@
 <launch>
 	<arg name="node_name" value="led_emitter_node"/>
 	<arg name="veh" doc="Name of vehicle. ex: megaman"/>
-    <arg name="param_file_name" default="LED_protocol" doc="Specify a param file. ex:megaman"/>
+  <arg name="param_file_name" default="LED_protocol" doc="Specify a param file. ex:megaman"/>
+	<arg name="robot_type" default="duckiebot" doc="Type of robot"/>
 
 	<group ns="$(arg veh)">
 	    <node pkg="led_emitter" type="led_emitter_node.py"  name="$(arg node_name)" output="screen" required="true">
 			<rosparam command="load" file="$(find led_emitter)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+			<param name="robot_type" value="$(arg robot_type)"/>
 		</node>
 	</group>
 
