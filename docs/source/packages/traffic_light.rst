@@ -1,4 +1,11 @@
 traffic\_light package
 ======================
 
-.. automodule:: traffic_light
+.. contents::
+
+The `traffic_light` package blablabla
+
+TrafficLightNode
+----------------
+
+.. autoclass:: nodes.TrafficLightNode

@@ -4,7 +4,6 @@ from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
-
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
 
