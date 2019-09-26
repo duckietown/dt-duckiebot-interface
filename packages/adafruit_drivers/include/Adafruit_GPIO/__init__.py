@@ -4,16 +4,16 @@
     provided by them.
 
 
-    .. autoclass:: adafruit_drivers.include.Adafruit_GPIO.BaseGPIO
+    .. autoclass:: Adafruit_GPIO.BaseGPIO
         :no-undoc-members:
 
-    .. autoclass:: adafruit_drivers.include.Adafruit_GPIO.RPiGPIOAdapter
+    .. autoclass:: Adafruit_GPIO.RPiGPIOAdapter
         :no-undoc-members:
 
-    .. autoclass:: adafruit_drivers.include.Adafruit_GPIO.AdafruitBBIOAdapter
+    .. autoclass:: Adafruit_GPIO.AdafruitBBIOAdapter
         :no-undoc-members:
 
-    .. autoclass:: adafruit_drivers.include.Adafruit_GPIO.AdafruitMinnowAdapter
+    .. autoclass:: Adafruit_GPIO.AdafruitMinnowAdapter
         :no-undoc-members:
 
 

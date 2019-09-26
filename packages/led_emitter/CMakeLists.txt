@@ -4,12 +4,11 @@ project(led_emitter)
 
 find_package(catkin REQUIRED COMPONENTS
   duckietown_msgs
-  roscpp
   rospy
   message_generation
 )
 
-# catkin_python_setup()
+catkin_python_setup()
 
 ## Generate services in the 'srv' folder
 add_service_files(

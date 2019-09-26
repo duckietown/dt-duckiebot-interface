@@ -8,7 +8,7 @@ from Adafruit_I2C import Adafruit_I2C
 # Adafruit PCA9685 16-Channel PWM Servo Driver
 # ============================================================================
 
-class PWM :
+class PWM:
   # Registers/etc.
   __MODE1              = 0x00
   __MODE2              = 0x01
