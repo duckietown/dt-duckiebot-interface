@@ -16,7 +16,7 @@ class WheelsDriverNode(DTROS):
 
         Subscribers:
            ~wheels_cmd (:obj:`WheelsCmdStamped`): The requested wheel command
-           ~emergency_stop (:obj:`BoolStamped`): Emergency stop. Can stop the actual executation of the
+           ~emergency_stop (:obj:`BoolStamped`): Emergency stop. Can stop the actual execution of the
                wheel commands by the motors if set to `True`. Set to `False` for nominal operations.
         Publishers:
            ~wheels_cmd_executed (:obj:`WheelsCmdStamped`): Publishes the actual commands executed, i.e. when

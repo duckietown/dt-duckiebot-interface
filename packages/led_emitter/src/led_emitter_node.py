@@ -47,8 +47,8 @@ class LEDEmitterNode(DTROS):
 
     The defaut patterns are defined in the `LED_protocol.yaml` configuration file for the node.
 
-    Currently supported colors are: `green`, `red`, `blue`, `white`, `yellow`, `purple`, `cyan`, `orange`,
-    `pink`, `gray`, `switchedoff`. More colors can be defined in the node's configuration file.
+    Currently supported colors are: `green`, `red`, `blue`, `white`, `yellow`, `purple`, `cyan`,
+    `pink`, `switchedoff`. More colors can be defined in the node's configuration file.
 
     Examples:
 
@@ -56,6 +56,10 @@ class LEDEmitterNode(DTROS):
         use a variant of the following::
 
             rosservice call /HOSTNAME/led_emitter_node/set_pattern "pattern_name: {data: RED}"
+
+        Other pre-defined patterns you can use are: `WHITE`, `GREEN, `BLUE`, `LIGHT_OFF`, `CAR_SIGNAL_PRIORITY`,
+        `CAR_SIGNAL_SACRIFICE_FOR_PRIORITY`, `CAR_SIGNAL_SACRIFICE_FOR_PRIORITY`, `CAR_SIGNAL_SACRIFICE_FOR_PRIORITY`,
+        `CAR_DRIVING`.
 
         To add a custom pattern and switch to it use a variant of the following::
 

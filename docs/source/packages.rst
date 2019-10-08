@@ -1,5 +1,5 @@
-Packages
-========
+dt-duckiebot-interface
+======================
 
 .. toctree::
    :glob:
