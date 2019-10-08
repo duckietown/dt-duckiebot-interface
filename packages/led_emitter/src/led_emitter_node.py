@@ -57,7 +57,7 @@ class LEDEmitterNode(DTROS):
 
             rosservice call /HOSTNAME/led_emitter_node/set_pattern "pattern_name: {data: RED}"
 
-        Other pre-defined patterns you can use are: `WHITE`, `GREEN, `BLUE`, `LIGHT_OFF`, `CAR_SIGNAL_PRIORITY`,
+        Other pre-defined patterns you can use are: `WHITE`, `GREEN`, `BLUE`, `LIGHT_OFF`, `CAR_SIGNAL_PRIORITY`,
         `CAR_SIGNAL_SACRIFICE_FOR_PRIORITY`, `CAR_SIGNAL_SACRIFICE_FOR_PRIORITY`, `CAR_SIGNAL_SACRIFICE_FOR_PRIORITY`,
         `CAR_DRIVING`.
 
