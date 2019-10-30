@@ -79,6 +79,12 @@ LED_protocol:
       frequency_mask: []
       frequency:  0
 
+    light_off:
+      color_mask: []
+      color_list: "switchedoff"
+      frequency_mask: []
+      frequency:  0
+
 LED_scale: 0.8
 channel_order:
   duckiebot: "RGB"
