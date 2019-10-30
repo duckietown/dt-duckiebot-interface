@@ -4,7 +4,7 @@ import rospy
 from duckietown import DTROS
 
 from duckietown_msgs.msg import LEDPattern
-from led_emitter.srv import SetCustomLED
+from duckietown_msgs.srv import SetCustomLEDPattern
 
 
 class TrafficLightNode(DTROS):
@@ -53,7 +53,7 @@ class TrafficLightNode(DTROS):
 
         # Function mapping to LEDEmitterNode's `set_custom_pattern` service
         self.changePattern = rospy.ServiceProxy(rospy.get_namespace()+'led_emitter_node/set_custom_pattern',
-                                                SetCustomLED)
+                                                SetCustomLEDPattern)
 
         # Start a timer that will regularly call a method that changes
         # the direction that get green light
