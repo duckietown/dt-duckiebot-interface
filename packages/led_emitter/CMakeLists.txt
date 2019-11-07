@@ -10,13 +10,6 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_python_setup()
 
-## Generate services in the 'srv' folder
-add_service_files(
-  FILES
-  ChangePattern.srv
-  SetCustomLED.srv
-)
-
 generate_messages(
   DEPENDENCIES
   std_msgs
