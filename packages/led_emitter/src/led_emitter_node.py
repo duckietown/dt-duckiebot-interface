@@ -193,7 +193,7 @@ class LEDEmitterNode(DTROS):
         # Perform the actual change
         self.changePattern('custom')
 
-        return SetCustomLEDResponse()
+        return SetCustomLEDPatternResponse()
 
 
     def cycleTimer_(self, event):
