@@ -4,6 +4,9 @@ from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
+#import for GPIO override
+import Jetson.GPIO as GPIO
+
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
 
@@ -27,6 +30,16 @@ class WheelsDriverNode(DTROS):
 
     def __init__(self, node_name):
 
+        # Overwrite default setting of GPIO pin 29 (reset pin), which blocks access to other GPIO pins (importantly the ones for I2C)
+        GPIO.setmode(GPIO.BOARD)
+        channel = 29
+        GPIO.setup(channel, GPIO.OUT)
+        GPIO.output(channel, 1)
+
+        #if GPIO.input(channel) == 1:
+        #    self.log("Reset pin pulled high.")
+                    
+                
         # Initialize the DTROS parent class
         super(WheelsDriverNode, self).__init__(node_name=node_name)
 

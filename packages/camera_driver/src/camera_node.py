@@ -7,10 +7,15 @@ import rospy
 import copy
 import numpy as np
 
+import cv2
+import atexit
+import threading
+
 from duckietown import DTROS
-from picamera import PiCamera
-from sensor_msgs.msg import CompressedImage, CameraInfo
+#from picamera import PiCamera
+from sensor_msgs.msg import Image, CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
+from cv_bridge import CvBridge, CvBridgeError
 
 class CameraNode(DTROS):
     """Handles the imagery.
@@ -62,13 +67,41 @@ class CameraNode(DTROS):
         self.updateParameters()
 
         # Setup PiCamera
-        self.image_msg = CompressedImage()
-        self.camera = PiCamera()
-        self.camera.framerate = self.parameters['~framerate']
-        self.camera.resolution = (self.parameters['~res_w'], self.parameters['~res_h'])
-        self.camera.exposure_mode = self.parameters['~exposure_mode']
+        #self.image_msg = CompressedImage()
+        #self.camera = PiCamera()
+        #self.camera.framerate = self.parameters['~framerate']
+        #self.camera.resolution = (self.parameters['~res_w'], self.parameters['~res_h'])
+        #self.camera.exposure_mode = self.parameters['~exposure_mode']
+        
+        # Following lines (and the string) are taken from the jetbot code, adjusted for the duckietown application
+        self.value = np.empty((480, 640, 3), dtype=np.uint8)
+        
+        try:
+            self.cap = cv2.VideoCapture(2)
+            
+            if not self.cap.isOpened():
+                print("cv2 can not open resource")
 
+            re, image = self.cap.read()
 
+            if not re:
+                raise RuntimeError("Could not read image from camera.")
+            
+            self.value = image
+            self.start()
+
+        except:
+            self.stop()
+            raise RuntimeError("Could not start camera.")
+
+        atexit.register(self.stop)
+
+        # Set camera parameters
+        self.cap.set(cv2.CAP_PROP_FPS, self.parameters['~framerate'])
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.parameters['~res_w'])
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,self.parameters['~res_h'])
+        #self.cap.set(CV_CAP_PROP_MODE, self.parameters['~exposure_mode'])
+        
         # For intrinsic calibration
         self.cali_file_folder = '/data/config/calibrations/camera_intrinsic/'
         self.frame_id = rospy.get_namespace().strip('/') + '/camera_optical_frame'
@@ -102,7 +135,7 @@ class CameraNode(DTROS):
         self.srv_set_camera_info = rospy.Service("~set_camera_info",
                                                  SetCameraInfo,
                                                  self.cbSrvSetCameraInfo)
-        self.stream = io.BytesIO()
+        #self.stream = io.BytesIO()
 
         self.log("Initialized.")
 
@@ -116,30 +149,33 @@ class CameraNode(DTROS):
         """
         self.log("Start capturing.")
         while not self.is_shutdown and not rospy.is_shutdown():
-            gen = self.grabAndPublish(self.stream)
+            
             try:
-                self.camera.capture_sequence(gen,
-                                             'jpeg',
-                                             use_video_port=True,
-                                             splitter_port=0)
+                self.start()
+                self.grabAndPublish()
+
             except StopIteration:
-                pass
+                self.log("Exception thrown.")
+                #pass
 
-            # Update the camera parameters
-            self.camera.framerate = self.parameters['~framerate']
-            self.camera.resolution = (self.parameters['~res_w'], self.parameters['~res_h'])
-            self.camera.exposure_mode = self.parameters['~exposure_mode']
+                # Update the camera parameters
+                self.cap.set(cv2.CAP_PROP_FPS, self.parameters['~framerate'])
+                self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.parameters['~res_w'])
+                self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.parameters['~res_h'])
+                #self.cap.set(CV_CAP_PROP_MODE, self.parameters['~exposure_mode'])
 
-            # Update the camera info parameters
-            self.updateCameraParameters()
+                # Update the camera info parameters
+                self.updateCameraParameters()
 
-            self.parametersChanged = False
-            self.log("Parameters updated.")
+                self.parametersChanged = False
+                self.log("Parameters updated.")
 
-        self.camera.close()
+
+        self.stop()
         self.log("Capture Ended.")
 
-    def grabAndPublish(self, stream):
+
+    def grabAndPublish(self):
         """Captures a frame from stream and publishes it.
 
             If the stream is stable (no parameter updates or shutdowns),
@@ -151,35 +187,49 @@ class CameraNode(DTROS):
                 stream (:obj:`BytesIO`): imagery stream
                 publisher (:obj:`Publisher`): publisher of topic
         """
-        while not (self.parametersChanged or self.is_shutdown or rospy.is_shutdown()):
-            yield stream
-            # Construct image_msg
-            # Grab image from stream
+        re, image = self.cap.read()
+        bridge = CvBridge()
+        
+        #Will not detect "parametersChanged" or any shutdowns
+
+        while re:
+            re, image = self.cap.read()
+
+            #Generate the compressed image
+            if image is not None:
+                image = np.uint8(image)
+                
             stamp = rospy.Time.now()
-            stream.seek(0)
-            stream_data = stream.getvalue()
+            image_message = bridge.cv2_to_compressed_imgmsg(image, dst_format='jpeg')
+                
+            #not sure if this actualy does something/ gets published
+            image_message.header.stamp = stamp
+            image_message.header.frame_id = self.frame_id
 
-            # Generate and publish the compressed image
-            image_msg = CompressedImage()
-            image_msg.format = "jpeg"
-            image_msg.data = stream_data
-            image_msg.header.stamp = stamp
-            image_msg.header.frame_id = self.frame_id
-            self.pub_img.publish(image_msg)
+            #Publish the compressed image
+            self.pub_img.publish(image_message)
 
-            # Publish the CameraInfo message
+            # Publish the CameraInfo message 
             self.current_camera_info.header.stamp = stamp
             self.pub_camera_info.publish(self.current_camera_info)
-
-            # Clear stream
-            stream.seek(0)
-            stream.truncate()
 
             if not self.has_published:
                 self.log("Published the first image.")
                 self.has_published = True
 
             rospy.sleep(rospy.Duration.from_sec(0.001))
+        
+
+
+    def start(self):
+        if not self.cap.isOpened():
+            self.cap.open(2)
+        
+
+    def stop(self):
+        if hasattr(self, 'cap'):
+            self.cap.release()
+
 
     def cbSrvSetCameraInfo(self, req):
         self.log("[cbSrvSetCameraInfo] Callback!")
