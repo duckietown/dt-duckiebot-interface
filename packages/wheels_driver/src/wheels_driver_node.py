@@ -4,8 +4,8 @@ from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
-#import for GPIO override
 import Jetson.GPIO as GPIO
+
 
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
@@ -52,11 +52,14 @@ class WheelsDriverNode(DTROS):
         self.msg_wheels_cmd = WheelsCmdStamped()
 
         # Publisher for wheels command wih execution time
-        self.pub_wheels_cmd = self.publisher("~wheels_cmd_executed", WheelsCmdStamped, queue_size=1)
+        self.pub_wheels_cmd = self.publisher(
+            "~wheels_cmd_executed", WheelsCmdStamped, queue_size=1)
 
         # Subscribers
-        self.sub_topic = self.subscriber("~wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
-        self.sub_e_stop = self.subscriber("~emergency_stop", BoolStamped, self.cbEStop, queue_size=1)
+        self.sub_topic = self.subscriber(
+            "~wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
+        self.sub_e_stop = self.subscriber(
+            "~emergency_stop", BoolStamped, self.cbEStop, queue_size=1)
 
         self.log("Initialized.")
 
@@ -69,7 +72,6 @@ class WheelsDriverNode(DTROS):
             Args:
                 msg (WheelsCmdStamped): velocity command
         """
-
 
         if self.estop:
             vel_left = 0.0
@@ -96,9 +98,9 @@ class WheelsDriverNode(DTROS):
 
         self.estop = msg.data
         if self.estop:
-            rospy.log("Emergency Stop Activated")
+            self.log("Emergency Stop Activated")
         else:
-            rospy.log("Emergency Stop Released")
+            self.log("Emergency Stop Released")
 
     def onShutdown(self):
         """Shutdown procedure.

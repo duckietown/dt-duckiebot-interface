@@ -5,8 +5,8 @@ from duckietown import DTROS
 
 from rgb_led import RGB_LED
 from std_msgs.msg import Float32, Int8, String
-from led_emitter.srv import SetCustomLED, ChangePattern
-from led_emitter.srv import SetCustomLEDResponse, ChangePatternResponse
+from duckietown_msgs.srv import SetCustomLEDPattern, ChangePattern
+from duckietown_msgs.srv import SetCustomLEDPatternResponse, ChangePatternResponse
 
 
 class LEDEmitterNode(DTROS):
@@ -136,7 +136,7 @@ class LEDEmitterNode(DTROS):
 
         # Services
         self.srv_set_LED_ = rospy.Service("~set_custom_pattern",
-                                          SetCustomLED,
+                                          SetCustomLEDPattern,
                                           self.srvSetCustomLEDPattern)
         self.srv_set_pattern_ = rospy.Service("~set_pattern",
                                               ChangePattern,
@@ -193,7 +193,7 @@ class LEDEmitterNode(DTROS):
         # Perform the actual change
         self.changePattern('custom')
 
-        return SetCustomLEDResponse()
+        return SetCustomLEDPatternResponse()
 
 
     def cycleTimer_(self, event):

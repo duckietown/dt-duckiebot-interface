@@ -19,17 +19,15 @@ WORKDIR "${REPO_PATH}"
 # create repo directory
 RUN mkdir -p "${REPO_PATH}"
 
-# copy dependencies files only
-COPY ./dependencies-apt.txt "${REPO_PATH}/"
-COPY ./dependencies-py.txt "${REPO_PATH}/"
-
 # install apt dependencies
+COPY ./dependencies-apt.txt "${REPO_PATH}/"
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
     $(awk -F: '/^[^#]/ { print $1 }' dependencies-apt.txt | uniq) \
   && rm -rf /var/lib/apt/lists/*
 
 # install python dependencies
+COPY ./dependencies-py.txt "${REPO_PATH}/"
 RUN pip install -r ${REPO_PATH}/dependencies-py.txt
 
 # copy the source code
@@ -45,6 +43,20 @@ ENV LAUNCHFILE "${REPO_PATH}/launch.sh"
 
 # define command
 CMD ["bash", "-c", "${LAUNCHFILE}"]
+
+# store module name
+LABEL org.duckietown.label.module.type "${REPO_NAME}"
+ENV DT_MODULE_TYPE "${REPO_NAME}"
+
+# store module metadata
+ARG ARCH
+ARG MAJOR
+ARG BASE_TAG
+ARG BASE_IMAGE
+LABEL org.duckietown.label.architecture "${ARCH}"
+LABEL org.duckietown.label.code.location "${REPO_PATH}"
+LABEL org.duckietown.label.code.version.major "${MAJOR}"
+LABEL org.duckietown.label.base.image "${BASE_IMAGE}:${BASE_TAG}"
 # <== Do not change this code
 # <==================================================
 
