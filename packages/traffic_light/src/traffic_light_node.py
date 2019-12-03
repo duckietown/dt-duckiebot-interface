@@ -122,7 +122,7 @@ class TrafficLightNode(DTROS):
             Args:
                 unordered_list (:obj:`list`): List to be ordered.
             Returns:
-                ordered_list (:obj: `list`): Permutated list of length ~number_leds.
+                :obj: `list`: Permutated list of length ~number_leds.
         """
         ordering = [0, 4, 1, 3, 2]
         ordered_list = [unordered_list[i] for i in ordering[0:self.parameters["~number_leds"]]]
