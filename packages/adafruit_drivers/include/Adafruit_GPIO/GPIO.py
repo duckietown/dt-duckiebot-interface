@@ -87,7 +87,7 @@ class BaseGPIO(object):
         # manually.  This is not optimized, but subclasses can choose to implement
         # a more optimal batch output implementation.  See the MCP230xx class for
         # example of optimized implementation.
-        for pin, value in iter(pins.items()):
+        for pin, value in iter(list(pins.items())):
             self.output(pin, value)
 
     def setup_pins(self, pins):
@@ -95,7 +95,7 @@ class BaseGPIO(object):
         dict of pin name to pin type (IN or OUT).
         """
         # General implementation that can be optimized by derived classes.
-        for pin, value in iter(pins.items()):
+        for pin, value in iter(list(pins.items())):
             self.setup(pin, value)
 
     def input_pins(self, pins):

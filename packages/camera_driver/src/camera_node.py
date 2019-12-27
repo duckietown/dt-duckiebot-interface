@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import io
 import os
-import thread
+import _thread
 import yaml
 import rospy
 import copy
@@ -290,6 +290,6 @@ if __name__ == '__main__':
     # Initialize the node
     camera_node = CameraNode(node_name='camera')
     # Start the image capturing in a separate thread
-    thread.start_new_thread(camera_node.startCapturing, ())
+    _thread.start_new_thread(camera_node.startCapturing, ())
     # Keep it spinning to keep the node alive
     rospy.spin()

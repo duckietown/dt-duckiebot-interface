@@ -4,4 +4,4 @@ The wheels driver consists of a single class that handles the communication with
 .. autoclass:: wheels_driver.DaguWheelsDriver
 
 """
-from dagu_wheels_driver import DaguWheelsDriver
+from .dagu_wheels_driver import DaguWheelsDriver

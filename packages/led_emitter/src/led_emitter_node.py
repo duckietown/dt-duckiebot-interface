@@ -143,14 +143,14 @@ class LEDEmitterNode(DTROS):
                                               self.srvSetPattern)
 
         # Scale intensity of the LEDs
-        for name, c in self.parameters['~LED_protocol']['colors'].items():
+        for name, c in list(self.parameters['~LED_protocol']['colors'].items()):
             for i in range(3):
                 c[i] = c[i] * self.parameters['~LED_scale']
 
         # Remap colors if robot does not have an RGB ordering
         if self.parameters['~channel_order'][self.robot_type] is not "RGB":
             protocol = self.parameters['~LED_protocol']
-            for name, col in self.parameters['~LED_protocol']['colors'].items():
+            for name, col in list(self.parameters['~LED_protocol']['colors'].items()):
                 protocol['colors'][name] = self.remapColors(col)
 
             rospy.set_param("~LED_protocol", protocol)
