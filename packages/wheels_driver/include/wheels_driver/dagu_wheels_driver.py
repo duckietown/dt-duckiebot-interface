@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 from Adafruit_MotorHAT import Adafruit_MotorHAT
 from math import fabs, floor
 from time import sleep
@@ -111,47 +109,3 @@ class DaguWheelsDriver:
         self.leftMotor.run(Adafruit_MotorHAT.RELEASE)
         self.rightMotor.run(Adafruit_MotorHAT.RELEASE)
         del self.motorhat
-
-
-# Simple example to test motors
-if __name__ == '__main__':
-
-    N = 10
-    delay = 100. / 1000.
-
-    dagu = DAGU_Differential_Drive()
-
-    # turn left
-    dagu.setSteerAngle(1.0)
-    # accelerate forward
-    for i in range(N):
-        dagu.setSpeed((1.0 + i) / N)
-        sleep(delay)
-    # decelerate forward
-    for i in range(N):
-        dagu.setSpeed((-1.0 - i + N) / N)
-        sleep(delay)
-
-    # turn right
-    dagu.setSteerAngle(-1.0)
-    # accelerate backward
-    for i in range(N):
-        dagu.setSpeed(-(1.0 + i) / N)
-        sleep(delay)
-    # decelerate backward
-    for i in range(N):
-        dagu.setSpeed(-(-1.0 - i + N) / N)
-        sleep(delay)
-
-    # turn left
-    dagu.setSteerAngle(1.0)
-    # accelerate forward
-    for i in range(N):
-        dagu.setSpeed((1.0 + i) / N)
-        sleep(delay)
-    # decelerate forward
-    for i in range(N):
-        dagu.setSpeed((-1.0 - i + N) / N)
-        sleep(delay)
-
-    del dagu
