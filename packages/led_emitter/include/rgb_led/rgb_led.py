@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 from Adafruit_PWM_Servo_Driver import PWM
 
 
@@ -69,7 +67,7 @@ class RGB_LED():
             value as int8.
 
             Args:
-                led (:obj:`int`): Index of specific LED (from the table above)    
+                led (:obj:`int`): Index of specific LED (from the table above)
                 color (:obj:`list` of :obj:`float`): Brightness for the three RGB channels, in interval [0,1]
         """
 
