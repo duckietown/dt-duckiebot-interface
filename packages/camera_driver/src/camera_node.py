@@ -273,8 +273,8 @@ class CameraNode(DTROS):
             :obj:`CameraInfo`: a CameraInfo message object
 
         """
-        stream = file(filename, 'r')
-        calib_data = yaml.load(stream)
+        stream = open(filename, 'r')
+        calib_data = yaml.load(stream, Loader=yaml.FullLoader)
         cam_info = CameraInfo()
         cam_info.width = calib_data['image_width']
         cam_info.height = calib_data['image_height']
