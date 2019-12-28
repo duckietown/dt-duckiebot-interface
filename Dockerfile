@@ -19,7 +19,7 @@ ARG REPO_PATH="${CATKIN_WS_DIR}/src/${REPO_NAME}"
 RUN mkdir -p "${REPO_PATH}"
 WORKDIR "${REPO_PATH}"
 
-# install dependencies for ROS packages
+# build ROS packages
 COPY packages-ros.txt /tmp/packages-ros.txt
 RUN \
   set -ex; \
