@@ -15,7 +15,8 @@ dt_launchfile_init
 # TODO: this should not run roscore, have a separate container for it and use --wait here instead
 
 # launching app
-dt_exec roslaunch duckiebot_interface all_drivers.launch veh:=$VEHICLE_NAME robot_type:=$ROBOT_TYPE
+ROBOT_TYPE=$(cat /data/config/robot_type)
+dt_exec roslaunch --wait duckiebot_interface all_drivers.launch veh:=$VEHICLE_NAME robot_type:=$ROBOT_TYPE
 
 
 # ----------------------------------------------------------------------------
