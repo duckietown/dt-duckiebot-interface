@@ -24,9 +24,6 @@ class BatteryMonitor(DTROS):
         self.parameters['~device'] = None
         self.updateParameters()
 
-        # Battery status is printed to serial as, for example, "SOC(%):   82"
-        self.regex = re.compile(r"SOC\(%\):\s+(\d+)")
-
         self.pub = rospy.Publisher("~battery_monitor", BatteryState, queue_size=1)
 
         devices = filter(lambda x: x.startswith('ttyACM'), os.listdir('/dev'))
@@ -59,7 +56,7 @@ class BatteryMonitor(DTROS):
         line = self.ser.readline(16).replace(b'\x00', b' ')
         percent_remaining = self.interpret_line(line)
         if percent_remaining is None:
-            raise BatteryNotFound('Did not hear battery sending remaining percentage.')
+            raise BatteryNotFound('Did not hear battery sending remaining percentage. Got line: {}'.format(repr(line)))
 
         """
          - VO: mV
@@ -104,18 +101,16 @@ class BatteryMonitor(DTROS):
         msg.cell_voltage = [msg.voltage]
         self.pub.publish(msg)
 
-    def interpret_line(self, line):
+    @staticmethod
+    def interpret_line(line):
         """
-        Given a line of text, extract the number from it.
+        Given a line of text, extracts whatever number it can, and returns it as an integer.
 
-        Expects a format like this:
-            SOC(%):   82
         :param line: Line of text, perhaps with the number in it.
         :return: The percentage number, as an int, or None if unsuccessful
         """
         try:
-            result = self.regex.match(line)
-            number = result.group(1)
+            number = re.sub(r"[^0-9]", "", line)
             return int(number)
         # AttributeError if the regex does not match. ValueError if the string is not a valid number
         except (AttributeError, ValueError):
