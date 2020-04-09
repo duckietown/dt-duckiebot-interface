@@ -49,7 +49,7 @@ class TrafficLightNode(DTROS):
 
         # Create the color mask
         self.color_mask = [0]*5
-        self.color_mask[0:self.parameters["~number_leds"]-1] = [1]*self.parameters["~number_leds"]
+        self.color_mask[0:self.parameters["~number_leds"]] = [1]*self.parameters["~number_leds"]
 
         # Function mapping to LEDEmitterNode's `set_custom_pattern` service
         self.changePattern = rospy.ServiceProxy(rospy.get_namespace()+'led_emitter_node/set_custom_pattern',
@@ -109,7 +109,7 @@ class TrafficLightNode(DTROS):
 
             # Update the color mask
             self.color_mask = [0] * 5
-            self.color_mask[0:self.parameters["~number_leds"] - 1] = [1] * self.parameters["~number_leds"]
+            self.color_mask[0:self.parameters["~number_leds"]] = [1] * self.parameters["~number_leds"]
 
             # Update the cycle duration and restart the timer
             cycle_duration = self.parameters["~green_time"] + self.parameters["~all_red_time"]
@@ -125,7 +125,7 @@ class TrafficLightNode(DTROS):
                 :obj: `list`: Permutated list of length ~number_leds.
         """
         ordering = [0, 4, 1, 3, 2]
-        ordered_list = [unordered_list[i] for i in ordering[0:self.parameters["~number_leds"]]]
+        ordered_list = [unordered_list[i] for i in ordering]
         return ordered_list
 
 

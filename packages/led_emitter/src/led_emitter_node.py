@@ -120,13 +120,14 @@ class LEDEmitterNode(DTROS):
 
         # Initialize LEDs to be off
         self.pattern = [[0, 0, 0]]*5
+        self.frequency_mask = [0]*5
         self.current_pattern_name = 'LIGHT_OFF'
         self.changePattern(self.current_pattern_name)
 
         # Initialize the timer
         self.frequency = 1.0/self.parameters['~LED_protocol']['signals']['CAR_SIGNAL_A']['frequency']
         self.is_on = False
-        self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/(2.0)),
+        self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/2.0),
                                        self.cycleTimer_)
 
         # Publishers
@@ -227,7 +228,7 @@ class LEDEmitterNode(DTROS):
             # Oscillate
             if self.is_on:
                 for i in range(5):
-                    if self.frequency_mask[i] == True:
+                    if self.frequency_mask[i]:
                         self.led.setRGB(i, [0, 0, 0])
                 self.is_on = False
 

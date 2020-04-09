@@ -3,18 +3,12 @@ project(led_emitter)
 
 
 find_package(catkin REQUIRED COMPONENTS
-  duckietown_msgs
   rospy
-  message_generation
+  duckietown_msgs
+  std_msgs
 )
 
 catkin_python_setup()
-
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  duckietown_msgs
-)
 
 catkin_package()
 
