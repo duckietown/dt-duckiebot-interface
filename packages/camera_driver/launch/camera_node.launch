@@ -3,9 +3,10 @@
   <arg name="pkg_name" value="camera_driver"/>
   <arg name="node_name" default="camera_node"/>
   <arg name="param_file_name" default="duckiebot" doc="Specify a param file. ex:megaman"/>
+  <arg name="required" default="true" />
 
   <group ns="$(arg veh)">
-    <node name="camera_node" pkg="$(arg pkg_name)" type="camera_node.py" output="screen" required="true">
+    <node name="camera_node" pkg="$(arg pkg_name)" type="camera_node.py" output="screen" required="$(arg required)">
       <rosparam command="load" file="$(find camera_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
     </node>
   </group>

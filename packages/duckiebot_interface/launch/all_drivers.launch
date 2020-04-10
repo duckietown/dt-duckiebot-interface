@@ -3,11 +3,16 @@
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:default." />
     <arg name="robot_type" default="duckiebot" doc="The type of the robot: should be duckiebot, watchtower, or traffic_light"/>
+    <arg name="camera_required" value="true" unless="$(eval arg('robot_type') == 'traffic_light')"
+         doc="Do we kill everything if the camera doesn't work?"/>
+    <arg name="camera_required" value="false" if="$(eval arg('robot_type') == 'traffic_light')"
+         doc="Do we kill everything if the camera doesn't work?"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <include file="$(find camera_driver)/launch/camera_node.launch">
         <arg name="veh" value="$(arg veh)"/>
         <arg name="param_file_name" value="$(arg robot_type)"/>
+        <arg name="required" value="$(arg camera_required)"/>
     </include>
 
     <!-- LED Emitter: reads ROS messages and commands the LEDs -->
