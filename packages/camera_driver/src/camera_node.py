@@ -7,10 +7,12 @@ import rospy
 import copy
 import numpy as np
 
-from duckietown import DTROS
 from picamera import PiCamera
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
+
+from duckietown.dtros import DTROS, NodeType, TopicType
+
 
 class CameraNode(DTROS):
     """Handles the imagery.
@@ -50,24 +52,24 @@ class CameraNode(DTROS):
     """
 
     def __init__(self, node_name):
-
         # Initialize the DTROS parent class
-        super(CameraNode, self).__init__(node_name=node_name)
+        super(CameraNode, self).__init__(
+            node_name=node_name,
+            node_type=NodeType.DRIVER
+        )
 
         # Add the node parameters to the parameters dictionary and load their default values
-        self.parameters['~framerate'] = None
-        self.parameters['~res_w'] = None
-        self.parameters['~res_h'] = None
-        self.parameters['~exposure_mode'] = None
-        self.updateParameters()
+        self._framerate = rospy.get_param('~framerate')
+        self._res_w = rospy.get_param('~res_w')
+        self._res_h = rospy.get_param('~res_h')
+        self._exposure_mode = rospy.get_param('~exposure_mode')
 
         # Setup PiCamera
         self.image_msg = CompressedImage()
         self.camera = PiCamera()
-        self.camera.framerate = self.parameters['~framerate']
-        self.camera.resolution = (self.parameters['~res_w'], self.parameters['~res_h'])
-        self.camera.exposure_mode = self.parameters['~exposure_mode']
-
+        self.camera.framerate = self._framerate
+        self.camera.resolution = (self._res_w, self._res_h)
+        self.camera.exposure_mode = self._exposure_mode
 
         # For intrinsic calibration
         self.cali_file_folder = '/data/config/calibrations/camera_intrinsic/'
@@ -76,8 +78,7 @@ class CameraNode(DTROS):
 
         # Locate calibration yaml file or use the default otherwise
         if not os.path.isfile(self.cali_file):
-            self.log("Can't find calibration file: %s.\n Using default calibration instead."
-                          % self.cali_file, 'warn')
+            self.logwarn("Calibration not found: %s.\n Using default instead." % self.cali_file)
             self.cali_file = (self.cali_file_folder + "default.yaml")
 
         # Shutdown if no calibration file not found
@@ -93,15 +94,25 @@ class CameraNode(DTROS):
 
         # Setup publishers
         self.has_published = False
-        # self.pub_img = rospy.Publisher("~image/compressed", CompressedImage, queue_size=1)
-        # self.pub_camera_info = rospy.Publisher("~camera_info", CameraInfo, queue_size=1)
-        self.pub_img = self.publisher("~image/compressed", CompressedImage, queue_size=1)
-        self.pub_camera_info = self.publisher("~camera_info", CameraInfo, queue_size=1)
+        self.pub_img = rospy.Publisher(
+            "~image/compressed",
+            CompressedImage,
+            queue_size=1,
+            dt_topic_type=TopicType.DRIVER
+        )
+        self.pub_camera_info = rospy.Publisher(
+            "~camera_info",
+            CameraInfo,
+            queue_size=1,
+            dt_topic_type=TopicType.DRIVER
+        )
 
         # Setup service (for camera_calibration)
-        self.srv_set_camera_info = rospy.Service("~set_camera_info",
-                                                 SetCameraInfo,
-                                                 self.cbSrvSetCameraInfo)
+        self.srv_set_camera_info = rospy.Service(
+            "~set_camera_info",
+            SetCameraInfo,
+            self.cbSrvSetCameraInfo
+        )
         self.stream = io.BytesIO()
 
         self.log("Initialized.")
@@ -115,26 +126,17 @@ class CameraNode(DTROS):
             restart the image capturing.
         """
         self.log("Start capturing.")
-        while not self.is_shutdown and not rospy.is_shutdown():
+        while not self.is_shutdown:
             gen = self.grabAndPublish(self.stream)
             try:
-                self.camera.capture_sequence(gen,
-                                             'jpeg',
-                                             use_video_port=True,
-                                             splitter_port=0)
+                self.camera.capture_sequence(
+                    gen,
+                    'jpeg',
+                    use_video_port=True,
+                    splitter_port=0
+                )
             except StopIteration:
                 pass
-
-            # Update the camera parameters
-            self.camera.framerate = self.parameters['~framerate']
-            self.camera.resolution = (self.parameters['~res_w'], self.parameters['~res_h'])
-            self.camera.exposure_mode = self.parameters['~exposure_mode']
-
-            # Update the camera info parameters
-            self.updateCameraParameters()
-
-            self.parametersChanged = False
-            self.log("Parameters updated.")
 
         self.camera.close()
         self.log("Capture Ended.")
@@ -149,9 +151,8 @@ class CameraNode(DTROS):
 
             Args:
                 stream (:obj:`BytesIO`): imagery stream
-                publisher (:obj:`Publisher`): publisher of topic
         """
-        while not (self.parametersChanged or self.is_shutdown or rospy.is_shutdown()):
+        while not self.is_shutdown:
             yield stream
             # Construct image_msg
             # Grab image from stream
@@ -200,24 +201,34 @@ class CameraNode(DTROS):
         self.log("[saveCameraInfo] filename: %s" % (filename))
 
         # Converted from camera_info_manager.py
-        calib = {'image_width': camera_info_msg.width,
-                 'image_height': camera_info_msg.height,
-                 'camera_name': rospy.get_name().strip("/"),  # TODO check this
-                 'distortion_model': camera_info_msg.distortion_model,
-                 'distortion_coefficients': {'data': camera_info_msg.D,
-                                             'rows': 1,
-                                             'cols': 5},
-                 'camera_matrix': {'data': camera_info_msg.K,
-                                   'rows': 3,
-                                   'cols': 3},
-                 'rectification_matrix': {'data': camera_info_msg.R,
-                                          'rows': 3,
-                                          'cols': 3},
-                 'projection_matrix': {'data': camera_info_msg.P,
-                                       'rows': 3,
-                                       'cols': 4}}
+        calib = {
+            'image_width': camera_info_msg.width,
+            'image_height': camera_info_msg.height,
+            'camera_name': rospy.get_name().strip("/"),  # TODO check this
+            'distortion_model': camera_info_msg.distortion_model,
+            'distortion_coefficients': {
+                'data': camera_info_msg.D,
+                'rows': 1,
+                'cols': 5
+            },
+            'camera_matrix': {
+                'data': camera_info_msg.K,
+                'rows': 3,
+                'cols': 3
+            },
+            'rectification_matrix': {
+                'data': camera_info_msg.R,
+                'rows': 3,
+                'cols': 3
+            },
+            'projection_matrix': {
+                'data': camera_info_msg.P,
+                'rows': 3,
+                'cols': 4
+            }
+        }
 
-        self.log("[saveCameraInfo] calib %s" % (calib))
+        self.log("[saveCameraInfo] calib %s" % calib)
 
         try:
             f = open(filename, 'w')
@@ -236,8 +247,8 @@ class CameraNode(DTROS):
         TODO: Test that this really works.
         """
 
-        scale_width = float(self.parameters['~res_w']) / self.original_camera_info.width
-        scale_height = float(self.parameters['~res_h']) / self.original_camera_info.height
+        scale_width = float(self._res_w) / self.original_camera_info.width
+        scale_height = float(self._res_h) / self.original_camera_info.height
 
         scale_matrix = np.ones(9)
         scale_matrix[0] *= scale_width
@@ -246,8 +257,8 @@ class CameraNode(DTROS):
         scale_matrix[5] *= scale_height
 
         # Adjust the camera matrix resolution
-        self.current_camera_info.height = self.parameters['~res_h']
-        self.current_camera_info.width = self.parameters['~res_w']
+        self.current_camera_info.height = self._res_h
+        self.current_camera_info.width = self._res_w
 
         # Adjust the K matrix
         self.current_camera_info.K = np.array(self.original_camera_info.K) * scale_matrix
@@ -259,7 +270,6 @@ class CameraNode(DTROS):
         scale_matrix[5] *= scale_height
         scale_matrix[6] *= scale_height
         self.current_camera_info.P = np.array(self.original_camera_info.P) * scale_matrix
-
 
     def loadCameraInfo(self, filename):
         """Loads the camera calibration files.
