@@ -7,6 +7,7 @@ from rgb_led import RGB_LED
 from std_msgs.msg import Float32, Int8, String
 from duckietown_msgs.srv import SetCustomLEDPattern, ChangePattern
 from duckietown_msgs.srv import SetCustomLEDPatternResponse, ChangePatternResponse
+from led_emitter.msg import Light_Adjustment
 
 
 class LEDEmitterNode(DTROS):
@@ -119,15 +120,14 @@ class LEDEmitterNode(DTROS):
         self.scale = rospy.get_param("~LED_scale")
 
         # Initialize LEDs to be off
-        self.pattern = [[0, 0, 0]]*5
-        self.frequency_mask = [0]*5
+        self.pattern = [[0.0, 0.0, 0.0]]*5
         self.current_pattern_name = 'LIGHT_OFF'
         self.changePattern(self.current_pattern_name)
 
         # Initialize the timer
         self.frequency = 1.0/self.parameters['~LED_protocol']['signals']['CAR_SIGNAL_A']['frequency']
         self.is_on = False
-        self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/2.0),
+        self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/(2.0)),
                                        self.cycleTimer_)
 
         # Publishers
@@ -146,7 +146,7 @@ class LEDEmitterNode(DTROS):
         # Scale intensity of the LEDs
         for name, c in self.parameters['~LED_protocol']['colors'].items():
             for i in range(3):
-                c[i] = c[i] * self.parameters['~LED_scale']
+                c[i] = c[i] * self.parameters['~LED_scale'] 
 
         # Remap colors if robot does not have an RGB ordering
         if self.parameters['~channel_order'][self.robot_type] is not "RGB":
@@ -163,6 +163,23 @@ class LEDEmitterNode(DTROS):
         self.changePattern('WHITE')
 
         self.log("Initialized.")
+        
+        #Subscriber to light adjustment
+        self.sub = rospy.Subscriber("Light_Adjustment",Light_Adjustment, self.cbLEDscale,queue_size=1)
+    
+    def cbLEDscale(self,data):
+        # we only want to influence the light if we have a usual lightting condition
+        if self.current_pattern_name == "WHITE":
+            for i in range(5):
+                #Take LED power for white and yellow into account
+                colors = [0.5*(data.LEDscale_white+data.LEDscale_yellow),0.5*(data.LEDscale_white+data.LEDscale_yellow),data.LEDscale_white]
+                self.log(colors)
+                self.led.setRGB(i, colors)
+        
+        else:
+            self.log("pattern name isn't white and so isn't influenced by the lighting conditions")
+        
+        
 
     def srvSetCustomLEDPattern(self, req):
         """Service to set a custom pattern.
@@ -228,7 +245,7 @@ class LEDEmitterNode(DTROS):
             # Oscillate
             if self.is_on:
                 for i in range(5):
-                    if self.frequency_mask[i]:
+                    if self.frequency_mask[i] == True:
                         self.led.setRGB(i, [0, 0, 0])
                 self.is_on = False
 
