@@ -2,13 +2,11 @@
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:default." />
-    <arg name="robot_type" default="duckiebot"
+    <arg name="robot_type"
          doc="The type of the robot, e.g., duckiebot, watchtower, traffic_light, ..."/>
-    <arg name="robot_configuration" default="__NOTSET__"
+    <arg name="robot_configuration"
          doc="The configuration of the robot. For example DB19, DB20, ..."/>
-    <arg name="camera_required" value="true" unless="$(eval arg('robot_type') == 'traffic_light')"
-         doc="Do we kill everything if the camera doesn't work?"/>
-    <arg name="camera_required" value="false" if="$(eval arg('robot_type') == 'traffic_light')"
+    <arg name="camera_required" value="$(eval arg('robot_type') != 'traffic_light')"
          doc="Do we kill everything if the camera doesn't work?"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
@@ -48,8 +46,8 @@
         </include>
     </group>
 
-    <!-- Wheel Encoders (DB20 robot only): reads data from wheel encoders -->
-    <group if="$(eval arg('robot_configuration') == 'DB20')">
+    <!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
+    <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')">
         <!-- Left Wheel Encoder  -->
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
             <arg name="veh" value="$(arg veh)"/>
