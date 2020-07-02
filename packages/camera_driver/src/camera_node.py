@@ -2,12 +2,12 @@
 
 import io
 import os
-import thread
 import yaml
-import rospy
 import copy
 import numpy as np
+from threading import Thread
 
+import rospy
 from picamera import PiCamera
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
@@ -22,10 +22,12 @@ class CameraNode(DTROS):
     according to the required frequency and stops it at shutdown.
     `Picamera <https://picamera.readthedocs.io/>`_ is used for handling the image stream.
 
-    Note that only one :obj:`PiCamera` object should be used at a time. If another node tries to start
-    an instance while this node is running, it will likely fail with an `Out of resource` exception.
+    Note that only one :obj:`PiCamera` object should be used at a time.
+    If another node tries to start an instance while this node is running,
+    it will likely fail with an `Out of resource` exception.
 
-    The configuration parameters can be changed dynamically while the node is running via `rosparam set` commands.
+    The configuration parameters can be changed dynamically while the node is running via
+    `rosparam set` commands.
 
     Args:
         node_name (:obj:`str`): a unique, descriptive name for the node that ROS will use
@@ -41,7 +43,8 @@ class CameraNode(DTROS):
 
     Service:
         ~set_camera_info:
-            Saves a provided camera info to `/data/config/calibrations/camera_intrinsic/HOSTNAME.yaml`.
+            Saves a provided camera info
+            to `/data/config/calibrations/camera_intrinsic/HOSTNAME.yaml`.
 
             input:
                 camera_info (`CameraInfo`): The camera information to save
@@ -87,10 +90,10 @@ class CameraNode(DTROS):
             rospy.signal_shutdown("Found no calibration file ... aborting")
 
         # Load the calibration file
-        self.original_camera_info = self.loadCameraInfo(self.cali_file)
+        self.original_camera_info = self.load_camera_info(self.cali_file)
         self.original_camera_info.header.frame_id = self.frame_id
         self.current_camera_info = copy.deepcopy(self.original_camera_info)
-        self.updateCameraParameters()
+        self.update_camera_params()
         self.log("Using calibration file: %s" % self.cali_file)
 
         # Setup publishers
@@ -112,23 +115,23 @@ class CameraNode(DTROS):
         self.srv_set_camera_info = rospy.Service(
             "~set_camera_info",
             SetCameraInfo,
-            self.cbSrvSetCameraInfo
+            self.srv_set_camera_info_cb
         )
         self.stream = io.BytesIO()
 
         self.log("Initialized.")
 
-    def startCapturing(self):
+    def start_capturing(self):
         """Initialize and closes image stream.
 
             Begin the camera capturing. When the node shutdowns, closes the
-            image stream. If it detects StopIteration exception from the `grabAndPublish`
+            image stream. If it detects StopIteration exception from the `grab_and_publish`
             generator due to parameter change, will update the parameters and
             restart the image capturing.
         """
         self.log("Start capturing.")
         while not self.is_shutdown:
-            gen = self.grabAndPublish(self.stream)
+            gen = self.grab_and_publish(self.stream)
             try:
                 self.camera.capture_sequence(
                     gen,
@@ -142,13 +145,14 @@ class CameraNode(DTROS):
         self.camera.close()
         self.log("Capture Ended.")
 
-    def grabAndPublish(self, stream):
+    def grab_and_publish(self, stream):
         """Captures a frame from stream and publishes it.
 
             If the stream is stable (no parameter updates or shutdowns),
-            grabs a frame, creates the image message and publishes it. If there is a paramter change,
-            it does raises StopIteration exception which is caught by `startCapturing`. It updates the
-            camera parameters and restarts the recording.
+            grabs a frame, creates the image message and publishes it.
+            If there is a paramter change, it does raises StopIteration exception
+            which is caught by `start_capturing`.
+            It updates the camera parameters and restarts the recording.
 
             Args:
                 stream (:obj:`BytesIO`): imagery stream
@@ -183,15 +187,15 @@ class CameraNode(DTROS):
 
             rospy.sleep(rospy.Duration.from_sec(0.001))
 
-    def cbSrvSetCameraInfo(self, req):
-        self.log("[cbSrvSetCameraInfo] Callback!")
+    def srv_set_camera_info_cb(self, req):
+        self.log("[srv_set_camera_info_cb] Callback!")
         filename = self.cali_file_folder + rospy.get_namespace().strip("/") + ".yaml"
         response = SetCameraInfoResponse()
-        response.success = self.saveCameraInfo(req.camera_info, filename)
+        response.success = self.save_camera_info(req.camera_info, filename)
         response.status_message = "Write to %s" % filename
         return response
 
-    def saveCameraInfo(self, camera_info_msg, filename):
+    def save_camera_info(self, camera_info_msg, filename):
         """Saves intrinsic calibration to file.
 
             Args:
@@ -199,7 +203,7 @@ class CameraNode(DTROS):
                 filename (:obj:`str`): filename where to save calibration
         """
         # Convert camera_info_msg and save to a yaml file
-        self.log("[saveCameraInfo] filename: %s" % (filename))
+        self.log("[save_camera_info] filename: %s" % filename)
 
         # Converted from camera_info_manager.py
         calib = {
@@ -229,7 +233,7 @@ class CameraNode(DTROS):
             }
         }
 
-        self.log("[saveCameraInfo] calib %s" % calib)
+        self.log("[save_camera_info] calib %s" % calib)
 
         try:
             f = open(filename, 'w')
@@ -238,11 +242,12 @@ class CameraNode(DTROS):
         except IOError:
             return False
 
-    def updateCameraParameters(self):
+    def update_camera_params(self):
         """ Update the camera parameters based on the current resolution.
 
-        The camera matrix, rectification matrix, and projection matrix depend on the resolution
-        of the image. As the calibration has been done at a specific resolution, these matrices need
+        The camera matrix, rectification matrix, and projection matrix depend on
+        the resolution of the image.
+        As the calibration has been done at a specific resolution, these matrices need
         to be adjusted if a different resolution is being used.
 
         TODO: Test that this really works.
@@ -272,7 +277,8 @@ class CameraNode(DTROS):
         scale_matrix[6] *= scale_height
         self.current_camera_info.P = np.array(self.original_camera_info.P) * scale_matrix
 
-    def loadCameraInfo(self, filename):
+    @staticmethod
+    def load_camera_info(filename):
         """Loads the camera calibration files.
 
         Loads the intrinsic and extrinsic camera matrices.
@@ -301,6 +307,7 @@ if __name__ == '__main__':
     # Initialize the node
     camera_node = CameraNode(node_name='camera')
     # Start the image capturing in a separate thread
-    thread.start_new_thread(camera_node.startCapturing, ())
+    frame_thread = Thread(target=camera_node.start_capturing)
+    frame_thread.start()
     # Keep it spinning to keep the node alive
     rospy.spin()
