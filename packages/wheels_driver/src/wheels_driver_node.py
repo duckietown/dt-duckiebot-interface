@@ -3,7 +3,7 @@ import rospy
 from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
-from led_emitter.msg import Light_Adjustment
+from std_msgs.msg import Float32
 
 
 class WheelsDriverNode(DTROS):
@@ -54,11 +54,11 @@ class WheelsDriverNode(DTROS):
         
         #subscriber to Lightadjustment
         self.motorscale = 1
-        self.sub_light = self.subscriber ("Light_Adjustment",Light_Adjustment, self.cbmotorscale,queue_size=1)
+        self.sub_light = self.subscriber ("~motorscale",Float32, self.cbmotorscale,queue_size=1)
 
         
     def cbmotorscale(self, data):
-        self.motorscale = data.motorscale
+        self.motorscale = data
         
         
         

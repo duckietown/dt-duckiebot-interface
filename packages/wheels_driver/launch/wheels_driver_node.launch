@@ -4,6 +4,7 @@
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman." />
 
     <node ns="$(arg veh)"  pkg="wheels_driver" type="$(arg node_name).py" name="$(arg node_name)" output="screen" required="true">
+        <remap from="/$(arg veh)/wheels_driver_node/motorscale" to= "/$(arg veh)/dt_duckiebot_led_controller_node/motorscale" />
     </node>
 
 </launch>

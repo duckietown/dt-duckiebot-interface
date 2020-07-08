@@ -109,7 +109,7 @@ class TrafficLightNode(DTROS):
 
             # Update the color mask
             self.color_mask = [0] * 5
-            self.color_mask[0:self.parameters["~number_leds"] - 1] = [1] * self.parameters["~number_leds"]
+            self.color_mask[0:self.parameters["~number_leds"]] = [1] * self.parameters["~number_leds"]
 
             # Update the cycle duration and restart the timer
             cycle_duration = self.parameters["~green_time"] + self.parameters["~all_red_time"]

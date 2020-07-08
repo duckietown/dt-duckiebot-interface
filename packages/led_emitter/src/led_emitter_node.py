@@ -165,7 +165,7 @@ class LEDEmitterNode(DTROS):
         self.log("Initialized.")
         
         #Subscriber to light adjustment
-        self.sub = rospy.Subscriber("Light_Adjustment",Light_Adjustment, self.cbLEDscale,queue_size=1)
+        self.sub = rospy.Subscriber("~light_adjustment",Light_Adjustment, self.cbLEDscale,queue_size=1)
     
     def cbLEDscale(self,data):
         # we only want to influence the light if we have a usual lightting condition
