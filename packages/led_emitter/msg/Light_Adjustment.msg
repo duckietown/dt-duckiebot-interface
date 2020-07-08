@@ -1,5 +1,5 @@
 Header header
 
-float32 LEDscale_white
-float32 LEDscale_yellow
-float32 motorscale
+float32 Red
+float32 Green
+float32 Blue

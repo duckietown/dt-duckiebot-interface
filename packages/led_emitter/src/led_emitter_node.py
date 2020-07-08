@@ -165,21 +165,15 @@ class LEDEmitterNode(DTROS):
 
         self.log("Initialized.")
         
-        #Subscriber to light adjustment
+        #Subscriber for custom color of the Duckiebot: for exemple used by the duckiebot-lighting-system
         self.sub = rospy.Subscriber("~light_adjustment",Light_Adjustment, self.cbLEDscale,queue_size=1)
     
     def cbLEDscale(self,data):
-        # we only want to influence the light if we have a usual lightting condition
-        if self.current_pattern_name == "WHITE":
-            for i in range(5):
-                #Take LED power for white and yellow into account
-                colors = [0.5*(data.LEDscale_white+data.LEDscale_yellow),0.5*(data.LEDscale_white+data.LEDscale_yellow),data.LEDscale_white]
-                self.log(colors)
-                self.led.setRGB(i, colors)
-        
-        else:
-            self.log("pattern name isn't white and so isn't influenced by the lighting conditions")
-        
+        for i in range(5):
+            #Take LED power for white and yellow into account
+            colors = [data.Red,data.Green,data.Blue]
+            self.log(colors)
+            self.led.setRGB(i, colors)
         
 
     def srvSetCustomLEDPattern(self, req):
