@@ -85,7 +85,7 @@ LED_protocol:
       frequency_mask: []
       frequency:  0
 
-LED_scale: 0.3
+LED_scale: 0.8
 channel_order:
   duckiebot: "RGB"
   traffic_light: "GRB"
