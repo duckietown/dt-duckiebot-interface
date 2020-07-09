@@ -3,8 +3,8 @@ project(led_emitter)
 
 
 find_package(catkin REQUIRED COMPONENTS
-  duckietown_msgs
   rospy
+  duckietown_msgs
   std_msgs
 )
 
