@@ -5,10 +5,8 @@ from duckietown import DTROS
 
 from rgb_led import RGB_LED
 from std_msgs.msg import Float32, Int8, String
-from duckietown_msgs.srv import SetCustomLEDPattern, ChangePattern
-from duckietown_msgs.srv import SetCustomLEDPatternResponse, ChangePatternResponse
-from led_emitter.msg import Light_Adjustment
-from led_emitter.srv import SetCustomLEDColor, SetCustomLEDColorResponse
+from duckietown_msgs.srv import SetCustomLEDPattern, ChangePattern, SetCustomLEDColor
+from duckietown_msgs.srv import SetCustomLEDPatternResponse, ChangePatternResponse, SetCustomLEDColorResponse
 
 
 class LEDEmitterNode(DTROS):
@@ -150,6 +148,7 @@ class LEDEmitterNode(DTROS):
                                               ChangePattern,
                                               self.srvSetPattern)
         self.srv_set_custom_LED_Color = rospy.Service("~set_custom_led_color",SetCustomLEDColor,self.srvSetCustomLEDColor)
+        
         # Scale intensity of the LEDs
         for name, c in self.parameters['~LED_protocol']['colors'].items():
             for i in range(3):
