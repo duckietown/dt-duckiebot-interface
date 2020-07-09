@@ -11,12 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_python_setup()
 
-## Generate messages in the 'msg' folder
-add_message_files(
-  FILES
-  Light_Adjustment.msg
-)
-
 ## Generate services in the 'srv' folder
 add_service_files(
   FILES

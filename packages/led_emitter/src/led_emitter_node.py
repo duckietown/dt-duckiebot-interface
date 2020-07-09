@@ -7,7 +7,6 @@ from rgb_led import RGB_LED
 from std_msgs.msg import Float32, Int8, String
 from duckietown_msgs.srv import SetCustomLEDPattern, ChangePattern
 from duckietown_msgs.srv import SetCustomLEDPatternResponse, ChangePatternResponse
-from led_emitter.msg import Light_Adjustment
 from led_emitter.srv import SetCustomLEDColor, SetCustomLEDColorResponse
 
 
@@ -170,16 +169,6 @@ class LEDEmitterNode(DTROS):
         self.changePattern('WHITE')
 
         self.log("Initialized.")
-        
-        #Subscriber for custom color of the Duckiebot: for exemple used by the duckiebot-lighting-system
-        self.sub = rospy.Subscriber("~light_adjustment",Light_Adjustment, self.cbLEDscale,queue_size=1)
-    
-    def cbLEDscale(self,data):
-        for i in range(5):
-            #Take LED power for white and yellow into account
-            colors = [data.Red,data.Green,data.Blue]
-            self.log(colors)
-            self.led.setRGB(i, colors)
     
     def srvSetCustomLEDColor(self,req):
         """Service to set custom RGB values for each LED.
