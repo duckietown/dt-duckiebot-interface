@@ -17,6 +17,13 @@ add_message_files(
   Light_Adjustment.msg
 )
 
+## Generate services in the 'srv' folder
+add_service_files(
+  FILES
+  SetCustomLEDColor.srv
+)
+
+
 generate_messages(
   DEPENDENCIES
   std_msgs
