@@ -9,7 +9,7 @@
 			<rosparam command="load" file="$(find led_emitter)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
 			<param name="robot_type" value="$(arg robot_type)"/>
 			<remap from="/$(arg veh)/$(arg node_name)/light_adjustment" to="/$(arg veh)/dt_duckiebot_led_controller_node/light_adjustment"/>
-			<remap from="/$(arg veh)/$(arg node_name)/set_custom_led_color" to="/$(arg veh)/dt_duckiebot_led_controller_node/set_custom_led_color"/>
+			<remap from="/$(arg veh)/$(arg node_name)/set_custom_led_colors" to="/$(arg veh)/dt_duckiebot_led_controller_node/set_custom_led_colors"/>
 		</node>
 	</group>
 
