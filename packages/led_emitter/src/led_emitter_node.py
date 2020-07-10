@@ -175,17 +175,17 @@ class LEDEmitterNode(DTROS):
         
     
     def srvSetCustomLEDColors(self,req):
-        """Service to set custom RGB values for each LED.
-
+         """Service to set custom RGB values for each LED.
             Sets the RGB values and intensity of each LED seperatly. The :obj:`SetCustomLEDColors` message from
             :obj:`duckietown_msgs` is used for that.
-
             Args:
                 LED_colors (SetCustomLEDColors): the requested colors
-
         """
+
+        #Data needs to be normalized: division of intensity and LED power of RGB color by 255.0
         for i in range (5):
-            self.led.setRGB(i,[req.leds[i].colors.red/255.0, req.leds[i].colors.green/255.0, req.leds[i].colors.blue/255.0]*req.leds[i].colors.intensity/255.0
+            normalization = req.leds.colors[i].intensity/255.0/255.0
+            self.led.setRGB(i,[req.leds.colors[i].red*normalization, req.leds.colors[i].green*normalization, req.leds.colors[i].blue*normalization])
         return SetCustomLEDColorsResponse()
 
 
