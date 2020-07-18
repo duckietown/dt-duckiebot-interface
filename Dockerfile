@@ -5,7 +5,8 @@ ARG MAINTAINER="Andrea F. Daniele (afdaniele@ttic.edu)"
 # ==================================================>
 # ==> Do not change the code below this line
 ARG ARCH=arm32v7
-ARG DISTRO=daffy
+#TODO: fix this "daffy-new-deal" -> "daffy"
+ARG DISTRO=daffy-new-deal
 ARG BASE_TAG=${DISTRO}-${ARCH}
 ARG BASE_IMAGE=dt-ros-commons
 ARG LAUNCHER=default
