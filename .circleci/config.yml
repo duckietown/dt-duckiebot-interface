@@ -1,0 +1,65 @@
+version: 2.1
+jobs:
+  build:
+    machine: true
+#      image: circleci/buildpack-deps:latest-dind
+#      docker_layer_caching: true
+#    working_directory: /home/circleci/repo
+    steps:
+#      - setup_remote_docker
+#      - run:
+#          name: Install Docker
+#          command: |
+#            curl -fsSL https://get.docker.com -o get-docker.sh
+#            sh get-docker.sh
+#            rm get-docker.sh
+
+      # fix for local builds https://github.com/CircleCI-Public/circleci-cli/issues/330
+      - run:
+          name: Local build handling
+          command: |
+            if [[ ${CIRCLE_SHELL_ENV} =~ "localbuild" ]]; then
+              if [ -d /workdir ]; then
+                ln -s /workdir /tmp/_circleci_local_build_repo
+              else
+                echo "Run this local build using: circleci build -v \$(pwd):/workdir"
+                exit 1
+              fi
+            fi
+
+      - checkout
+
+      - run:
+          name: Install Python 3.7
+          command: |
+            sudo apt-get install build-essential checkinstall
+            sudo apt-get install libreadline-gplv2-dev libncursesw5-dev libssl-dev \
+                libsqlite3-dev tk-dev libgdbm-dev libc6-dev libbz2-dev libffi-dev zlib1g-dev
+            sudo wget https://www.python.org/ftp/python/3.7.8/Python-3.7.8.tgz
+            sudo tar xzf Python-3.7.8.tgz
+            cd Python-3.7.8
+            sudo ./configure --enable-optimizations
+            sudo make altinstall
+
+      - run:
+          name: Install dts
+          command: |
+            python3.7 -m pip install --no-cache-dir --user -U duckietown-shell
+            export PATH="$PATH:$HOME/.local/bin"
+            dts --set-version daffy-new-deal exit
+#            cd /home/circleci/repo
+
+
+      - run:
+          name: Build the docs
+          command: |
+            export PATH="$PATH:$HOME/.local/bin"
+            dts devel build -f --docs
+
+      - store_artifacts:
+          path: html
+          destination: html
+
+      - store_artifacts:
+          path: rst
+          destination: rst
