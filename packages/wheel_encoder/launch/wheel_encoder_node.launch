@@ -1,0 +1,14 @@
+<launch>
+    <arg name="veh" doc="Name of vehicle. ex: megaman"/>
+    <arg name="wheel" doc="Unique name of the wheel (e.g., left)"/>
+    <arg name="node_name" default="wheel_encoder_node"/>
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman." />
+
+    <group ns="$(arg veh)">
+        <node pkg="wheel_encoder" type="$(arg node_name).py"
+              name="$(arg wheel)_$(arg node_name)" output="screen" required="true">
+            <rosparam command="load" file="$(find wheel_encoder)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+            <param name="name" type="str" value="$(arg wheel)"/>
+        </node>
+    </group>
+</launch>

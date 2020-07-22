@@ -1,12 +1,13 @@
 #!/usr/bin/env python
+
 import rospy
 
-from duckietown import DTROS
-
 from rgb_led import RGB_LED
-from std_msgs.msg import Float32, Int8, String
+from std_msgs.msg import String
 from duckietown_msgs.srv import SetCustomLEDPattern, ChangePattern
 from duckietown_msgs.srv import SetCustomLEDPatternResponse, ChangePatternResponse
+
+from duckietown.dtros import DTROS, TopicType, NodeType
 
 
 class LEDEmitterNode(DTROS):
@@ -98,66 +99,71 @@ class LEDEmitterNode(DTROS):
     """
 
     def __init__(self, node_name):
-
         # Initialize the DTROS parent class
-        super(LEDEmitterNode, self).__init__(node_name=node_name)
+        super(LEDEmitterNode, self).__init__(
+            node_name=node_name,
+            node_type=NodeType.DRIVER
+        )
 
         self.led = RGB_LED()
 
         self.robot_type = rospy.get_param("~robot_type")
 
         # Add the node parameters to the parameters dictionary and load their default values
-        self.parameters['~LED_protocol'] = None
-        self.parameters['~LED_scale'] = None
-        self.parameters['~channel_order'] = None
-        self.updateParameters()
-
-        # Import protocol
-        self.protocol = rospy.get_param("~LED_protocol")
-
-        # Import parameters
-        self.scale = rospy.get_param("~LED_scale")
+        self._LED_protocol = rospy.get_param('~LED_protocol')
+        self._LED_scale = rospy.get_param('~LED_scale')
+        self._channel_order = rospy.get_param('~channel_order')
 
         # Initialize LEDs to be off
-        self.pattern = [[0, 0, 0]]*5
-        self.frequency_mask = [0]*5
+        self.pattern = [[0, 0, 0]] * 5
+        self.frequency_mask = [0] * 5
         self.current_pattern_name = 'LIGHT_OFF'
         self.changePattern(self.current_pattern_name)
 
         # Initialize the timer
-        self.frequency = 1.0/self.parameters['~LED_protocol']['signals']['CAR_SIGNAL_A']['frequency']
+        self.frequency = 1.0/self._LED_protocol['signals']['CAR_SIGNAL_A']['frequency']
         self.is_on = False
-        self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(self.frequency/2.0),
-                                       self.cycleTimer_)
+        self.cycle_timer = rospy.Timer(
+            rospy.Duration.from_sec(self.frequency/2.0),
+            self._cycle_timer
+        )
 
         # Publishers
-        self.pub_state = self.publisher("~current_led_state",
-                                        String,
-                                        queue_size=1)
+        self.pub_state = rospy.Publisher(
+            "~current_led_state",
+            String,
+            queue_size=1,
+            dt_topic_type=TopicType.DRIVER
+        )
 
         # Services
-        self.srv_set_LED_ = rospy.Service("~set_custom_pattern",
-                                          SetCustomLEDPattern,
-                                          self.srvSetCustomLEDPattern)
-        self.srv_set_pattern_ = rospy.Service("~set_pattern",
-                                              ChangePattern,
-                                              self.srvSetPattern)
+        self.srv_set_LED_ = rospy.Service(
+            "~set_custom_pattern",
+            SetCustomLEDPattern,
+            self.srvSetCustomLEDPattern
+        )
+        self.srv_set_pattern_ = rospy.Service(
+            "~set_pattern",
+            ChangePattern,
+            self.srvSetPattern
+        )
 
         # Scale intensity of the LEDs
-        for name, c in self.parameters['~LED_protocol']['colors'].items():
+        for name, c in self._LED_protocol['colors'].items():
             for i in range(3):
-                c[i] = c[i] * self.parameters['~LED_scale']
+                c[i] = c[i] * self._LED_scale
 
         # Remap colors if robot does not have an RGB ordering
-        if self.parameters['~channel_order'][self.robot_type] is not "RGB":
-            protocol = self.parameters['~LED_protocol']
-            for name, col in self.parameters['~LED_protocol']['colors'].items():
+        if self._channel_order[self.robot_type] is not "RGB":
+            protocol = self._LED_protocol
+            for name, col in self._LED_protocol['colors'].items():
                 protocol['colors'][name] = self.remapColors(col)
 
+            # update LED_protocol
+            self._LED_protocol = protocol
             rospy.set_param("~LED_protocol", protocol)
-            self.updateParameters()
-            self.log("Colors remapped to " +
-                     str(self.parameters['~channel_order'][self.robot_type]))
+
+            self.log("Colors remapped to " + str(self._channel_order[self.robot_type]))
 
         # Turn on the LEDs
         self.changePattern('WHITE')
@@ -171,33 +177,35 @@ class LEDEmitterNode(DTROS):
             :obj:`duckietown_msgs` is used for that.
 
             Args:
-                LED_pattern (LEDPattern): the requested pattern
+                req (SetCustomLEDPatternRequest): the requested pattern
 
         """
-
         # Update the protocol
-        protocol = self.parameters['~LED_protocol']
-        protocol['signals']['custom'] = {'color_mask': req.pattern.color_mask,
-                                         'color_list': req.pattern.color_list,
-                                         'frequency_mask': req.pattern.frequency_mask,
-                                         'frequency': req.pattern.frequency}
-        # Set it through rosparam because otherwise the background parameter checker will overwrite it
+        protocol = self._LED_protocol
+        protocol['signals']['custom'] = {
+            'color_mask': req.pattern.color_mask,
+            'color_list': req.pattern.color_list,
+            'frequency_mask': req.pattern.frequency_mask,
+            'frequency': req.pattern.frequency
+        }
+        # update LED_protocol
+        self._LED_protocol = protocol
         rospy.set_param("~LED_protocol", protocol)
-        self.updateParameters(verbose=False)
 
-        self.log("Custom pattern updated: color_mask: %s, color_list: %s, frequency_mask: %s, frequency: %s" %
-                 (str(self.parameters['~LED_protocol']['signals']['custom']['color_mask']),
-                  str(self.parameters['~LED_protocol']['signals']['custom']['color_list']),
-                  str(self.parameters['~LED_protocol']['signals']['custom']['frequency_mask']),
-                  str(self.parameters['~LED_protocol']['signals']['custom']['frequency'])))
+        self.log(
+            "Custom pattern updated: "
+            "color_mask: %s, " % str(self._LED_protocol['signals']['custom']['color_mask']) +
+            "color_list: %s, " % str(self._LED_protocol['signals']['custom']['color_list']) +
+            "frequency_mask: %s, " % str(self._LED_protocol['signals']['custom']['frequency_mask'])
+            + "frequency: %s" % str(self._LED_protocol['signals']['custom']['frequency'])
+        )
 
         # Perform the actual change
         self.changePattern('custom')
-
+        # ---
         return SetCustomLEDPatternResponse()
 
-
-    def cycleTimer_(self, event):
+    def _cycle_timer(self, event):
         """Timer.
 
             Calls updateLEDs according to the frequency of the current pattern.
@@ -214,7 +222,6 @@ class LEDEmitterNode(DTROS):
             the color specified in self.color_list. If a nonzero frequency is set,
             toggles on/off the LEDs specified on self.frequency_mask.
         """
-
         # Do nothing if inactive
         if not self.switch:
             return
@@ -266,19 +273,19 @@ class LEDEmitterNode(DTROS):
             # we might have updated its definition
             if self.current_pattern_name == pattern_name and pattern_name != 'custom':
                 return
-            elif pattern_name.strip("'").strip('"') in self.parameters['~LED_protocol']['signals']:
+            elif pattern_name.strip("'").strip('"') in self._LED_protocol['signals']:
                 self.current_pattern_name = pattern_name
             else:
                 self.log("Pattern name %s not found in the list of patterns. Change of "
                          "pattern not executed." % pattern_name, type='err')
-                self.log(self.parameters['~LED_protocol']['signals'], type='err')
+                self.log(self._LED_protocol['signals'], type='err')
                 return
 
             # Extract the color from the protocol config file
-            color_list = self.parameters['~LED_protocol']['signals'][pattern_name]['color_list']
+            color_list = self._LED_protocol['signals'][pattern_name]['color_list']
 
             if type(color_list) is str:
-                self.pattern = [self.parameters['~LED_protocol']['colors'][color_list]]*5
+                self.pattern = [self._LED_protocol['colors'][color_list]]*5
             else:
                 if len(color_list) != 5:
                     self.log("The color list should be a string or a list of length 5. Change of "
@@ -287,11 +294,11 @@ class LEDEmitterNode(DTROS):
 
                 self.pattern = [[0, 0, 0]]*5
                 for i in range(len(color_list)):
-                    self.pattern[i] = self.parameters['~LED_protocol']['colors'][color_list[i]]
+                    self.pattern[i] = self._LED_protocol['colors'][color_list[i]]
 
             # Extract the frequency from the protocol
-            self.frequency_mask = self.parameters['~LED_protocol']['signals'][pattern_name]['frequency_mask']
-            self.frequency = self.parameters['~LED_protocol']['signals'][pattern_name]['frequency']
+            self.frequency_mask = self._LED_protocol['signals'][pattern_name]['frequency_mask']
+            self.frequency = self._LED_protocol['signals'][pattern_name]['frequency']
 
             # If static behavior, updated LEDs
             if self.frequency == 0:
@@ -321,7 +328,7 @@ class LEDEmitterNode(DTROS):
                 self.cycle_timer.shutdown()
                 # below, convert to hz
                 d = 1.0/(2.0*self.frequency)
-                self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(d), self.cycleTimer_)
+                self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(d), self._cycle_timer)
 
             except ValueError as e:
                 self.frequency = None
@@ -342,7 +349,7 @@ class LEDEmitterNode(DTROS):
 
         # Verify that the requested reordering is valid
         allowed_orderings = ['RGB', 'RBG', 'GBR', 'GRB', 'BGR', 'BRG']
-        requested_ordering = self.parameters['~channel_order'][self.robot_type]
+        requested_ordering = self._channel_order[self.robot_type]
         if requested_ordering not in allowed_orderings:
             self.log("The current channel order %s is not supported, use one of %s. "
                      "The remapping was not performed." % \
@@ -356,16 +363,13 @@ class LEDEmitterNode(DTROS):
 
         return reordered_triplet
 
-
-    def onShutdown(self):
+    def on_shutdown(self):
         """Shutdown procedure.
 
-        At shutdown, changes the LED pattern to `LIGHT_OFF`."""
-
+        At shutdown, changes the LED pattern to `LIGHT_OFF`.
+        """
         # Turn off the lights when the node dies
         self.changePattern('LIGHT_OFF')
-
-        super(LEDEmitterNode, self).onShutdown()
 
 
 if __name__ == '__main__':

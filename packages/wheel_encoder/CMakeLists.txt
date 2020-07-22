@@ -1,10 +1,9 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(wheels_driver)
+project(wheel_encoder)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy
-  adafruit_drivers
-  duckietown_msgs # Every duckietown packages should use this.
+  duckietown_msgs
 )
 
 catkin_package()
