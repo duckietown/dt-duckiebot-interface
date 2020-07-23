@@ -59,14 +59,29 @@ class CameraNode(DTROS):
         # Initialize the DTROS parent class
         super(CameraNode, self).__init__(
             node_name=node_name,
-            node_type=NodeType.DRIVER
+            node_type=NodeType.DRIVER,
+            help="Reads a stream of images from a Pi Camera and publishes the frames over ROS"
         )
 
         # Add the node parameters to the parameters dictionary and load their default values
-        self._framerate = rospy.get_param('~framerate')
-        self._res_w = rospy.get_param('~res_w')
-        self._res_h = rospy.get_param('~res_h')
-        self._exposure_mode = rospy.get_param('~exposure_mode')
+        self._framerate = rospy.get_param(
+            '~framerate',
+            dt_help="Framerate at which images frames are produced"
+        )
+        self._res_w = rospy.get_param(
+            '~res_w',
+            dt_help="Horizontal resolution (width) of the produced image frames."
+        )
+        self._res_h = rospy.get_param(
+            '~res_h',
+            dt_help="Vertical resolution (height) of the produced image frames."
+        )
+        self._exposure_mode = rospy.get_param(
+            '~exposure_mode',
+            dt_help="Exposure mode of the camera. Supported values are listed on "
+                    "https://picamera.readthedocs.io/en/release-1.13/"
+                    "api_camera.html#picamera.PiCamera.exposure_mode"
+        )
 
         # Setup PiCamera
         self.image_msg = CompressedImage()
@@ -102,13 +117,15 @@ class CameraNode(DTROS):
             "~image/compressed",
             CompressedImage,
             queue_size=1,
-            dt_topic_type=TopicType.DRIVER
+            dt_topic_type=TopicType.DRIVER,
+            dt_help="The stream of JPEG compressed images from the camera"
         )
         self.pub_camera_info = rospy.Publisher(
             "~camera_info",
             CameraInfo,
             queue_size=1,
-            dt_topic_type=TopicType.DRIVER
+            dt_topic_type=TopicType.DRIVER,
+            dt_help="The stream of camera calibration information, the message content is fixed"
         )
 
         # Setup service (for camera_calibration)
