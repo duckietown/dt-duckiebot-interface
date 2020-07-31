@@ -1,6 +1,6 @@
 version: 2.1
 jobs:
-  build:
+  docs:
     docker:
       - image: ubuntu:18.04
 
