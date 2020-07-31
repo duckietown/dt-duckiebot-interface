@@ -9,7 +9,7 @@ a motor driver. This is done by the :obj:`WheelsDriverNode`.
 WheelsDriverNode
 ----------------
 
-.. autoclass:: nodes.WheelsDriverNode
+.. autoclass:: dt_duckiebot_interface.WheelsDriverNode
 
 Included libraries
 ------------------

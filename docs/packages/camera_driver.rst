@@ -11,4 +11,4 @@ and then publishes them. The same node is also responsible for publishing :obj:`
 CameraNode
 ----------
 
-.. autoclass:: nodes.CameraNode
+.. autoclass:: dt_duckiebot_interface.CameraNode

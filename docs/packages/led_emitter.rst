@@ -10,7 +10,7 @@ them blink with various frequencies. You can see examples how to do that in the 
 LEDEmitterNode
 --------------
 
-.. autoclass:: nodes.LEDEmitterNode
+.. autoclass:: dt_duckiebot_interface.LEDEmitterNode
 
 Included libraries
 ------------------
