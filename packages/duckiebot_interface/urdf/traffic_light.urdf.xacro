@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<robot name="traffic_light" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:property name="pi" value="3.14159265359" />
+
+    <xacro:macro name="traffic_light" params="model veh parent:=/world">
+
+        <!-- START: Traffic Light -->
+
+        <!-- /footprint is located at the projection of the centroid of the base on the ground -->
+        <link name="/${veh}/footprint"/>
+        <!-- TODO: this should not be fixed -->
+        <joint name="${veh}_parent_to_footprint" type="fixed">
+            <parent link="${parent}" />
+            <child link="/${veh}/footprint" />
+        </joint>
+
+        <xacro:if value="${model == 'TL19'}" >
+            <!-- START: Traffic Light: WT18 -->
+
+
+
+            <!-- END: Traffic Light: WT18 -->
+        </xacro:if>
+
+        <!-- END: Traffic Light -->
+
+    </xacro:macro>
+
+</robot>
