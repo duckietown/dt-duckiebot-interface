@@ -1,3 +1,11 @@
 version: '1.0'
 
-configurations: {}
+configurations:
+  default:
+    restart: unless-stopped
+    network_mode: host
+    privileged: true
+    volumes:
+      - /data:/data
+      # avahi socket
+      - /var/run/avahi-daemon/socket:/var/run/avahi-daemon/socket
