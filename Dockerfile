@@ -8,7 +8,7 @@ ARG ICON="wrench"
 # ==================================================>
 # ==> Do not change the code below this line
 ARG ARCH=arm32v7
-ARG DISTRO=daffy
+ARG DISTRO=ente
 ARG BASE_TAG=${DISTRO}-${ARCH}
 ARG BASE_IMAGE=dt-ros-commons
 ARG LAUNCHER=default
@@ -49,10 +49,6 @@ ENV DT_LAUNCHER "${LAUNCHER}"
 # install apt dependencies
 COPY ./dependencies-apt.txt "${REPO_PATH}/"
 RUN dt-apt-install ${REPO_PATH}/dependencies-apt.txt
-
-# install python dependencies
-COPY ./dependencies-py.txt "${REPO_PATH}/"
-RUN pip install -r ${REPO_PATH}/dependencies-py.txt
 
 # install python3 dependencies
 COPY ./dependencies-py3.txt "${REPO_PATH}/"
