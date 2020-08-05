@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 import rospy
-from duckietown import DTROS
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
 import Jetson.GPIO as GPIO
-
+from duckietown.dtros import DTROS, TopicType, NodeType
 
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
@@ -41,7 +40,10 @@ class WheelsDriverNode(DTROS):
                     
                 
         # Initialize the DTROS parent class
-        super(WheelsDriverNode, self).__init__(node_name=node_name)
+        super(WheelsDriverNode, self).__init__(
+            node_name=node_name,
+            node_type=NodeType.DRIVER
+        )
 
         self.estop = False
 
@@ -52,19 +54,32 @@ class WheelsDriverNode(DTROS):
         self.msg_wheels_cmd = WheelsCmdStamped()
 
         # Publisher for wheels command wih execution time
-        self.pub_wheels_cmd = self.publisher(
-            "~wheels_cmd_executed", WheelsCmdStamped, queue_size=1)
+        self.pub_wheels_cmd = rospy.Publisher(
+            "~wheels_cmd_executed",
+            WheelsCmdStamped,
+            queue_size=1,
+            dt_topic_type=TopicType.DRIVER
+        )
 
         # Subscribers
-        self.sub_topic = self.subscriber(
-            "~wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
-        self.sub_e_stop = self.subscriber(
-            "~emergency_stop", BoolStamped, self.cbEStop, queue_size=1)
+        self.sub_topic = rospy.Subscriber(
+            "~wheels_cmd",
+            WheelsCmdStamped,
+            self.wheels_cmd_cb,
+            queue_size=1
+        )
+        self.sub_e_stop = rospy.Subscriber(
+            "~emergency_stop",
+            BoolStamped,
+            self.estop_cb,
+            queue_size=1
+        )
 
         self.log("Initialized.")
 
-    def cbWheelsCmd(self, msg):
-        """Callback that sets wheels' speeds.
+    def wheels_cmd_cb(self, msg):
+        """
+        Callback that sets wheels' speeds.
 
             Creates the wheels' speed message and publishes it. If the
             emergency stop flag is activated, publishes zero command.
@@ -72,7 +87,6 @@ class WheelsDriverNode(DTROS):
             Args:
                 msg (WheelsCmdStamped): velocity command
         """
-
         if self.estop:
             vel_left = 0.0
             vel_right = 0.0
@@ -89,8 +103,9 @@ class WheelsDriverNode(DTROS):
         self.msg_wheels_cmd.vel_right = vel_right
         self.pub_wheels_cmd.publish(self.msg_wheels_cmd)
 
-    def cbEStop(self, msg):
-        """Callback that enables/disables emergency stop
+    def estop_cb(self, msg):
+        """
+        Callback that enables/disables emergency stop
 
             Args:
                 msg (BoolStamped): emergency_stop flag
@@ -102,14 +117,13 @@ class WheelsDriverNode(DTROS):
         else:
             self.log("Emergency Stop Released")
 
-    def onShutdown(self):
-        """Shutdown procedure.
+    def on_shutdown(self):
+        """
+        Shutdown procedure.
 
-        Publishes a zero velocity command at shutdown."""
-
+        Publishes a zero velocity command at shutdown.
+        """
         self.driver.setWheelsSpeed(left=0.0, right=0.0)
-
-        super(WheelsDriverNode, self).onShutdown()
 
 
 if __name__ == '__main__':

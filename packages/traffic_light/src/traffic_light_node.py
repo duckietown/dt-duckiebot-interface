@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import rospy
 
-from duckietown import DTROS
-
 from duckietown_msgs.msg import LEDPattern
 from duckietown_msgs.srv import SetCustomLEDPattern
+
+from duckietown.dtros import DTROS, NodeType
+from duckietown.dtros.utils import apply_namespace
 
 
 class TrafficLightNode(DTROS):
@@ -33,32 +34,38 @@ class TrafficLightNode(DTROS):
 
     def __init__(self, node_name):
         # Initialize the DTROS parent class
-        super(TrafficLightNode, self).__init__(node_name=node_name)
+        super(TrafficLightNode, self).__init__(
+            node_name=node_name,
+            node_type=NodeType.COMMUNICATION
+        )
 
         # Import protocols
-        self.parameters["~number_leds"] = None
-        self.parameters["~activation_order"] = None
-        self.parameters["~green_time"] = None
-        self.parameters["~all_red_time"] = None
-        self.parameters["~frequency"] = None
-        self.updateParameters()
+        self._number_leds = rospy.get_param("~number_leds")
+        self._activation_order = rospy.get_param("~activation_order")
+        self._green_time = rospy.get_param("~green_time")
+        self._all_red_time = rospy.get_param("~all_red_time")
+        self._frequency = rospy.get_param("~frequency")
 
         self.green_idx = 0
 
-        cycle_duration = self.parameters["~green_time"] + self.parameters["~all_red_time"]
+        cycle_duration = self._green_time + self._all_red_time
 
         # Create the color mask
         self.color_mask = [0]*5
-        self.color_mask[0:self.parameters["~number_leds"]-1] = [1]*self.parameters["~number_leds"]
+        self.color_mask[0:self._number_leds] = [1]*self._number_leds
 
         # Function mapping to LEDEmitterNode's `set_custom_pattern` service
-        self.changePattern = rospy.ServiceProxy(rospy.get_namespace()+'led_emitter_node/set_custom_pattern',
-                                                SetCustomLEDPattern)
+        self.changePattern = rospy.ServiceProxy(
+            apply_namespace('led_emitter_node/set_custom_pattern', ns_level=1),
+            SetCustomLEDPattern
+        )
 
         # Start a timer that will regularly call a method that changes
         # the direction that get green light
-        self.traffic_cycle = rospy.Timer(rospy.Duration(cycle_duration),
-                                         self.change_direction)
+        self.traffic_cycle = rospy.Timer(
+            rospy.Duration(cycle_duration),
+            self.change_direction
+        )
 
         self.log("Initialized.")
 
@@ -73,8 +80,8 @@ class TrafficLightNode(DTROS):
             special pattern to the led_emitter_node.
         """
         # Move to next light in list
-        self.green_idx = (self.green_idx + 1) % (self.parameters["~number_leds"])
-        green_LED = self.parameters["~activation_order"][self.green_idx]
+        self.green_idx = (self.green_idx + 1) % self._number_leds
+        green_LED = self._activation_order[self.green_idx]
 
         # Only blink the green LED
         frequency_mask = [0]*5
@@ -88,35 +95,21 @@ class TrafficLightNode(DTROS):
         pattern_msg = LEDPattern()
         pattern_msg.color_list = self.to_led_order(color_list)
         pattern_msg.color_mask = self.color_mask
-        pattern_msg.frequency = self.parameters["~frequency"]
+        pattern_msg.frequency = self._frequency
         pattern_msg.frequency_mask = self.to_led_order(frequency_mask)
 
         self.changePattern(pattern_msg)
 
         # Keep the green light on
-        rospy.sleep(self.parameters["~green_time"])
+        rospy.sleep(self._green_time)
 
         # Turn all on red for safety
         pattern_msg.color_list = ['red'] * 5
         pattern_msg.frequency = 0
         self.changePattern(pattern_msg)
 
-        # If the parameters have been changed, update them and reset the timer.
-        if self.parametersChanged:
-
-            # Change the flag so that we don't update them again
-            self.parametersChanged = False
-
-            # Update the color mask
-            self.color_mask = [0] * 5
-            self.color_mask[0:self.parameters["~number_leds"] - 1] = [1] * self.parameters["~number_leds"]
-
-            # Update the cycle duration and restart the timer
-            cycle_duration = self.parameters["~green_time"] + self.parameters["~all_red_time"]
-            self.traffic_cycle.shutdown()
-            self.traffic_cycle = rospy.Timer(rospy.Duration(cycle_duration), self.change_direction)
-
-    def to_led_order(self, unordered_list):
+    @staticmethod
+    def to_led_order(unordered_list):
         """Change ordering from successive (0,1,2,3,4) to the one expected by the led emitter (0,4,1,3,2)
 
             Args:
@@ -125,7 +118,7 @@ class TrafficLightNode(DTROS):
                 :obj: `list`: Permutated list of length ~number_leds.
         """
         ordering = [0, 4, 1, 3, 2]
-        ordered_list = [unordered_list[i] for i in ordering[0:self.parameters["~number_leds"]]]
+        ordered_list = [unordered_list[i] for i in ordering]
         return ordered_list
 
 

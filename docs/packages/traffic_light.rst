@@ -8,4 +8,4 @@ The `traffic_light` package contains a single node (`TrafficLightNode`) that is 
 TrafficLightNode
 ----------------
 
-.. autoclass:: nodes.TrafficLightNode
+.. autoclass:: dt_duckiebot_interface.TrafficLightNode

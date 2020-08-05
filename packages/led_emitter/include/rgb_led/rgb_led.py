@@ -3,7 +3,7 @@
 from Adafruit_PWM_Servo_Driver import PWM
 
 
-class RGB_LED():
+class RGB_LED(object):
     """Object communicating to the LEDs.
 
         Low level class that creates the PWM messages that are sent to the

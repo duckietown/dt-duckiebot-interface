@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<robot name="watchtower" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <xacro:property name="pi" value="3.14159265359" />
+
+    <xacro:macro name="watchtower" params="model veh parent:=/world">
+
+        <!-- START: Watchtower -->
+
+        <!-- /footprint is located at the projection of the centroid of the base on the ground -->
+        <link name="/${veh}/footprint"/>
+        <!-- TODO: this should not be fixed -->
+        <joint name="${veh}_parent_to_footprint" type="fixed">
+            <parent link="${parent}" />
+            <child link="/${veh}/footprint" />
+        </joint>
+
+        <xacro:if value="${model == 'WT18'}" >
+            <!-- START: Watchtower: WT18 -->
+
+
+
+            <!-- END: Watchtower: WT18 -->
+        </xacro:if>
+
+        <!-- END: Watchtower -->
+
+    </xacro:macro>
+
+</robot>

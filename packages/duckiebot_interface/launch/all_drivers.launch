@@ -2,12 +2,25 @@
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:default." />
-    <arg name="robot_type" default="duckiebot" doc="The type of the robot: should be duckiebot, watchtower, or traffic_light"/>
+    <arg name="robot_type"
+         doc="The type of the robot, e.g., duckiebot, watchtower, traffic_light, ..."/>
+    <arg name="robot_configuration"
+         doc="The configuration of the robot. For example DB19, DB20, ..."/>
+    <arg name="camera_required" value="$(eval arg('robot_type') != 'traffic_light')"
+         doc="Do we kill everything if the camera doesn't work?"/>
+    <arg name="robot_xurdf" value="$(find duckiebot_interface)/urdf/$(arg robot_type).urdf.xacro"
+         doc="Location of the URDF XACRO file for the robot type"/>
+
+    <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
+    <param name="robot_description"
+        command="xacro --inorder '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <include file="$(find camera_driver)/launch/camera_node.launch">
         <arg name="veh" value="$(arg veh)"/>
         <arg name="param_file_name" value="$(arg robot_type)"/>
+        <arg name="required" value="$(arg camera_required)"/>
     </include>
 
     <!-- LED Emitter: reads ROS messages and commands the LEDs -->
@@ -17,7 +30,6 @@
             <arg name="robot_type" value="$(arg robot_type)"/>
         </include>
     </group>
-
 
     <!-- Joystick: reads from a physical joystick and produces ROS messages -->
     <group if="$(eval arg('robot_type') == 'duckiebot')">
@@ -31,7 +43,6 @@
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="$(arg param_file_name)"/>
         </include>
-
    </group>
 
     <!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
@@ -42,5 +53,21 @@
         </include>
     </group>
 
+    <!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
+    <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')">
+        <!-- Left Wheel Encoder  -->
+        <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="wheel" value="left"/>
+            <arg name="param_file_name" value="left_wheel"/>
+        </include>
+
+        <!-- Right Wheel Encoder  -->
+        <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="wheel" value="right"/>
+            <arg name="param_file_name" value="right_wheel"/>
+        </include>
+    </group>
 
 </launch>
