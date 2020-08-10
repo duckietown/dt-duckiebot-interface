@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 from Adafruit_PWM_Servo_Driver import PWM
 
