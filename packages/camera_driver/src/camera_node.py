@@ -119,9 +119,9 @@ class CameraNode(DTROS):
         atexit.register(self.stop)
 
         # Set camera parameters
-        self.cap.set(cv2.CAP_PROP_FPS, self.parameters['~framerate'])
-        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.parameters['~res_w'])
-        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,self.parameters['~res_h'])
+        self.cap.set(cv2.CAP_PROP_FPS, self._framerate)
+        self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._res_w)
+        self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,self._res_h)
         #self.cap.set(CV_CAP_PROP_MODE, self.parameters['~exposure_mode'])
         
         # For intrinsic calibration
