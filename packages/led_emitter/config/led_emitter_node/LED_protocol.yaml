@@ -6,7 +6,7 @@ LED_protocol:
     green: [0,1,0]
     red: [1,0,0]
     blue: [0,0,1]
-    yellow: [1,1,0]
+    yellow: [1,0.8,0]
     purple: [1,0,1]
     cyan: [0,1,1]
     pink: [1,0,0.5]
@@ -84,6 +84,24 @@ LED_protocol:
       color_list: "switchedoff"
       frequency_mask: []
       frequency:  0
+
+    OBSTACLE_ALERT:
+      color_mask: []
+      color_list: ["white","yellow","white","yellow","white"]
+      frequency_mask: [0,1,0,1,0]
+      frequency:  *f1
+
+    OBSTACLE_STOPPED:
+      color_mask: []
+      color_list: ["white","red","white","red","white"]
+      frequency_mask: [0,1,0,1,0]
+      frequency:  *f2
+
+    POPO:
+      color_mask: []
+      color_list: ["blue","red","switchedoff","blue","red"]
+      frequency_mask: [1,1,0,1,1]
+      frequency: *f2
 
 LED_scale: 0.8
 channel_order:
