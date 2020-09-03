@@ -29,7 +29,7 @@ import time
 
 import ftdi1 as ftdi
 
-import GPIO
+from . import GPIO
 
 
 logger = logging.getLogger(__name__)
@@ -115,7 +115,7 @@ def enumerate_device_serials(vid=FT232H_VID, pid=FT232H_PID):
             if ret < 0:
                 raise RuntimeError('ftdi_usb_get_strings returned error {0}: {1}'.format(ret, ftdi.get_error_string(self._ctx)))
             devices.append(serial)
-            device_list = device_list.next
+            device_list = device_list.__next__
         return devices
     finally:
         # Make sure to clean up list and context when done.
@@ -346,9 +346,9 @@ class FT232H(GPIO.BaseGPIO):
         pins can be provided in the values dict (with pin name to pin value).
         """
         # General implementation that can be improved by subclasses.
-        for pin, mode in iter(pins.items()):
+        for pin, mode in iter(list(pins.items())):
             self._setup_pin(pin, mode)
-        for pin, value in iter(values.items()):
+        for pin, value in iter(list(values.items())):
             self._output_pin(pin, value)
         if write:
             self.mpsse_write_gpio()
@@ -372,7 +372,7 @@ class FT232H(GPIO.BaseGPIO):
         name to pin value (HIGH/True for 1, LOW/False for 0).  All provided pins
         will be set to the given values.
         """
-        for pin, value in iter(pins.items()):
+        for pin, value in iter(list(pins.items())):
             self._output_pin(pin, value)
         if write:
             self.mpsse_write_gpio()

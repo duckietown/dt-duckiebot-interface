@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import rospy
 
@@ -154,7 +154,7 @@ class LEDEmitterNode(DTROS):
                 c[i] = c[i] * self._LED_scale
 
         # Remap colors if robot does not have an RGB ordering
-        if self._channel_order[self.robot_type] is not "RGB":
+        if self._channel_order[self.robot_type] != "RGB":
             protocol = self._LED_protocol
             for name, col in self._LED_protocol['colors'].items():
                 protocol['colors'][name] = self.remapColors(col)
