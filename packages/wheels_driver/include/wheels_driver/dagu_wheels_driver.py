@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 from Adafruit_MotorHAT import Adafruit_MotorHAT
 from math import fabs, floor

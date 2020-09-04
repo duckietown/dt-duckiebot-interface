@@ -26,7 +26,7 @@ jobs:
           command: |
             python3 -m pip install --no-cache-dir --user -U duckietown-shell
             export PATH="$PATH:$HOME/.local/bin"
-            dts --set-version daffy-new-deal exit
+            dts --set-version daffy exit
 
       - checkout
 
@@ -39,3 +39,8 @@ jobs:
       - store_artifacts:
           path: html/out
           destination: html
+
+      - store_artifacts:
+          path: html/out/package.tgz
+          destination: out/package.tgz
+
