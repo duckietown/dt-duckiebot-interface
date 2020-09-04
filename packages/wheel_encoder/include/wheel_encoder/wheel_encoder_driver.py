@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import RPi.GPIO as GPIO
+import Jetson.GPIO as GPIO
 
 
 class WheelEncoderDriver:
