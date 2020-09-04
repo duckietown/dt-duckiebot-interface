@@ -39,3 +39,8 @@ jobs:
       - store_artifacts:
           path: html/out
           destination: html
+
+      - store_artifacts:
+          path: html/out/package.tgz
+          destination: out/package.tgz
+
