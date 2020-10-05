@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 import rospy
+import os
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
+import Jetson.GPIO as GPIO
 from duckietown.dtros import DTROS, TopicType, NodeType
-
 
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
@@ -28,6 +29,22 @@ class WheelsDriverNode(DTROS):
     """
 
     def __init__(self, node_name):
+
+        # Jetson Nano GPIO interface overrides
+        if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+        
+            # Overwrite default setting of GPIO pin 29 (reset pin), which blocks access to other GPIO pins (importantly the ones for I2C)
+            GPIO.setmode(GPIO.BOARD)
+            channel = 29
+            GPIO.setup(channel, GPIO.OUT)
+            GPIO.output(channel, 1)
+
+            # Overwrite default setting of GPIO pin 31, related to the wheel encoders
+            channel = 31
+            GPIO.setup(channel, GPIO.OUT)
+            GPIO.output(channel, 1)
+                    
+                
         # Initialize the DTROS parent class
         super(WheelsDriverNode, self).__init__(
             node_name=node_name,

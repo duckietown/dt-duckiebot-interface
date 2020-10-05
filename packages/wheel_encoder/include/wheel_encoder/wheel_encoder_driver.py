@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 
-import RPi.GPIO as GPIO
+import os
+
+if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+    import Jetson.GPIO as GPIO
+
+else:
+    import RPi.GPIO as GPIO
 
 
 class WheelEncoderDriver:
