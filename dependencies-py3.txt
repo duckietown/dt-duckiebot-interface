@@ -1,2 +1,7 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
+
+# RPi packages
+RPi.GPIO
+
+# Jetson packages
 Jetson.GPIO
