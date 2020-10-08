@@ -5,8 +5,11 @@ import os
 if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
     import Jetson.GPIO as GPIO
 
-else:
+elif (os.environ.get('ROBOT_HARDWARE') == "raspberry_pi"):
     import RPi.GPIO as GPIO
+
+else:
+    raise Exception("Undefined Hardware!")
 
 
 class WheelEncoderDriver:

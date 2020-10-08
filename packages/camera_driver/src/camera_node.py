@@ -15,8 +15,11 @@ if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
     from cv_bridge import CvBridge, CvBridgeError
 
 # for RPi
-if (os.environ.get('ROBOT_HARDWARE') == "raspberry_pi"):
+elif (os.environ.get('ROBOT_HARDWARE') == "raspberry_pi"):
     from picamera import PiCamera
+
+else:
+    raise Exception("Undefined Hardware!")
 
 import rospy
 from sensor_msgs.msg import Image, CompressedImage, CameraInfo
