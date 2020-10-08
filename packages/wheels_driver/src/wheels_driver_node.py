@@ -4,8 +4,10 @@ import os
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
-import Jetson.GPIO as GPIO
 from duckietown.dtros import DTROS, TopicType, NodeType
+
+if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+    import Jetson.GPIO as GPIO
 
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.

@@ -8,10 +8,11 @@ import numpy as np
 from threading import Thread
 
 # for Jetson Nano
-import cv2
-import atexit
-import threading
-from cv_bridge import CvBridge, CvBridgeError
+if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+    import cv2
+    import atexit
+    import threading
+    from cv_bridge import CvBridge, CvBridgeError
 
 # for RPi
 if (os.environ.get('ROBOT_HARDWARE') == "raspberry_pi"):
