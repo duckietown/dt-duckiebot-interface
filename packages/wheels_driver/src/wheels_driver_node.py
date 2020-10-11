@@ -6,7 +6,10 @@ from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
 from duckietown.dtros import DTROS, TopicType, NodeType
 
-if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+ROBOT_HARDWARE = get_device_hardware_brand()
+
+if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
     import Jetson.GPIO as GPIO
 
 class WheelsDriverNode(DTROS):
@@ -33,9 +36,9 @@ class WheelsDriverNode(DTROS):
     def __init__(self, node_name):
 
         # Jetson Nano GPIO interface overrides
-        if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
-        
-            # Overwrite default setting of GPIO pin 29 (reset pin), which blocks access to other GPIO pins (importantly the ones for I2C)
+        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
+            # Overwrite default setting of GPIO pin 29 (reset pin),
+            # which blocks access to other GPIO pins (importantly the ones for I2C)
             GPIO.setmode(GPIO.BOARD)
             channel = 29
             GPIO.setup(channel, GPIO.OUT)
@@ -45,8 +48,7 @@ class WheelsDriverNode(DTROS):
             channel = 31
             GPIO.setup(channel, GPIO.OUT)
             GPIO.output(channel, 1)
-                    
-                
+
         # Initialize the DTROS parent class
         super(WheelsDriverNode, self).__init__(
             node_name=node_name,
