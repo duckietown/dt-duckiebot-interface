@@ -8,14 +8,18 @@ import numpy as np
 from threading import Thread
 
 # for Jetson Nano
-import cv2
-import atexit
-import threading
-from cv_bridge import CvBridge, CvBridgeError
+if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+    import cv2
+    import atexit
+    import threading
+    from cv_bridge import CvBridge, CvBridgeError
 
 # for RPi
-if (os.environ.get('ROBOT_HARDWARE') == "raspberry_pi"):
+elif (os.environ.get('ROBOT_HARDWARE') == "raspberry_pi"):
     from picamera import PiCamera
+
+else:
+    raise Exception("Undefined Hardware!")
 
 import rospy
 from sensor_msgs.msg import Image, CompressedImage, CameraInfo
@@ -129,9 +133,9 @@ class CameraNode(DTROS):
             # Setup PiCamera
             self.image_msg = CompressedImage()
             self.camera = PiCamera()
-            self.camera.framerate = self.parameters['~framerate']
-            self.camera.resolution = (self.parameters['~res_w'], self.parameters['~res_h'])
-            self.camera.exposure_mode = self.parameters['~exposure_mode']
+            self.camera.framerate = self._framerate
+            self.camera.resolution = (self._res_w, self._res_h)
+            self.camera.exposure_mode = self._exposure_mode
 
             self.stream = io.BytesIO()
         
@@ -206,14 +210,6 @@ class CameraNode(DTROS):
                     self.log("Exception thrown.")
                     #pass
 
-                    # In-container parameter change is currently not supported on the Jetson Nano
-                    
-                    # Update the camera parameters
-                    # self.cap.set(cv2.CAP_PROP_FPS, self.parameters['~framerate'])
-                    # self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.parameters['~res_w'])
-                    # self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.parameters['~res_h'])
-                    # self.cap.set(CV_CAP_PROP_MODE, self.parameters['~exposure_mode'])
-        
 
         # RPi capture procedure
         else:
