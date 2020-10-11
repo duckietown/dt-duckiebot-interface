@@ -7,22 +7,24 @@ import copy
 import numpy as np
 from threading import Thread
 
+from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+ROBOT_HARDWARE = get_device_hardware_brand()
+
 # for Jetson Nano
-if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
     import cv2
     import atexit
-    import threading
-    from cv_bridge import CvBridge, CvBridgeError
+    from cv_bridge import CvBridge
 
 # for RPi
-elif (os.environ.get('ROBOT_HARDWARE') == "raspberry_pi"):
+elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
     from picamera import PiCamera
 
 else:
     raise Exception("Undefined Hardware!")
 
 import rospy
-from sensor_msgs.msg import Image, CompressedImage, CameraInfo
+from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
 from duckietown.dtros import DTROS, NodeType, TopicType
@@ -98,7 +100,7 @@ class CameraNode(DTROS):
         )
 
         # Jetson Nano Camera initialization
-        if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
 
             self.value = np.empty((480, 640, 3), dtype=np.uint8)
             
@@ -178,8 +180,6 @@ class CameraNode(DTROS):
         )
 
         # Setup service (for camera_calibration)
-
-
         self.srv_set_camera_info = rospy.Service(
             "~set_camera_info",
             SetCameraInfo,
@@ -199,17 +199,14 @@ class CameraNode(DTROS):
         self.log("Start capturing.")
 
         # Jetson Nano capture procedure
-        if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
             while not self.is_shutdown:
-                
                 try:
                     self.start()
                     self.grab_and_publish_jetson()
 
                 except StopIteration:
                     self.log("Exception thrown.")
-                    #pass
-
 
         # RPi capture procedure
         else:
@@ -317,12 +314,10 @@ class CameraNode(DTROS):
     def start(self):
         if not self.cap.isOpened():
             self.cap.open(2)
-        
 
     def stop(self):
         if hasattr(self, 'cap'):
             self.cap.release()
-
 
     def srv_set_camera_info_cb(self, req):
         self.log("[srv_set_camera_info_cb] Callback!")
