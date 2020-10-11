@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
-import os
+from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+ROBOT_HARDWARE = get_device_hardware_brand()
 
-if (os.environ.get('ROBOT_HARDWARE') == "jetson_nano"):
+if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
     import Jetson.GPIO as GPIO
 
-elif (os.environ.get('ROBOT_HARDWARE') == "raspberry_pi"):
+elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
     import RPi.GPIO as GPIO
 
 else:
