@@ -7,8 +7,23 @@ import copy
 import numpy as np
 from threading import Thread
 
+from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+ROBOT_HARDWARE = get_device_hardware_brand()
+
+# for Jetson Nano
+if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
+    import cv2
+    import atexit
+    from cv_bridge import CvBridge
+
+# for RPi
+elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
+    from picamera import PiCamera
+
+else:
+    raise Exception("Undefined Hardware!")
+
 import rospy
-from picamera import PiCamera
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
@@ -20,7 +35,8 @@ class CameraNode(DTROS):
 
     The node handles the image stream, initializing it, publishing frames
     according to the required frequency and stops it at shutdown.
-    `Picamera <https://picamera.readthedocs.io/>`_ is used for handling the image stream.
+    `Picamera <https://picamera.readthedocs.io/>`_ is used for handling the image stream on the Raspberry Pi.
+    Opencv is used for handling the image stream on the Jetson Nano.
 
     Note that only one :obj:`PiCamera` object should be used at a time.
     If another node tries to start an instance while this node is running,
@@ -83,13 +99,48 @@ class CameraNode(DTROS):
                     "api_camera.html#picamera.PiCamera.exposure_mode"
         )
 
-        # Setup PiCamera
-        self.image_msg = CompressedImage()
-        self.camera = PiCamera()
-        self.camera.framerate = self._framerate
-        self.camera.resolution = (self._res_w, self._res_h)
-        self.camera.exposure_mode = self._exposure_mode
+        # Jetson Nano Camera initialization
+        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
 
+            self.value = np.empty((480, 640, 3), dtype=np.uint8)
+            
+            try:
+                self.cap = cv2.VideoCapture(2)
+                
+                if not self.cap.isOpened():
+                    print("cv2 can not open resource")
+
+                re, image = self.cap.read()
+
+                if not re:
+                    raise RuntimeError("Could not read image from camera.")
+                
+                self.value = image
+                self.start()
+
+            except:
+                self.stop()
+                raise RuntimeError("Could not start camera.")
+
+            atexit.register(self.stop)
+
+            # Set camera parameters
+            self.cap.set(cv2.CAP_PROP_FPS, self._framerate)
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._res_w)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,self._res_h)
+            #self.cap.set(CV_CAP_PROP_MODE, self.parameters['~exposure_mode'])
+
+        # RPi Camera initialization
+        else:
+            # Setup PiCamera
+            self.image_msg = CompressedImage()
+            self.camera = PiCamera()
+            self.camera.framerate = self._framerate
+            self.camera.resolution = (self._res_w, self._res_h)
+            self.camera.exposure_mode = self._exposure_mode
+
+            self.stream = io.BytesIO()
+        
         # For intrinsic calibration
         self.cali_file_folder = '/data/config/calibrations/camera_intrinsic/'
         self.frame_id = rospy.get_namespace().strip('/') + '/camera_optical_frame'
@@ -134,7 +185,6 @@ class CameraNode(DTROS):
             SetCameraInfo,
             self.srv_set_camera_info_cb
         )
-        self.stream = io.BytesIO()
 
         self.log("Initialized.")
 
@@ -147,24 +197,81 @@ class CameraNode(DTROS):
             restart the image capturing.
         """
         self.log("Start capturing.")
-        while not self.is_shutdown:
-            gen = self.grab_and_publish(self.stream)
-            try:
-                self.camera.capture_sequence(
-                    gen,
-                    'jpeg',
-                    use_video_port=True,
-                    splitter_port=0
-                )
-            except StopIteration:
-                pass
 
-        self.camera.close()
+        # Jetson Nano capture procedure
+        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
+            while not self.is_shutdown:
+                try:
+                    self.start()
+                    self.grab_and_publish_jetson()
+
+                except StopIteration:
+                    self.log("Exception thrown.")
+
+        # RPi capture procedure
+        else:
+            while not self.is_shutdown:
+                gen = self.grab_and_publish_rpi(self.stream)
+
+                try:
+                    self.camera.capture_sequence(
+                        gen,
+                        'jpeg',
+                        use_video_port=True,
+                        splitter_port=0
+                    )
+                except StopIteration:
+                    pass
+
+            self.camera.close()
+
         self.log("Capture Ended.")
 
-    def grab_and_publish(self, stream):
-        """Captures a frame from stream and publishes it.
+    def grab_and_publish_jetson(self):
 
+        """ Image capture procedure for the Jetson Nano
+        
+            Captures a frame from the /dev/video2 image sink and publishes it.
+
+            If the stream is stable (no shutdowns),
+            grabs a frame, creates the image message and publishes it.
+            Will not detect parameter change.
+
+        """
+        re, image = self.cap.read()
+        bridge = CvBridge()
+
+        while re:
+            re, image = self.cap.read()
+
+            #Generate the compressed image
+            if image is not None:
+                image = np.uint8(image)
+                
+            stamp = rospy.Time.now()
+            image_message = bridge.cv2_to_compressed_imgmsg(image, dst_format='jpeg')
+                
+            #not sure if this actualy does something/ gets published
+            image_message.header.stamp = stamp
+            image_message.header.frame_id = self.frame_id
+
+            #Publish the compressed image
+            self.pub_img.publish(image_message)
+
+            # Publish the CameraInfo message 
+            self.current_camera_info.header.stamp = stamp
+            self.pub_camera_info.publish(self.current_camera_info)
+
+            if not self.has_published:
+                self.log("Published the first image.")
+                self.has_published = True
+
+            rospy.sleep(rospy.Duration.from_sec(0.001))
+        
+    def grab_and_publish_rpi(self, stream):
+        """ Image capture procedure for the Raspberry Pi
+
+            Captures a frame from stream and publishes it.
             If the stream is stable (no parameter updates or shutdowns),
             grabs a frame, creates the image message and publishes it.
             If there is a paramter change, it does raises StopIteration exception
@@ -203,6 +310,14 @@ class CameraNode(DTROS):
                 self.has_published = True
 
             rospy.sleep(rospy.Duration.from_sec(0.001))
+
+    def start(self):
+        if not self.cap.isOpened():
+            self.cap.open(2)
+
+    def stop(self):
+        if hasattr(self, 'cap'):
+            self.cap.release()
 
     def srv_set_camera_info_cb(self, req):
         self.log("[srv_set_camera_info_cb] Callback!")

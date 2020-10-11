@@ -2,6 +2,9 @@
 import re
 import smbus
 
+from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+ROBOT_HARDWARE = get_device_hardware_brand()
+
 # ===========================================================================
 # Adafruit_I2C Class
 # ===========================================================================
@@ -39,8 +42,16 @@ class Adafruit_I2C(object):
     # By default, the correct I2C bus is auto-detected using /proc/cpuinfo
     # Alternatively, you can hard-code the bus version below:
     # self.bus = smbus.SMBus(0); # Force I2C0 (early 256MB Pi's)
-    #self.bus = smbus.SMBus(1); # Force I2C1 (512MB Pi's)
-    self.bus = smbus.SMBus(busnum if busnum >= 0 else Adafruit_I2C.getPiI2CBusNumber())
+    if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
+      # Force I2C1 (512MB Pi's)
+      self.bus = smbus.SMBus(1)
+
+    elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
+      self.bus = smbus.SMBus(busnum if busnum >= 0 else Adafruit_I2C.getPiI2CBusNumber())
+    
+    else:
+      raise Exception("Undefined Hardware!")
+
     self.debug = debug
 
   def reverseByteOrder(self, data):

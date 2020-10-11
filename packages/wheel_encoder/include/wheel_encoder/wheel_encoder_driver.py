@@ -1,6 +1,16 @@
 #!/usr/bin/env python3
 
-import RPi.GPIO as GPIO
+from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+ROBOT_HARDWARE = get_device_hardware_brand()
+
+if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
+    import Jetson.GPIO as GPIO
+
+elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
+    import RPi.GPIO as GPIO
+
+else:
+    raise Exception("Undefined Hardware!")
 
 
 class WheelEncoderDriver:
