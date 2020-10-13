@@ -102,33 +102,71 @@ class CameraNode(DTROS):
         # Jetson Nano Camera initialization
         if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
 
-            self.value = np.empty((480, 640, 3), dtype=np.uint8)
-            
+            # # CONST CONFIGURATIONS
+            # camera modes [width, height, framerate]
+            CAM_MODES_JETSON_NANO = {
+                0: [3264, 2464, 21],
+                1: [3264, 1848, 28],
+                2: [1920, 1080, 30],
+                3: [1280, 720, 60],
+                4: [1280, 720, 120],
+            }
+            # exposure time range (ns)
+            DEFAULT_EXPOSURE_TIMERANGE = [100000, 80000000]
+            EXPOSURE_TIMERANGES_JETSON_NANO = {
+                "sports": DEFAULT_EXPOSURE_TIMERANGE,
+                "night": [100000, 1000000000]
+            }
+
+            # set exposure mode if possible
+            EXPOSURE_TIMERANGE = EXPOSURE_TIMERANGES_JETSON_NANO.get(
+                self._exposure_mode) or DEFAULT_EXPOSURE_TIMERANGE
+
+            # TODO: parameterize this?
+            CAM_MODE_IDX = 0
+            CAM_MODE = CAM_MODES_JETSON_NANO[CAM_MODE_IDX]
+
+            # set framerate if possible
+            if self._framerate > CAM_MODE[2]:
+                self.log(
+                    "Camera framerate({}fps) too high for the camera mode \
+                        (max: {}fps), capping at the later.".format(
+                            self._framerate, CAM_MODE[2]),
+                    type="warn",
+                )
+            else:
+                CAM_MODE[2] = self._framerate
+
+            self.GSTREAMER_PIPELINE = """ \
+                nvarguscamerasrc exposuretimerange="{} {}" ! \
+                video/x-raw(memory:NVMM), \
+                width={}, height={}, format=(string)NV12, framerate={}/1 ! \
+                nvvidconv ! video/x-raw, \
+                width=(int){}, height=(int){}, format=(string)BGRx ! \
+                videoconvert ! \
+                appsink \
+            """.format(*EXPOSURE_TIMERANGE, *CAM_MODE, self._res_w, self._res_h)
+
+            print(self.GSTREAMER_PIPELINE)
+
             try:
-                self.cap = cv2.VideoCapture(2)
-                
+                self.cap = cv2.VideoCapture(
+                    self.GSTREAMER_PIPELINE,
+                    cv2.CAP_GSTREAMER
+                )
+
                 if not self.cap.isOpened():
-                    print("cv2 can not open resource")
+                    print("cv2 can not open gstreamer resource")
 
                 re, image = self.cap.read()
 
                 if not re:
                     raise RuntimeError("Could not read image from camera.")
-                
-                self.value = image
-                self.start()
-
             except:
                 self.stop()
                 raise RuntimeError("Could not start camera.")
 
             atexit.register(self.stop)
-
-            # Set camera parameters
-            self.cap.set(cv2.CAP_PROP_FPS, self._framerate)
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self._res_w)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT,self._res_h)
-            #self.cap.set(CV_CAP_PROP_MODE, self.parameters['~exposure_mode'])
 
         # RPi Camera initialization
         else:
@@ -228,7 +266,6 @@ class CameraNode(DTROS):
         self.log("Capture Ended.")
 
     def grab_and_publish_jetson(self):
-
         """ Image capture procedure for the Jetson Nano
         
             Captures a frame from the /dev/video2 image sink and publishes it.
@@ -242,8 +279,6 @@ class CameraNode(DTROS):
         bridge = CvBridge()
 
         while re:
-            re, image = self.cap.read()
-
             #Generate the compressed image
             if image is not None:
                 image = np.uint8(image)
@@ -267,6 +302,7 @@ class CameraNode(DTROS):
                 self.has_published = True
 
             rospy.sleep(rospy.Duration.from_sec(0.001))
+            re, image = self.cap.read()
         
     def grab_and_publish_rpi(self, stream):
         """ Image capture procedure for the Raspberry Pi
@@ -313,7 +349,8 @@ class CameraNode(DTROS):
 
     def start(self):
         if not self.cap.isOpened():
-            self.cap.open(2)
+            self.cap.open(self.GSTREAMER_PIPELINE, cv2.CAP_GSTREAMER)
+            # TODO: shouldn't the same try-catch as __init__  be here?
 
     def stop(self):
         if hasattr(self, 'cap'):
