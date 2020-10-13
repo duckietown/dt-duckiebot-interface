@@ -112,10 +112,10 @@ class CameraNode(DTROS):
                 4: [1280, 720, 120],
             }
             # exposure time range (ns)
-            DEFAULT_EXPOSURE_TIMERANGE = [100000, 8000000]
+            DEFAULT_EXPOSURE_TIMERANGE = [100000, 80000000]
             EXPOSURE_TIMERANGES_JETSON_NANO = {
                 "sports": DEFAULT_EXPOSURE_TIMERANGE,
-                "night": [100000, 800000000]
+                "night": [100000, 1000000000]
             }
 
             # set exposure mode if possible
@@ -137,15 +137,17 @@ class CameraNode(DTROS):
             else:
                 CAM_MODE[2] = self._framerate
 
-            self.GSTREAMER_PIPELINE = """
+            self.GSTREAMER_PIPELINE = """ \
                 nvarguscamerasrc exposuretimerange="{} {}" ! \
-                video/x-raw(memory:NVMM), \ 
-                width={}, height={}, format=(string)NV12, framerate={}/1 ! \ 
+                video/x-raw(memory:NVMM), \
+                width={}, height={}, format=(string)NV12, framerate={}/1 ! \
                 nvvidconv ! video/x-raw, \
                 width=(int){}, height=(int){}, format=(string)BGRx ! \
                 videoconvert ! \
                 appsink \
             """.format(*EXPOSURE_TIMERANGE, *CAM_MODE, self._res_w, self._res_h)
+
+            print(self.GSTREAMER_PIPELINE)
 
             try:
                 self.cap = cv2.VideoCapture(
