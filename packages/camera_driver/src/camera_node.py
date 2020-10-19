@@ -142,8 +142,9 @@ class CameraNode(DTROS):
                 video/x-raw(memory:NVMM), \
                 width={}, height={}, format=(string)NV12, framerate={}/1 ! \
                 nvvidconv ! video/x-raw, \
-                width=(int){}, height=(int){}, format=(string)BGRx ! \
-                videoconvert ! \
+                width=(int)640, height=(int)480, format=(string)BGRx ! \
+                videoconvert ! video/x-raw, format=BGR ! \
+                videoscale ! video/x-raw, width={}, height={} ! \
                 appsink \
             """.format(*EXPOSURE_TIMERANGE, *CAM_MODE, self._res_w, self._res_h)
 
@@ -355,6 +356,9 @@ class CameraNode(DTROS):
     def stop(self):
         if hasattr(self, 'cap'):
             self.cap.release()
+
+    def on_shutdown(self):
+        self.stop()
 
     def srv_set_camera_info_cb(self, req):
         self.log("[srv_set_camera_info_cb] Callback!")
