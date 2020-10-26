@@ -5,7 +5,7 @@ import os
 import yaml
 import copy
 import numpy as np
-from threading import Thread
+from threading import Thread, Lock
 
 from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
 ROBOT_HARDWARE = get_device_hardware_brand()
@@ -27,7 +27,7 @@ import rospy
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
-from duckietown.dtros import DTROS, NodeType, TopicType
+from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
 
 
 class CameraNode(DTROS):
@@ -80,105 +80,55 @@ class CameraNode(DTROS):
         )
 
         # Add the node parameters to the parameters dictionary and load their default values
-        self._framerate = rospy.get_param(
+        self._framerate = DTParam(
             '~framerate',
-            dt_help="Framerate at which images frames are produced"
+            param_type=ParamType.INT,
+            help="Framerate at which images frames are produced"
         )
-        self._res_w = rospy.get_param(
+        self._res_w = DTParam(
             '~res_w',
-            dt_help="Horizontal resolution (width) of the produced image frames."
+            param_type=ParamType.INT,
+            help="Horizontal resolution (width) of the produced image frames."
         )
-        self._res_h = rospy.get_param(
+        self._res_h = DTParam(
             '~res_h',
-            dt_help="Vertical resolution (height) of the produced image frames."
+            param_type=ParamType.INT,
+            help="Vertical resolution (height) of the produced image frames."
         )
-        self._exposure_mode = rospy.get_param(
+        self._exposure_mode = DTParam(
             '~exposure_mode',
-            dt_help="Exposure mode of the camera. Supported values are listed on "
-                    "https://picamera.readthedocs.io/en/release-1.13/"
-                    "api_camera.html#picamera.PiCamera.exposure_mode"
+            param_type=ParamType.STRING,
+            help="Exposure mode of the camera. Supported values are listed on "
+                 "https://picamera.readthedocs.io/en/release-1.13/"
+                 "api_camera.html#picamera.PiCamera.exposure_mode"
         )
 
         # Jetson Nano Camera initialization
         if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
-
-            # # CONST CONFIGURATIONS
-            # camera modes [width, height, framerate]
-            CAM_MODES_JETSON_NANO = {
-                0: [3264, 2464, 21],
-                1: [3264, 1848, 28],
-                2: [1920, 1080, 30],
-                3: [1280, 720, 60],
-                4: [1280, 720, 120],
-            }
-            # exposure time range (ns)
-            DEFAULT_EXPOSURE_TIMERANGE = [100000, 80000000]
-            EXPOSURE_TIMERANGES_JETSON_NANO = {
-                "sports": DEFAULT_EXPOSURE_TIMERANGE,
-                "night": [100000, 1000000000]
-            }
-
-            # set exposure mode if possible
-            EXPOSURE_TIMERANGE = EXPOSURE_TIMERANGES_JETSON_NANO.get(
-                self._exposure_mode) or DEFAULT_EXPOSURE_TIMERANGE
-
-            # TODO: parameterize this?
-            CAM_MODE_IDX = 0
-            CAM_MODE = CAM_MODES_JETSON_NANO[CAM_MODE_IDX]
-
-            # set framerate if possible
-            if self._framerate > CAM_MODE[2]:
-                self.log(
-                    "Camera framerate({}fps) too high for the camera mode \
-                        (max: {}fps), capping at the later.".format(
-                            self._framerate, CAM_MODE[2]),
-                    type="warn",
-                )
-            else:
-                CAM_MODE[2] = self._framerate
-
-            self.GSTREAMER_PIPELINE = """ \
-                nvarguscamerasrc exposuretimerange="{} {}" ! \
-                video/x-raw(memory:NVMM), \
-                width={}, height={}, format=(string)NV12, framerate={}/1 ! \
-                nvvidconv ! video/x-raw, \
-                width=(int){}, height=(int){}, format=(string)BGRx ! \
-                videoconvert ! \
-                appsink \
-            """.format(*EXPOSURE_TIMERANGE, *CAM_MODE, self._res_w, self._res_h)
-
-            print(self.GSTREAMER_PIPELINE)
-
-            try:
-                self.cap = cv2.VideoCapture(
-                    self.GSTREAMER_PIPELINE,
-                    cv2.CAP_GSTREAMER
-                )
-
-                if not self.cap.isOpened():
-                    print("cv2 can not open gstreamer resource")
-
-                re, image = self.cap.read()
-
-                if not re:
-                    raise RuntimeError("Could not read image from camera.")
-            except:
-                self.stop()
-                raise RuntimeError("Could not start camera.")
-
-            atexit.register(self.stop)
-
+            self.GSTREAMER_PIPELINE = ""
+            self.gst_setup()
+            self.cap = None
+            self.start_jetson_cam()
         # RPi Camera initialization
         else:
             # Setup PiCamera
             self.image_msg = CompressedImage()
             self.camera = PiCamera()
-            self.camera.framerate = self._framerate
-            self.camera.resolution = (self._res_w, self._res_h)
-            self.camera.exposure_mode = self._exposure_mode
+            self.camera.framerate = self._framerate.value
+            self.camera.resolution = (self._res_w.value, self._res_h.value)
+            self.camera.exposure_mode = self._exposure_mode.value
 
             self.stream = io.BytesIO()
-        
+
+        # buffer flag whether any updates in param
+        self._param_updated = False
+        self._mutex = Lock()
+
+        self._framerate.register_update_callback(self.param_updated)
+        self._res_w.register_update_callback(self.param_updated)
+        self._res_h.register_update_callback(self.param_updated)
+        self._exposure_mode.register_update_callback(self.param_updated)
+
         # For intrinsic calibration
         self.cali_file_folder = '/data/config/calibrations/camera_intrinsic/'
         self.frame_id = rospy.get_namespace().strip('/') + '/camera_optical_frame'
@@ -240,7 +190,7 @@ class CameraNode(DTROS):
         if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
             while not self.is_shutdown:
                 try:
-                    self.start()
+                    self.start_jetson_cam()
                     self.grab_and_publish_jetson()
 
                 except StopIteration:
@@ -302,6 +252,17 @@ class CameraNode(DTROS):
                 self.has_published = True
 
             rospy.sleep(rospy.Duration.from_sec(0.001))
+
+            if self._param_updated:
+                # TODO: mutex not likely needed
+                self._mutex.acquire()
+                try:
+                    self._param_updated = False
+                finally:
+                    self._mutex.release()
+                self.stop()
+                raise StopIteration()
+
             re, image = self.cap.read()
         
     def grab_and_publish_rpi(self, stream):
@@ -347,14 +308,90 @@ class CameraNode(DTROS):
 
             rospy.sleep(rospy.Duration.from_sec(0.001))
 
-    def start(self):
+    def param_updated(self):
+        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
+            self.gst_setup()
+            self._mutex.acquire()
+            try:
+                self._param_updated = True
+            finally:
+                self._mutex.release()
+
+    def gst_setup(self):
+        # # CONST CONFIGURATIONS
+        # camera modes [width, height, framerate]
+        CAM_MODES_JETSON_NANO = {
+            0: [3264, 2464, 21],
+            1: [3264, 1848, 28],
+            2: [1920, 1080, 30],
+            3: [1280, 720, 60],
+            4: [1280, 720, 120],
+        }
+        # exposure time range (ns)
+        DEFAULT_EXPOSURE_TIMERANGE = [100000, 80000000]
+        EXPOSURE_TIMERANGES_JETSON_NANO = {
+            "sports": DEFAULT_EXPOSURE_TIMERANGE,
+            "night": [100000, 1000000000]
+        }
+
+        # set exposure mode if possible
+        EXPOSURE_TIMERANGE = EXPOSURE_TIMERANGES_JETSON_NANO.get(
+            self._exposure_mode.value) or DEFAULT_EXPOSURE_TIMERANGE
+
+        # TODO: parameterize this?
+        CAM_MODE_IDX = 0
+
+        # set framerate if possible
+        FPS = CAM_MODES_JETSON_NANO[CAM_MODE_IDX][2]
+        if self._framerate.value > FPS:
+            self.log(
+                "Camera framerate({}fps) too high for the camera mode (max: {}fps), capping at the later.".format(
+                    self._framerate.value, FPS),
+                type="warn",
+            )
+        else:
+            FPS = self._framerate.value
+
+        self.GSTREAMER_PIPELINE = """ \
+            nvarguscamerasrc \
+            sensor-mode={} exposuretimerange="{} {}" ! \
+            video/x-raw(memory:NVMM), \
+            width=640, height=480, format=(string)NV12, framerate={}/1 ! \
+            nvvidconv ! video/x-raw, format=(string)BGRx ! \
+            videoconvert ! video/x-raw, format=BGR ! \
+            videoscale ! video/x-raw, width={}, height={} ! \
+            appsink \
+        """.format(CAM_MODE_IDX, *EXPOSURE_TIMERANGE, FPS, self._res_w.value, self._res_h.value)
+
+        print(self.GSTREAMER_PIPELINE)
+
+    def start_jetson_cam(self):
+        if self.cap is None:
+            self.cap = cv2.VideoCapture()
+
         if not self.cap.isOpened():
-            self.cap.open(self.GSTREAMER_PIPELINE, cv2.CAP_GSTREAMER)
-            # TODO: shouldn't the same try-catch as __init__  be here?
+            try:
+                self.cap.open(self.GSTREAMER_PIPELINE, cv2.CAP_GSTREAMER)
+
+                if not self.cap.isOpened():
+                    print("cv2 can not open gstreamer resource")
+
+                re, _ = self.cap.read()
+
+                if not re:
+                    raise RuntimeError("Could not read image from camera.")
+            except:
+                self.stop()
+                raise RuntimeError("Could not start camera.")
+
+            atexit.register(self.stop)
 
     def stop(self):
         if hasattr(self, 'cap'):
             self.cap.release()
+
+    def on_shutdown(self):
+        self.stop()
 
     def srv_set_camera_info_cb(self, req):
         self.log("[srv_set_camera_info_cb] Callback!")
@@ -422,8 +459,8 @@ class CameraNode(DTROS):
         TODO: Test that this really works.
         """
 
-        scale_width = float(self._res_w) / self.original_camera_info.width
-        scale_height = float(self._res_h) / self.original_camera_info.height
+        scale_width = float(self._res_w.value) / self.original_camera_info.width
+        scale_height = float(self._res_h.value) / self.original_camera_info.height
 
         scale_matrix = np.ones(9)
         scale_matrix[0] *= scale_width
@@ -432,8 +469,8 @@ class CameraNode(DTROS):
         scale_matrix[5] *= scale_height
 
         # Adjust the camera matrix resolution
-        self.current_camera_info.height = self._res_h
-        self.current_camera_info.width = self._res_w
+        self.current_camera_info.height = self._res_h.value
+        self.current_camera_info.width = self._res_w.value
 
         # Adjust the K matrix
         self.current_camera_info.K = np.array(self.original_camera_info.K) * scale_matrix
