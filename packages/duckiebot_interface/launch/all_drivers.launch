@@ -13,8 +13,8 @@
 
     <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
     <param name="robot_description"
-        command="xacro --inorder '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+        command="xacro '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
+    <node ns="$(arg veh)" pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <include file="$(find camera_driver)/launch/camera_node.launch">
