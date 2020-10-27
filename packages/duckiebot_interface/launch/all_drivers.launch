@@ -14,7 +14,7 @@
     <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
     <param name="robot_description"
         command="xacro '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+    <node ns="$(arg veh)" pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <group unless="$(eval arg('robot_type') in ['duckietown'])">
@@ -57,8 +57,8 @@
 
     <!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
     <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')">
-        <remap from="left_wheel_encoder_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed"/>
         <!-- Left Wheel Encoder  -->
+        <remap from="left_wheel_encoder_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed"/>
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="wheel" value="left"/>
