@@ -101,7 +101,10 @@ class JetsonNanoCameraNode(AbsCameraNode):
         self._device = None
 
     def gst_pipeline_string(self):
-        capture_w, capture_h, fps = self.CAMERA_MODES[self._camera_mode]
+        # find best mode
+        capture_w, capture_h, fps = \
+            self.get_mode(self._res_w.value, self._res_h.value, self._framerate.value)
+        # cap frequency
         if self._framerate.value > fps:
             self.logwarn("Camera framerate({}fps) too high for the camera mode (max: {}fps), "
                          "capping at {}fps.".format(self._framerate.value, fps, fps))
@@ -122,9 +125,24 @@ class JetsonNanoCameraNode(AbsCameraNode):
             videoconvert ! video/x-raw, format=BGR ! \
             videoscale ! video/x-raw, width={}, height={} ! \
             appsink \
-        """.format(self._camera_mode, *exposure_time, capture_w, capture_h, fps, self._res_w.value, self._res_h.value)
+        """.format(
+            self._camera_mode,
+            *exposure_time,
+            capture_w,
+            capture_h,
+            fps,
+            self._res_w.value,
+            self._res_h.value
+        )
         self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
         return gst_pipeline
+
+    def get_mode(self, width, height, fps):
+        candidates = {
+            i for (i, (_w, _h, _f)) in enumerate(self.CAMERA_MODES)
+            if _w >= width and _h >= height and _f >= fps
+        }.union({0})
+        return self.CAMERA_MODES[sorted(candidates)[-1]]
 
 
 if __name__ == '__main__':
