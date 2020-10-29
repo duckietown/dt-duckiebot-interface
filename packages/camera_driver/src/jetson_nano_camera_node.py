@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from collections import namedtuple
+from typing import Tuple
 
 import cv2
 import rospy
@@ -6,6 +8,9 @@ import atexit
 import numpy as np
 
 from camera_driver import AbsCameraNode
+from duckietown.dtros import DTParam, ParamType
+
+CameraMode = namedtuple('CameraMode', 'width height fps fov')
 
 
 class JetsonNanoCameraNode(AbsCameraNode):
@@ -15,11 +20,11 @@ class JetsonNanoCameraNode(AbsCameraNode):
 
     # each mode defines [width, height, fps]
     CAMERA_MODES = {
-        0: [3264, 2464, 21],
-        1: [3264, 1848, 28],
-        2: [1920, 1080, 30],
-        3: [1280, 720, 60],
-        4: [1280, 720, 120],
+        0: CameraMode(3264, 2464, 21, 'full'),
+        1: CameraMode(3264, 1848, 28, 'partial'),
+        2: CameraMode(1920, 1080, 30, 'partial'),
+        3: CameraMode(1280, 720, 60, 'partial'),
+        4: CameraMode(1280, 720, 120, 'partial'),
     }
     # exposure time range (ns)
     EXPOSURE_TIMERANGES = {
@@ -31,6 +36,12 @@ class JetsonNanoCameraNode(AbsCameraNode):
     def __init__(self):
         # Initialize the DTROS parent class
         super(JetsonNanoCameraNode, self).__init__()
+        # parameters
+        self._allow_partial_fov = DTParam(
+            '~allow_partial_fov',
+            param_type=ParamType.BOOL,
+            help="Allow camera modes with partial Fielf-of-View"
+        )
         # prepare gstreamer pipeline
         self._camera_mode = 0
         self._device = None
@@ -101,15 +112,14 @@ class JetsonNanoCameraNode(AbsCameraNode):
         self._device = None
 
     def gst_pipeline_string(self):
+        res_w, res_h, fps = self._res_w.value, self._res_h.value, self._framerate.value
+        fov = ('full', 'partial') if self._allow_partial_fov else ('full',)
         # find best mode
-        capture_w, capture_h, fps = \
-            self.get_mode(self._res_w.value, self._res_h.value, self._framerate.value)
+        camera_mode = self.get_mode(res_w, res_h, fps, fov)
         # cap frequency
-        if self._framerate.value > fps:
+        if fps > camera_mode.fps:
             self.logwarn("Camera framerate({}fps) too high for the camera mode (max: {}fps), "
-                         "capping at {}fps.".format(self._framerate.value, fps, fps))
-        else:
-            fps = self._framerate.value
+                         "capping at {}fps.".format(fps, camera_mode.fps, camera_mode.fps))
         # get exposure time
         exposure_time = self.EXPOSURE_TIMERANGES.get(
             self._exposure_mode,
@@ -128,19 +138,19 @@ class JetsonNanoCameraNode(AbsCameraNode):
         """.format(
             self._camera_mode,
             *exposure_time,
-            capture_w,
-            capture_h,
-            fps,
+            camera_mode.width,
+            camera_mode.height,
+            camera_mode.fps,
             self._res_w.value,
             self._res_h.value
         )
         self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
         return gst_pipeline
 
-    def get_mode(self, width, height, fps):
+    def get_mode(self, width: int, height: int, fps: int, fov: Tuple[str]):
         candidates = {
-            i for (i, (_w, _h, _f)) in enumerate(self.CAMERA_MODES)
-            if _w >= width and _h >= height and _f >= fps
+            i for (i, m) in enumerate(self.CAMERA_MODES)
+            if m.width >= width and m.height >= height and m.fps >= fps and m.fov in fov
         }.union({0})
         return self.CAMERA_MODES[sorted(candidates)[-1]]
 
