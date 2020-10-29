@@ -64,11 +64,6 @@ class AbsCameraNode(ABC, DTROS):
         )
 
         # Add the node parameters to the parameters dictionary and load their default values
-        self._framerate = DTParam(
-            '~framerate',
-            param_type=ParamType.INT,
-            help="Framerate at which images frames are produced"
-        )
         self._res_w = DTParam(
             '~res_w',
             param_type=ParamType.INT,
@@ -78,6 +73,11 @@ class AbsCameraNode(ABC, DTROS):
             '~res_h',
             param_type=ParamType.INT,
             help="Vertical resolution (height) of the produced image frames."
+        )
+        self._framerate = DTParam(
+            '~framerate',
+            param_type=ParamType.INT,
+            help="Framerate at which images frames are produced"
         )
         self._exposure_mode = DTParam(
             '~exposure_mode',
