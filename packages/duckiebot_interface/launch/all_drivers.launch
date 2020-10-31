@@ -55,6 +55,7 @@
 
     <!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
     <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')">
+        <remap from="left_wheel_encoder_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed"/>
         <!-- Left Wheel Encoder  -->
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -63,6 +64,7 @@
         </include>
 
         <!-- Right Wheel Encoder  -->
+        <remap from="right_wheel_encoder_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed"/>
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="wheel" value="right"/>
