@@ -3,6 +3,7 @@
 import RPi.GPIO as GPIO
 
 
+
 class WheelEncoderDriver:
     """Class handling communication with a wheel encoder.
 
@@ -30,9 +31,10 @@ class WheelEncoderDriver:
         # ---
         self._callback = callback
         self._ticks = 0
+        self.direction = 1 # default to forward
 
     def _cb(self, _):
-        self._ticks += 1
+        self._ticks += self.direction
         self._callback(self._ticks)
 
     def shutdown(self):

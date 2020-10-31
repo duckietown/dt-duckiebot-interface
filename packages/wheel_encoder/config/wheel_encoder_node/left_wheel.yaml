@@ -1,2 +1,3 @@
 gpio: 18
 resolution: 135
+configuration: "left"
