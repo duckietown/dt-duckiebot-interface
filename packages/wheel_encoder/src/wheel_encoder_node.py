@@ -3,6 +3,7 @@
 import rospy
 import uuid
 
+from std_msgs.msg import Header
 from duckietown_msgs.msg import WheelEncoderStamped, WheelsCmdStamped
 from wheel_encoder import WheelEncoderDriver
 from duckietown.dtros import DTROS, TopicType, NodeType
@@ -81,7 +82,11 @@ class WheelEncoderNode(DTROS):
             Args:
                 tick_no (int): cumulative total number of ticks
         """
+        # Create header with timestamp
+        header = Header()
+        header.stamp = rospy.Time.now()
         self._tick_pub.publish(WheelEncoderStamped(
+            header=header,
             data=tick_no,
             resolution=self._resolution,
             type=WheelEncoderStamped.ENCODER_TYPE_INCREMENTAL
