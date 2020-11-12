@@ -1,4 +1,8 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
+smbus2
+vl53l1x
+pyyaml
+adafruit-ads1x15
 
 # Jetson packages
 Jetson.GPIO

@@ -1,0 +1,55 @@
+<?xml version="1.0"?>
+<launch>
+	<arg name="veh" doc="Name of vehicle. ex megaman"/>
+	<arg name="robot_type" default="duckiebot"
+		doc="The type of the robot: should be duckiebot,
+		watchtower, duckiedrone or traffic_light"/>
+
+
+	<arg name="pkg_name" value="rangefinder"/>
+
+
+  <group ns="$(arg veh)">
+
+
+	  <node pkg="$(arg pkg_name)" type="rangefinder_setup_node.py"
+			name="rangefinder_setup_node"
+			required="false"
+			output='screen'></node>
+
+
+
+	  <node pkg="$(arg pkg_name)" type="lidar_sensor_node.py"
+		  name="lidar_sensor_node_1" required="false"
+		  output="screen">
+		  <param name="i2c_channel_id" value="0" /></node>
+
+	  <!--TODO Due to a hardware issue on the prototype drone
+	   the second node is turned off, this should not be in the final
+	  repo
+
+          <node pkg="$(arg pkg_name)" type="lidar_sensor_node.py"
+		  name="lidar_sensor_node_2" required="false"
+		  output="screen" >
+	 	  <param name="i2c_channel_id" value="1" /></node>
+          -->
+
+	  <node pkg="$(arg pkg_name)" type="lidar_sensor_node.py"
+		  name="lidar_sensor_node_3" required="false"
+		  output="screen" >
+		  <param name="i2c_channel_id" value="2" /></node>
+
+	  <node pkg="$(arg pkg_name)" type="lidar_sensor_node.py"
+		  name="lidar_sensor_node_4" required="false"
+		  output="screen" >
+		  <param name="i2c_channel_id" value="3" /></node>
+
+	  <node pkg="$(arg pkg_name)" type="infrared_node.py"
+	  		name="infrared_node" output="screen"
+	  		required="false"></node>
+
+  </group>
+
+
+
+</launch>

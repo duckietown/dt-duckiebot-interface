@@ -1,0 +1,2 @@
+maxrange: 3.0
+i2c_channel_base: 0x3

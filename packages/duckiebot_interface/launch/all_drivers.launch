@@ -11,10 +11,12 @@
     <arg name="robot_xurdf" value="$(find duckiebot_interface)/urdf/$(arg robot_type).urdf.xacro"
          doc="Location of the URDF XACRO file for the robot type"/>
 
-    <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
-    <param name="robot_description"
-        command="xacro --inorder '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+    <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it TODO:ADD DRONE -->
+    <group unless="$(eval (arg('robot_type') == 'duckiedrone'))">
+        <param name="robot_description"
+            command="xacro --inorder '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
+        <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+    </group>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <include file="$(find camera_driver)/launch/camera_node.launch">
@@ -24,7 +26,7 @@
     </include>
 
     <!-- LED Emitter: reads ROS messages and commands the LEDs -->
-    <group unless="$(eval arg('robot_type') == 'watchtower')">
+    <group unless="$(eval (arg('robot_type') == 'watchtower') or arg('robot_type') == 'duckiedrone')">
         <include file="$(find led_emitter)/launch/led_emitter_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="robot_type" value="$(arg robot_type)"/>
@@ -32,13 +34,16 @@
     </group>
 
     <!-- Joystick: reads from a physical joystick and produces ROS messages -->
-    <group if="$(eval arg('robot_type') == 'duckiebot')">
+    <group if="$(eval (arg('robot_type') == 'duckiebot') or arg('robot_type') == 'duckiedrone')">
         <include file="$(find joystick)/launch/joystick_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="$(arg param_file_name)"/>
         </include>
+    </group>
+    
+    <!-- Wheel Drivers: reads ROS messages and spins the motors -->
+    <group if="$(eval arg('robot_type') == 'duckiebot')">
 
-        <!-- Wheel Drivers: reads ROS messages and spins the motors -->
         <include file="$(find wheels_driver)/launch/wheels_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="$(arg param_file_name)"/>
@@ -70,6 +75,18 @@
             <arg name="wheel" value="right"/>
             <arg name="param_file_name" value="right_wheel"/>
         </include>
+    </group>
+
+    <!-- Drone (Drone robot only): commands flight controller and rangefinder -->
+    <group if="$(eval arg('robot_type') == 'duckiedrone')">
+        <include file="$(find rangefinder)/launch/rangefinder.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
+
+        <include file="$(find flight_controller)/launch/flight_controller.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="robot_type" value="$(arg robot_type)"/>
+         </include>
     </group>
 
 </launch>
