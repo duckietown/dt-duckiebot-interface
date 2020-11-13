@@ -10,6 +10,8 @@ __version__ = "1.5"
 
 import serial, time, struct
 import numpy as np
+import yaml
+
 
 class MultiWii:
 
@@ -59,7 +61,7 @@ class MultiWii:
     SEND_EIGHT_STRUCT1 = struct.Struct('<2B%dh' % 8)
     codeS = struct.Struct('<B')
     footerS = struct.Struct('B')
-    emptyString = ""
+    emptyString = b""
     
     #python2.7: headerString = "$M<" now we convert to hex on the spot
     headerString = b"\x24\x4d\x3c"
@@ -117,10 +119,7 @@ class MultiWii:
         b = np.frombuffer(dataString, dtype=np.uint8)
         checksum = np.bitwise_xor.accumulate(b)[-1]
         footerString = MultiWii.footerS.pack(checksum)
-        print(MultiWii.headerString, type(MultiWii.headerString))
-        print(dataString, type(dataString))
-        print(footerString, type(footerString))
-        self.ser.write(MultiWii.emptyString.join((MultiWii.headerString, dataString, footerString, "\n")))
+        self.ser.write(MultiWii.emptyString.join((MultiWii.headerString, dataString, footerString, b"\n")))
         # return self.receiveDataPacket()
 
 
@@ -175,15 +174,16 @@ class MultiWii:
         start = time.time()
 
         header = self.ser.read(5)
+        #print(header, type(header), header[0], type(header[0]))
         if len(header) == 0:
             print("timeout on receiveDataPacket")
             return None
-        elif header[0] != '$':
-            print("Didn't get valid header: ", header)
+        elif header[0] != ord(b'$'):
+            print("Didn't get valid header: ", header, header[0])
             raise
-
-        datalength = MultiWii.codeS.unpack(header[-2])[0]
-        code = MultiWii.codeS.unpack(header[-1])[0]
+        
+        datalength = MultiWii.codeS.unpack(header[-2:-1])[0]
+        code = MultiWii.codeS.unpack(header[-1:])[0]
         data = self.ser.read(datalength)
         checksum = self.ser.read()
         self.checkChecksum(data, checksum)  # noop now.
@@ -347,7 +347,6 @@ class MultiWii:
 
         print(raw_imu_totals)
 
-        import yaml
         f = open(fname, "w")
         yaml.dump(raw_imu_totals, f)
         f.close()
