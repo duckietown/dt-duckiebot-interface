@@ -99,7 +99,8 @@ class FlightController(object):
             p = msg.pitch
             y = msg.yaw
             t = msg.throttle
-            self.command = [r,p,y,t]
+            self.command = [int(r),int(p),int(y),int(t)] #these must be int 
+            #to be sent to the flight control board via h2rMultiWii.py
 
 
     # Update methods:

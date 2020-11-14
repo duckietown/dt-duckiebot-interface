@@ -113,7 +113,11 @@ class MultiWii:
             s1 = MultiWii.SEND_EIGHT_STRUCT1
         else:
             s1 = struct.Struct('<2B%dh' % len(data))
-
+        
+        #print("dl", dl)
+        #print("data_length", type(data_length), data_length)
+        #print("code", type(code), code)
+        #print("*data",  *data)
         dataString = s1.pack(data_length, code, *data)
 
         b = np.frombuffer(dataString, dtype=np.uint8)
