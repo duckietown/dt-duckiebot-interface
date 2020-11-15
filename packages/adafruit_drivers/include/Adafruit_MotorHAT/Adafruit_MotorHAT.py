@@ -132,7 +132,8 @@ class Adafruit_StepperMotor:
                           [0, 0, 1, 1],
                           [0, 0, 0, 1],
                           [1, 0, 0, 1]]
-            coils = step2coils[self.currentstep / (self.MICROSTEPS / 2)]
+            i = int(self.currentstep / (self.MICROSTEPS / 2))
+            coils = step2coils[i]
 
         # print "coils state = " + str(coils)
         self.MC.setPin(self.AIN2, coils[0])
