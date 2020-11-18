@@ -13,18 +13,20 @@
 
     <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
     <param name="robot_description"
-        command="xacro --inorder '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
+        command="xacro '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
-    <include file="$(find camera_driver)/launch/camera_node.launch">
-        <arg name="veh" value="$(arg veh)"/>
-        <arg name="param_file_name" value="$(arg robot_type)"/>
-        <arg name="required" value="$(arg camera_required)"/>
-    </include>
+    <group unless="$(eval arg('robot_type') in ['duckietown'])">
+        <include file="$(find camera_driver)/launch/camera_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="param_file_name" value="$(arg robot_type)"/>
+            <arg name="required" value="$(arg camera_required)"/>
+        </include>
+    </group>
 
     <!-- LED Emitter: reads ROS messages and commands the LEDs -->
-    <group unless="$(eval arg('robot_type') == 'watchtower')">
+    <group unless="$(eval arg('robot_type') in ['watchtower', 'duckietown'])">
         <include file="$(find led_emitter)/launch/led_emitter_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="robot_type" value="$(arg robot_type)"/>
