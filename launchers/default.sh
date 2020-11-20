@@ -17,7 +17,8 @@ dt-exec roslaunch --wait \
   duckiebot_interface all_drivers.launch \
     veh:="$VEHICLE_NAME" \
     robot_type:="$ROBOT_TYPE" \
-    robot_configuration:="$ROBOT_CONFIGURATION"
+    robot_configuration:="$ROBOT_CONFIGURATION" \
+    robot_tag_id:="$ROBOT_TAG_ID"
 
 
 # ----------------------------------------------------------------------------
