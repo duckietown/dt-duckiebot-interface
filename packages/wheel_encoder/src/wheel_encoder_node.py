@@ -2,14 +2,17 @@
 
 import rospy
 import uuid
+import tf
+
+from geometry_msgs.msg import TransformStamped, Transform, Quaternion
+from tf2_ros import TransformBroadcaster
+from math import pi
 
 from std_msgs.msg import Header
 from duckietown_msgs.msg import WheelEncoderStamped, WheelsCmdStamped
-from wheel_encoder import WheelEncoderDriver
+from wheel_encoder import WheelEncoderDriver, WheelDirection
 from duckietown.dtros import DTROS, TopicType, NodeType
 
-FORWARD = 1
-REVERSE = -1
 
 class WheelEncoderNode(DTROS):
     """Node handling a single wheel encoder.
@@ -38,15 +41,11 @@ class WheelEncoderNode(DTROS):
             node_type=NodeType.DRIVER
         )
         # get parameters
+        self._veh = rospy.get_param('~veh')
         self._name = rospy.get_param('~name')
         self._gpio_pin = rospy.get_param('~gpio')
         self._resolution = rospy.get_param('~resolution')
         self._configuration = rospy.get_param('~configuration')
-        self._tick_no = 1
-
-        # setup the driver
-        self._driver = WheelEncoderDriver(self._gpio_pin, self._encoder_tick_cb)
-
         # publisher for wheel encoder ticks
         self._tick_pub = rospy.Publisher(
             "~tick",
@@ -54,7 +53,6 @@ class WheelEncoderNode(DTROS):
             queue_size=1,
             dt_topic_type=TopicType.DRIVER
         )
-
         # subscriber for the wheel command executed
         self.sub_wheels = rospy.Subscriber(
             "~wheels_cmd_executed",
@@ -62,18 +60,22 @@ class WheelEncoderNode(DTROS):
             self._wheels_cmd_executed_cb,
             queue_size=1
         )
+        # tf broadcaster for wheel frame
+        self._tf_broadcaster = TransformBroadcaster()
+        # setup the driver
+        self._driver = WheelEncoderDriver(self._gpio_pin, self._encoder_tick_cb)
 
     def _wheels_cmd_executed_cb(self,msg):
         if self._configuration == "left":
             if msg.vel_left >= 0:
-                self._driver.direction = FORWARD
+                self._driver.set_direction(WheelDirection.FORWARD)
             else:
-                self._driver.direction = REVERSE
+                self._driver.set_direction(WheelDirection.REVERSE)
         elif self._configuration == "right":
             if msg.vel_right >= 0:
-                self._driver.direction = FORWARD
+                self._driver.set_direction(WheelDirection.FORWARD)
             else:
-                self._driver.direction = REVERSE
+                self._driver.set_direction(WheelDirection.REVERSE)
 
     def _encoder_tick_cb(self, tick_no):
         """
@@ -84,12 +86,24 @@ class WheelEncoderNode(DTROS):
         """
         # Create header with timestamp
         header = Header()
+        header.frame_id = f"{self._veh}/{self._name}_wheel_axis"
         header.stamp = rospy.Time.now()
+        # publish WheelEncoderStamped message
         self._tick_pub.publish(WheelEncoderStamped(
             header=header,
             data=tick_no,
             resolution=self._resolution,
             type=WheelEncoderStamped.ENCODER_TYPE_INCREMENTAL
+        ))
+        # publish TF
+        angle = (float(tick_no) / float(self._resolution)) * 2 * pi
+        quat = tf.transformations.quaternion_from_euler(0, angle, 0)
+        self._tf_broadcaster.sendTransform(TransformStamped(
+            header=header,
+            child_frame_id=f"{self._veh}/{self._name}_wheel",
+            transform=Transform(
+                rotation=Quaternion(x=quat[0], y=quat[1], z=quat[2], w=quat[3])
+            )
         ))
 
 

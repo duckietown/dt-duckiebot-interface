@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from enum import IntEnum
+
 from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
 ROBOT_HARDWARE = get_device_hardware_brand()
 
@@ -12,6 +14,10 @@ elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
 else:
     raise Exception("Undefined Hardware!")
 
+
+class WheelDirection(IntEnum):
+    FORWARD = 1
+    REVERSE = -1
 
 
 class WheelEncoderDriver:
@@ -41,10 +47,17 @@ class WheelEncoderDriver:
         # ---
         self._callback = callback
         self._ticks = 0
-        self.direction = 1 # default to forward
+        # wheel direction
+        self._direction = WheelDirection.FORWARD
+
+    def get_direction(self) -> WheelDirection:
+        return self._direction
+
+    def set_direction(self, direction: WheelDirection):
+        self._direction = direction
 
     def _cb(self, _):
-        self._ticks += self.direction
+        self._ticks += self._direction.value
         self._callback(self._ticks)
 
     def shutdown(self):
