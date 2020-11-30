@@ -6,8 +6,6 @@
          doc="The type of the robot, e.g., duckiebot, watchtower, traffic_light, ..."/>
     <arg name="robot_configuration"
          doc="The configuration of the robot. For example DB19, DB20, ..."/>
-    <arg name="robot_tag_id"
-         doc="The tag_id of the robot. For example 401, 402, ..."/>
     <arg name="camera_required" value="$(eval arg('robot_type') != 'traffic_light')"
          doc="Do we kill everything if the camera doesn't work?"/>
     <arg name="robot_xurdf" value="$(find duckiebot_interface)/urdf/$(arg robot_type).urdf.xacro"
@@ -15,7 +13,7 @@
 
     <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
     <param name="robot_description"
-        command="xacro '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh) tag_id:=$(arg robot_tag_id)" />
+        command="xacro '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->

@@ -6,11 +6,10 @@
 
         - veh:      Vehicle name (e.g., autobot04)
         - model:    Robot configuration (e.g., DB18)
-        - tag_id:   Robot Tag ID (e.g., 401)
 
     -->
 
-    <xacro:macro name="duckiebot" params="veh model tag_id">
+    <xacro:macro name="duckiebot" params="veh model">
 
         <!-- START: Duckiebot -->
 
@@ -219,19 +218,6 @@
                 <origin xyz="0.017 0 0" rpy="-${0.5 * pi} 0 -${0.5 * pi}" />
             </joint>
 
-
-            <xacro:if value="${tag_id not in ['__NOTSET__']}" >
-
-                <!-- tag id -->
-                <link name="tag/${tag_id}"/>
-                <joint name="${veh}_top_plate_to_tag_id" type="fixed">
-                    <parent link="${veh}/top_plate" />
-                    <child link="tag/${tag_id}" />
-                    <origin xyz="0.008 0 0.052" />
-                </joint>
-
-            </xacro:if>
-
             <!-- END: Duckiebot: DB1X -->
 
         </xacro:if>
@@ -241,6 +227,6 @@
     </xacro:macro>
 
     <!--  Spawn Duckiebot  -->
-    <xacro:duckiebot veh="$(arg veh)" model="$(arg model)" tag_id="$(arg tag_id)" />
+    <xacro:duckiebot veh="$(arg veh)" model="$(arg model)" />
 
 </robot>
