@@ -1,5 +1,4 @@
 import logging
-import os
 
 from flask import Flask
 from flask_cors import CORS
@@ -10,9 +9,6 @@ from dt_robot_utils import get_robot_type
 class RobotRestAPI(Flask):
 
     def __init__(self, debug=False):
-        # enable debug mode
-        if debug:
-            os.environ['FLASK_DEBUG'] = '1'
         # create Flask app
         super(RobotRestAPI, self).__init__(__name__)
         self.http_port = None
