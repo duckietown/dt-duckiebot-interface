@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
-    <arg name="param_file_name" default="default" doc="Specify a param file. ex:default." />
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex:default."/>
     <arg name="robot_type"
          doc="The type of the robot, e.g., duckiebot, watchtower, traffic_light, ..."/>
     <arg name="robot_configuration"
@@ -13,8 +13,8 @@
 
     <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
     <param name="robot_description"
-        command="xacro '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)" />
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher" />
+           command="xacro '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <group unless="$(eval arg('robot_type') in ['duckietown'])">
@@ -45,7 +45,7 @@
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="$(arg param_file_name)"/>
         </include>
-   </group>
+    </group>
 
     <!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
     <group if="$(eval arg('robot_type') == 'traffic_light')">
@@ -57,7 +57,8 @@
 
     <!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
     <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')">
-        <remap from="left_wheel_encoder_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed"/>
+        <remap from="left_wheel_encoder_node/wheels_cmd_executed"
+               to="wheels_driver_node/wheels_cmd_executed"/>
         <!-- Left Wheel Encoder  -->
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -66,7 +67,8 @@
         </include>
 
         <!-- Right Wheel Encoder  -->
-        <remap from="right_wheel_encoder_node/wheels_cmd_executed" to="wheels_driver_node/wheels_cmd_executed"/>
+        <remap from="right_wheel_encoder_node/wheels_cmd_executed"
+               to="wheels_driver_node/wheels_cmd_executed"/>
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="wheel" value="right"/>
