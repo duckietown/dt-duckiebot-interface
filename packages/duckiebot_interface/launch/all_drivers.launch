@@ -76,4 +76,11 @@
         </include>
     </group>
 
+    <!-- Robot HTTP API: provides an HTTP API through which we can control the Robot -->
+    <include file="$(find robot_http_api)/launch/robot_http_api_node.launch">
+        <arg name="veh" value="$(arg veh)"/>
+        <arg name="robot_type" value="$(arg robot_type)"/>
+        <arg name="param_file_name" value="$(arg param_file_name)"/>
+    </include>
+
 </launch>
