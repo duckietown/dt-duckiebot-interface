@@ -46,6 +46,9 @@ class WheelEncoderNode(DTROS):
         self._gpio_pin = rospy.get_param('~gpio')
         self._resolution = rospy.get_param('~resolution')
         self._configuration = rospy.get_param('~configuration')
+        self._publish_frequency = rospy.get_param('~publish_frequency')
+        # tick storage
+        self._tick = 0
         # publisher for wheel encoder ticks
         self._tick_pub = rospy.Publisher(
             "~tick",
@@ -62,6 +65,8 @@ class WheelEncoderNode(DTROS):
         )
         # tf broadcaster for wheel frame
         self._tf_broadcaster = TransformBroadcaster()
+        # setup a timer
+        self._timer = rospy.Timer(rospy.Duration(1.0 / self._publish_frequency), self._cb_publish)
         # setup the driver
         self._driver = WheelEncoderDriver(self._gpio_pin, self._encoder_tick_cb)
 
@@ -84,6 +89,9 @@ class WheelEncoderNode(DTROS):
             Args:
                 tick_no (int): cumulative total number of ticks
         """
+        self._tick = tick_no
+
+    def _cb_publish(self, _):
         # Create header with timestamp
         header = Header()
         header.frame_id = f"{self._veh}/{self._name}_wheel_axis"
@@ -91,12 +99,12 @@ class WheelEncoderNode(DTROS):
         # publish WheelEncoderStamped message
         self._tick_pub.publish(WheelEncoderStamped(
             header=header,
-            data=tick_no,
+            data=self._tick,
             resolution=self._resolution,
             type=WheelEncoderStamped.ENCODER_TYPE_INCREMENTAL
         ))
         # publish TF
-        angle = (float(tick_no) / float(self._resolution)) * 2 * pi
+        angle = (float(self._tick) / float(self._resolution)) * 2 * pi
         quat = tf.transformations.quaternion_from_euler(0, angle, 0)
         self._tf_broadcaster.sendTransform(TransformStamped(
             header=header,

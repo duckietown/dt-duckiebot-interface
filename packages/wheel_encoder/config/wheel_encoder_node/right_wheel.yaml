@@ -1,3 +1,4 @@
 gpio: 19
 resolution: 135
 configuration: "right"
+publish_frequency: 10
