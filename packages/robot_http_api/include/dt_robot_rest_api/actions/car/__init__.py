@@ -29,5 +29,5 @@ def _carstatus():
         # this means that the robot is considered NOT moving after
         # at least `_last_moving_msg_time_thr` sec with no non-zero
         # velocity messages received
-        'engaged': (time.time() - _last_moving_msg_time) > _last_moving_msg_time_thr
+        'engaged': (time.time() - _last_moving_msg_time) < _last_moving_msg_time_thr
     })
