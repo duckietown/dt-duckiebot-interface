@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
-from collections import namedtuple
-from typing import Tuple
 
 import cv2
 import rospy
 import atexit
 import numpy as np
 
-from camera_driver import AbsCameraNode
-from duckietown.dtros import DTParam, ParamType
+from typing import Tuple
+from collections import namedtuple
 
-CameraMode = namedtuple('CameraMode', 'width height fps fov')
+from camera_driver import AbsCameraNode
+
+CameraMode = namedtuple('CameraMode', 'id width height fps fov')
 
 
 class JetsonNanoCameraNode(AbsCameraNode):
@@ -19,13 +19,14 @@ class JetsonNanoCameraNode(AbsCameraNode):
     """
 
     # each mode defines [width, height, fps]
-    CAMERA_MODES = {
-        0: CameraMode(3264, 2464, 21, 'full'),
-        1: CameraMode(3264, 1848, 28, 'partial'),
-        2: CameraMode(1920, 1080, 30, 'partial'),
-        3: CameraMode(1280, 720, 60, 'partial'),
-        4: CameraMode(1280, 720, 120, 'partial'),
-    }
+    CAMERA_MODES = [
+        CameraMode(0, 3264, 2464, 21, 'full'),
+        CameraMode(1, 3264, 1848, 28, 'partial'),
+        CameraMode(2, 1920, 1080, 30, 'partial'),
+        CameraMode(3, 1640, 1232, 30, 'full'),
+        CameraMode(4, 1280, 720, 60, 'partial'),
+        CameraMode(5, 1280, 720, 120, 'partial'),
+    ]
     # exposure time range (ns)
     EXPOSURE_TIMERANGES = {
         "sports": [100000, 80000000],
@@ -37,13 +38,8 @@ class JetsonNanoCameraNode(AbsCameraNode):
         # Initialize the DTROS parent class
         super(JetsonNanoCameraNode, self).__init__()
         # parameters
-        self._allow_partial_fov = DTParam(
-            '~allow_partial_fov',
-            param_type=ParamType.BOOL,
-            help="Allow camera modes with partial Fielf-of-View"
-        )
+        self._allow_partial_fov = rospy.get_param('~allow_partial_fov', False)
         # prepare gstreamer pipeline
-        self._camera_mode = 0
         self._device = None
         # ---
         self.log("[JetsonNanoCameraNode]: Initialized.")
@@ -129,14 +125,13 @@ class JetsonNanoCameraNode(AbsCameraNode):
         gst_pipeline = """ \
             nvarguscamerasrc \
             sensor-mode={} exposuretimerange="{} {}" ! \
-            video/x-raw(memory:NVMM), \
-            width={}, height={}, format=(string)NV12, framerate={}/1 ! \
-            nvvidconv ! video/x-raw, format=(string)BGRx ! \
-            videoconvert ! video/x-raw, format=BGR ! \
-            videoscale ! video/x-raw, width={}, height={} ! \
+            video/x-raw(memory:NVMM), width={}, height={}, format=NV12, framerate={}/1 ! \
+            nvvidconv ! 
+            video/x-raw, width={}, height={}, format=BGRx ! 
+            videoconvert ! \
             appsink \
         """.format(
-            self._camera_mode,
+            camera_mode.id,
             *exposure_time,
             camera_mode.width,
             camera_mode.height,
@@ -147,12 +142,12 @@ class JetsonNanoCameraNode(AbsCameraNode):
         self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
         return gst_pipeline
 
-    def get_mode(self, width: int, height: int, fps: int, fov: Tuple[str]):
+    def get_mode(self, width: int, height: int, fps: int, fov: Tuple[str]) -> CameraMode:
         candidates = {
-            i for (i, m) in enumerate(self.CAMERA_MODES)
+            m for m in self.CAMERA_MODES
             if m.width >= width and m.height >= height and m.fps >= fps and m.fov in fov
-        }.union({0})
-        return self.CAMERA_MODES[sorted(candidates)[-1]]
+        }.union({self.CAMERA_MODES[0]})
+        return sorted(candidates, key=lambda m: m.id)[-1]
 
 
 if __name__ == '__main__':
