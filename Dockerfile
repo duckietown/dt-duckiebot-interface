@@ -85,3 +85,7 @@ LABEL org.duckietown.label.module.type="${REPO_NAME}" \
 
 # force reinstall RPi.GPIO to remove nVidia's dummy RPi libraries
 RUN pip3 install --ignore-installed --force-reinstall RPi.GPIO
+
+# this is necessary for the camera pipeline to work on the Jetson Nano
+ENV LD_PRELOAD=${LD_PRELOAD}:/usr/lib/aarch64-linux-gnu/libGLdispatch.so
+COPY assets/etc/ld.so.conf.d/nvidia-tegra.conf /etc/ld.so.conf.d/nvidia-tegra.conf
