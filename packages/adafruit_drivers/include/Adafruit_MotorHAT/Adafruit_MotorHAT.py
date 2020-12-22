@@ -3,6 +3,12 @@
 from Adafruit_PWM_Servo_Driver import PWM
 import time
 
+from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+ROBOT_HARDWARE = get_device_hardware_brand()
+
+if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
+    import Jetson.GPIO as GPIO
+
 
 class Adafruit_StepperMotor:
     MICROSTEPS = 8
@@ -93,13 +99,16 @@ class Adafruit_StepperMotor:
             if (self.currentstep >= 0) and (self.currentstep < self.MICROSTEPS):
                 pwm_a = self.MICROSTEP_CURVE[self.MICROSTEPS - self.currentstep]
                 pwm_b = self.MICROSTEP_CURVE[self.currentstep]
-            elif (self.currentstep >= self.MICROSTEPS) and (self.currentstep < self.MICROSTEPS * 2):
+            elif (self.currentstep >= self.MICROSTEPS) and (
+                    self.currentstep < self.MICROSTEPS * 2):
                 pwm_a = self.MICROSTEP_CURVE[self.currentstep - self.MICROSTEPS]
                 pwm_b = self.MICROSTEP_CURVE[self.MICROSTEPS * 2 - self.currentstep]
-            elif (self.currentstep >= self.MICROSTEPS * 2) and (self.currentstep < self.MICROSTEPS * 3):
+            elif (self.currentstep >= self.MICROSTEPS * 2) and (
+                    self.currentstep < self.MICROSTEPS * 3):
                 pwm_a = self.MICROSTEP_CURVE[self.MICROSTEPS * 3 - self.currentstep]
                 pwm_b = self.MICROSTEP_CURVE[self.currentstep - self.MICROSTEPS * 2]
-            elif (self.currentstep >= self.MICROSTEPS * 3) and (self.currentstep < self.MICROSTEPS * 4):
+            elif (self.currentstep >= self.MICROSTEPS * 3) and (
+                    self.currentstep < self.MICROSTEPS * 4):
                 pwm_a = self.MICROSTEP_CURVE[self.currentstep - self.MICROSTEPS * 3]
                 pwm_b = self.MICROSTEP_CURVE[self.MICROSTEPS * 4 - self.currentstep]
 
@@ -117,11 +126,14 @@ class Adafruit_StepperMotor:
         if (style == Adafruit_MotorHAT.MICROSTEP):
             if (self.currentstep >= 0) and (self.currentstep < self.MICROSTEPS):
                 coils = [1, 1, 0, 0]
-            elif (self.currentstep >= self.MICROSTEPS) and (self.currentstep < self.MICROSTEPS * 2):
+            elif (self.currentstep >= self.MICROSTEPS) and (
+                    self.currentstep < self.MICROSTEPS * 2):
                 coils = [0, 1, 1, 0]
-            elif (self.currentstep >= self.MICROSTEPS * 2) and (self.currentstep < self.MICROSTEPS * 3):
+            elif (self.currentstep >= self.MICROSTEPS * 2) and (
+                    self.currentstep < self.MICROSTEPS * 3):
                 coils = [0, 0, 1, 1]
-            elif (self.currentstep >= self.MICROSTEPS * 3) and (self.currentstep < self.MICROSTEPS * 4):
+            elif (self.currentstep >= self.MICROSTEPS * 3) and (
+                    self.currentstep < self.MICROSTEPS * 4):
                 coils = [1, 0, 0, 1]
         else:
             step2coils = [[1, 0, 0, 0],
@@ -167,53 +179,83 @@ class Adafruit_StepperMotor:
                 time.sleep(s_per_s)
 
 
+class GPIOIFace:
+
+    def __init__(self):
+        GPIO.setmode(GPIO.BOARD)
+
+    @staticmethod
+    def setup(pin_no):
+        GPIO.setup(pin_no, GPIO.OUT)
+
+    @staticmethod
+    def setPin(pin_no, value):
+        GPIO.output(pin_no, value)
+
+
 class Adafruit_DCMotor:
-    def __init__(self, controller, num):
+    DIRECTION_CONTROL_PWM = 0
+    DIRECTION_CONTROL_GPIO = 1
+
+    def __init__(self, controller, num, pwm_pin=None, in1_pin=None, in2_pin=None,
+                 direction_control=DIRECTION_CONTROL_PWM):
         self.MC = controller
         self.motornum = num
-        pwm = in1 = in2 = 0
 
-        if (num == 0):
-            pwm = 8
-            in2 = 9
-            in1 = 10
-        elif (num == 1):
-            pwm = 13
-            in2 = 12
-            in1 = 11
-        elif (num == 2):
-            pwm = 2
-            in2 = 3
-            in1 = 4
-        elif (num == 3):
-            pwm = 7
-            in2 = 6
-            in1 = 5
+        if direction_control == self.DIRECTION_CONTROL_GPIO:
+            self.MC.gpio.setup(in1_pin)
+            self.MC.gpio.setup(in2_pin)
+
+        if num == 0:
+            pwm = pwm_pin or 8
+            in2 = in2_pin or 9
+            in1 = in1_pin or 10
+        elif num == 1:
+            pwm = pwm_pin or 13
+            in2 = in2_pin or 12
+            in1 = in1_pin or 11
+        elif num == 2:
+            pwm = pwm_pin or 2
+            in2 = in2_pin or 3
+            in1 = in1_pin or 4
+        elif num == 3:
+            pwm = pwm_pin or 7
+            in2 = in2_pin or 6
+            in1 = in1_pin or 5
         else:
             raise NameError('MotorHAT Motor must be between 1 and 4 inclusive')
         self.PWMpin = pwm
         self.IN1pin = in1
         self.IN2pin = in2
+        self.direction_control = direction_control
 
     def run(self, command):
-        if not self.MC:
+        if self.direction_control == self.DIRECTION_CONTROL_PWM and not self.MC:
             return
-        if (command == Adafruit_MotorHAT.FORWARD):
-            self.MC.setPin(self.IN2pin, 0)
-            self.MC.setPin(self.IN1pin, 1)
-        if (command == Adafruit_MotorHAT.BACKWARD):
-            self.MC.setPin(self.IN1pin, 0)
-            self.MC.setPin(self.IN2pin, 1)
-        if (command == Adafruit_MotorHAT.RELEASE):
-            self.MC.setPin(self.IN1pin, 0)
-            self.MC.setPin(self.IN2pin, 0)
+        controller = self.MC if self.direction_control == self.DIRECTION_CONTROL_PWM \
+            else self.MC.gpio
+        if command == Adafruit_MotorHAT.FORWARD:
+            controller.setPin(self.IN2pin, 0)
+            controller.setPin(self.IN1pin, 1)
+        if command == Adafruit_MotorHAT.BACKWARD:
+            controller.setPin(self.IN1pin, 0)
+            controller.setPin(self.IN2pin, 1)
+        # NOTE: This is messed up, PWM controlled motors have the short break on `0, 0`, while
+        #       GPIO controlled motors have it on `1, 1`.
+        if command == Adafruit_MotorHAT.RELEASE:
+            if self.direction_control == self.DIRECTION_CONTROL_PWM:
+                controller.setPin(self.IN1pin, 0)
+                controller.setPin(self.IN2pin, 0)
+            else:
+                controller.setPin(self.IN1pin, 1)
+                controller.setPin(self.IN2pin, 1)
 
     def setSpeed(self, speed):
-        if (speed < 0):
+        if speed < 0:
             speed = 0
-        if (speed > 255):
+        if speed > 255:
             speed = 255
-        self.MC._pwm.setPWM(self.PWMpin, 0, speed * 16)
+        self.MC.pwm.setPWM(self.PWMpin, 0, speed * 16)
 
 
 class Adafruit_MotorHAT:
@@ -230,27 +272,31 @@ class Adafruit_MotorHAT:
     def __init__(self, addr=0x60, freq=1600):
         self._i2caddr = addr  # default addr on HAT
         self._frequency = freq  # default @1600Hz PWM freq
-        self.motors = [Adafruit_DCMotor(self, m) for m in range(4)]
+        self.motors = [None for _ in range(4)]
         self.steppers = [Adafruit_StepperMotor(self, 1), Adafruit_StepperMotor(self, 2)]
-        self._pwm = PWM(addr, debug=False)
-        self._pwm.setPWMFreq(self._frequency)
+        self.gpio = GPIOIFace()
+        self.pwm = PWM(addr, debug=False)
+        self.pwm.setPWMFreq(self._frequency)
 
     def setPin(self, pin, value):
         if (pin < 0) or (pin > 15):
             raise NameError('PWM pin must be between 0 and 15 inclusive')
         if (value != 0) and (value != 1):
             raise NameError('Pin value must be 0 or 1!')
-        if (value == 0):
-            self._pwm.setPWM(pin, 0, 4096)
-        if (value == 1):
-            self._pwm.setPWM(pin, 4096, 0)
+        if value == 0:
+            self.pwm.setPWM(pin, 0, 4096)
+        if value == 1:
+            self.pwm.setPWM(pin, 4096, 0)
 
     def getStepper(self, steps, num):
         if (num < 1) or (num > 2):
             raise NameError('MotorHAT Stepper must be between 1 and 2 inclusive')
         return self.steppers[num - 1]
 
-    def getMotor(self, num):
+    def getMotor(self, num, pwm_pin=None, in1_pin=None, in2_pin=None,
+                 direction_control=Adafruit_DCMotor.DIRECTION_CONTROL_PWM):
         if (num < 1) or (num > 4):
             raise NameError('MotorHAT Motor must be between 1 and 4 inclusive')
+        self.motors[num - 1] = Adafruit_DCMotor(self, num-1, pwm_pin, in1_pin, in2_pin,
+                                                direction_control)
         return self.motors[num - 1]
