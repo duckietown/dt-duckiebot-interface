@@ -12,6 +12,11 @@ dt-launchfile-init
 # NOTE: Use the variable DT_REPO_PATH to know the absolute path to your code
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
+# this is necessary for the camera pipeline to work on the Jetson Nano
+if [ $ROBOT_TYPE == "duckiebot" ] && [ $ROBOT_HARDWARE == "jetson_nano" ]; then
+    export LD_PRELOAD=${LD_PRELOAD}:/usr/lib/aarch64-linux-gnu/libGLdispatch.so
+fi
+
 # launching app
 dt-exec roslaunch --wait \
   duckiebot_interface all_drivers.launch \
