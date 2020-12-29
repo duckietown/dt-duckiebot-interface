@@ -1,65 +1,66 @@
 #!/usr/bin/env python3
 
-from Adafruit_MotorHAT import Adafruit_MotorHAT, Adafruit_DCMotor
 from math import fabs, floor
 
-from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+import hat_driver
+from dt_robot_utils import get_robot_configuration
 
-ROBOT_HARDWARE = get_device_hardware_brand()
+
+MotorDirection = hat_driver.MotorDirection
 
 
 class DaguWheelsDriver:
     """Class handling communication with motors.
 
-        Wraps the Adafruit API to talk to DC motors with a simpler interface.
-        The class contains methods for creating PWM signals according to
-        requested velocities. Also contains hardware addresses related to the
-        motors.
-
-        Args:
-            debug (:obj:`bool`): If `True`, will print a debug message every time a PWM
-               signal is sent.
-
     """
-
     LEFT_MOTOR_MIN_PWM = 60  #: Minimum speed for left motor
     LEFT_MOTOR_MAX_PWM = 255  #: Maximum speed for left motor
     RIGHT_MOTOR_MIN_PWM = 60  #: Minimum speed for right motor
     RIGHT_MOTOR_MAX_PWM = 255  #: Maximum speed for right motor
     SPEED_TOLERANCE = 1.e-2  #: Speed tolerance level
 
-    def __init__(self, debug=False):
-        self.motorhat = Adafruit_MotorHAT(addr=0x60)
-        self.leftMotor = self.motorhat.getMotor(1)
-        self.rightMotor = self.motorhat.getMotor(
-            2,
-            **({
-                   'in1_pin': 33,
-                   'in2_pin': 31,
-                   'direction_control': Adafruit_DCMotor.DIRECTION_CONTROL_GPIO
-               } if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO else {})
-        )
-
-        self.debug = debug
-
+    def __init__(self):
+        rcfg = get_robot_configuration()
+        DTHAT = hat_driver.from_env()
+        self.hat = DTHAT()
+        self.leftMotor = self.hat.get_motor(1, "left")
+        self.rightMotor = self.hat.get_motor(2, "right")
+        # print out some stats
+        this = self.__class__.__name__
+        print(f"[{this}] Running in configuration `{rcfg.name}`, using driver `{DTHAT.__name__}`")
+        print(f"[{this}] Motor #1: {self.leftMotor}")
+        print(f"[{this}] Motor #2: {self.rightMotor}")
+        # initialize state
         self.leftSpeed = 0.0
         self.rightSpeed = 0.0
-        self.updatePWM()
+        self._pwm_update()
 
-    def PWMvalue(self, v, minPWM, maxPWM):
+    def set_wheels_speed(self, left: float, right: float):
+        """Sets speed of motors.
+
+        Args:
+           left (:obj:`float`): speed for the left wheel, should be between -1 and 1
+           right (:obj:`float`): speed for the right wheel, should be between -1 and 1
+
+        """
+        self.leftSpeed = left
+        self.rightSpeed = right
+        self._pwm_update()
+
+    def _pwm_value(self, v, min_pwm, max_pwm):
         """Transforms the requested speed into an int8 number.
 
             Args:
                 v (:obj:`float`): requested speed, should be between -1 and 1.
-                minPWM (:obj:`int8`): minimum speed as int8
-                maxPWM (:obj:`int8`): maximum speed as int8
+                min_pwm (:obj:`int8`): minimum speed as int8
+                max_pwm (:obj:`int8`): maximum speed as int8
         """
         pwm = 0
         if fabs(v) > self.SPEED_TOLERANCE:
-            pwm = int(floor(fabs(v) * (maxPWM - minPWM) + minPWM))
-        return min(pwm, maxPWM)
+            pwm = int(floor(fabs(v) * (max_pwm - min_pwm) + min_pwm))
+        return min(pwm, max_pwm)
 
-    def updatePWM(self):
+    def _pwm_update(self):
         """Sends commands to the microcontroller.
 
             Updates the current PWM signals (left and right) according to the
@@ -69,52 +70,33 @@ class DaguWheelsDriver:
         vl = self.leftSpeed
         vr = self.rightSpeed
 
-        pwml = self.PWMvalue(vl,
-                             self.LEFT_MOTOR_MIN_PWM,
-                             self.LEFT_MOTOR_MAX_PWM)
-        pwmr = self.PWMvalue(vr,
-                             self.RIGHT_MOTOR_MIN_PWM,
-                             self.RIGHT_MOTOR_MAX_PWM)
+        pwml = self._pwm_value(vl, self.LEFT_MOTOR_MIN_PWM, self.LEFT_MOTOR_MAX_PWM)
+        pwmr = self._pwm_value(vr, self.RIGHT_MOTOR_MIN_PWM, self.RIGHT_MOTOR_MAX_PWM)
+        leftMotorMode = MotorDirection.RELEASE
+        rightMotorMode = MotorDirection.RELEASE
 
         if fabs(vl) < self.SPEED_TOLERANCE:
-            leftMotorMode = Adafruit_MotorHAT.RELEASE
             pwml = 0
         elif vl > 0:
-            leftMotorMode = Adafruit_MotorHAT.FORWARD
+            leftMotorMode = MotorDirection.FORWARD
         elif vl < 0:
-            leftMotorMode = Adafruit_MotorHAT.BACKWARD
+            leftMotorMode = MotorDirection.BACKWARD
 
         if fabs(vr) < self.SPEED_TOLERANCE:
-            rightMotorMode = Adafruit_MotorHAT.RELEASE
             pwmr = 0
         elif vr > 0:
-            rightMotorMode = Adafruit_MotorHAT.FORWARD
+            rightMotorMode = MotorDirection.FORWARD
         elif vr < 0:
-            rightMotorMode = Adafruit_MotorHAT.BACKWARD
+            rightMotorMode = MotorDirection.BACKWARD
 
-        self.leftMotor.setSpeed(pwml)
-        self.leftMotor.run(leftMotorMode)
-        self.rightMotor.setSpeed(pwmr)
-        self.rightMotor.run(rightMotorMode)
-
-    def setWheelsSpeed(self, left, right):
-        """Sets speed of motors.
-
-        Args:
-           left (:obj:`float`): speed for the left wheel, should be between -1 and 1
-           right (:obj:`float`): speed for the right wheel, should be between -1 and 1
-
-        """
-
-        self.leftSpeed = left
-        self.rightSpeed = right
-        self.updatePWM()
+        self.leftMotor.set(leftMotorMode, pwml)
+        self.rightMotor.set(rightMotorMode, pwmr)
 
     def __del__(self):
         """Destructor method.
 
             Releases the motors and deletes tho object.
         """
-        self.leftMotor.run(Adafruit_MotorHAT.RELEASE)
-        self.rightMotor.run(Adafruit_MotorHAT.RELEASE)
-        del self.motorhat
+        self.leftMotor.set(MotorDirection.RELEASE)
+        self.rightMotor.set(MotorDirection.RELEASE)
+        del self.hat

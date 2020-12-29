@@ -6,12 +6,6 @@ from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
 from duckietown.dtros import DTROS, TopicType, NodeType
 
-from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
-ROBOT_HARDWARE = get_device_hardware_brand()
-
-if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
-    import Jetson.GPIO as GPIO
-
 
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
@@ -37,21 +31,6 @@ class WheelsDriverNode(DTROS):
     """
 
     def __init__(self, node_name):
-
-        # Jetson Nano GPIO interface overrides
-        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
-            # Overwrite default setting of GPIO pin 29 (reset pin),
-            # which blocks access to other GPIO pins (importantly the ones for I2C)
-            GPIO.setmode(GPIO.BOARD)
-            channel = 29
-            GPIO.setup(channel, GPIO.OUT)
-            GPIO.output(channel, 1)
-
-            # Overwrite default setting of GPIO pin 31, related to the wheel encoders
-            channel = 31
-            GPIO.setup(channel, GPIO.OUT)
-            GPIO.output(channel, 1)
-
         # Initialize the DTROS parent class
         super(WheelsDriverNode, self).__init__(
             node_name=node_name,
@@ -107,7 +86,7 @@ class WheelsDriverNode(DTROS):
             vel_left = msg.vel_left
             vel_right = msg.vel_right
 
-        self.driver.setWheelsSpeed(left=vel_left, right=vel_right)
+        self.driver.set_wheels_speed(left=vel_left, right=vel_right)
         # Put the wheel commands in a message and publish
         self.msg_wheels_cmd.header = msg.header
         # Record the time the command was given to the wheels_driver
@@ -136,7 +115,7 @@ class WheelsDriverNode(DTROS):
 
         Publishes a zero velocity command at shutdown.
         """
-        self.driver.setWheelsSpeed(left=0.0, right=0.0)
+        self.driver.set_wheels_speed(left=0.0, right=0.0)
 
 
 if __name__ == '__main__':

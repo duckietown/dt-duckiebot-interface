@@ -1,9 +1,8 @@
-from abc import abstractmethod, ABC
-from collections import namedtuple
+import dataclasses
 from enum import IntEnum
+from abc import abstractmethod, ABC
 
 from Adafruit_PWM_Servo_Driver import PWM
-from typing import Dict
 
 from .constants import LOW, HIGH
 from .gpio import LOW as GPIO_LOW, HIGH as GPIO_HIGH
@@ -31,6 +30,14 @@ class MotorDirectionControl(IntEnum):
     GPIO = 1
 
 
+@dataclasses.dataclass
+class MotorPins:
+    in1: int
+    in2: int
+    pwm: int
+    control: MotorDirectionControl
+
+
 class AbsMotorDirectionController(ABC):
 
     def __init__(self, in1_pin: int, in2_pin: int, *args, **kwargs):
@@ -45,6 +52,9 @@ class AbsMotorDirectionController(ABC):
     @abstractmethod
     def set(self, direction: MotorDirection):
         pass
+
+    def __str__(self):
+        return f"{self.__class__.__name__}[in1={self._in1_pin}, in2={self._in2_pin}]"
 
 
 class PWMMotorDirectionController(AbsMotorDirectionController):
@@ -98,9 +108,6 @@ class GPIOMotorDirectionController(AbsMotorDirectionController):
         GPIO.output(self._in2_pin, in2_value)
 
 
-MotorPins = namedtuple('MotorPins', 'in1 in2 pwm')
-
-
 class Motor:
     _K = 16
     _CONTROLLER = {
@@ -108,54 +115,21 @@ class Motor:
         MotorDirectionControl.GPIO: GPIOMotorDirectionController,
     }
 
-    def __init__(self, pwm: PWM, in1_pin: int, in2_pin: int, pwm_pin: int, control: MotorDirectionControl):
-        self._pwn = pwm
+    def __init__(self, name: str, pwm: PWM, in1_pin: int, in2_pin: int, pwm_pin: int,
+                 control: MotorDirectionControl):
+        self._pwm = pwm
+        self._name = name
+        self._in1_pin = in1_pin
+        self._in2_pin = in2_pin
         self._pwm_pin = pwm_pin
-        self._controller = self._CONTROLLER[control](in1_pin, in2_pin)
+        self._control = control
+        self._controller = self._CONTROLLER[control](in1_pin, in2_pin, pwm=self._pwm)
 
-    def set(self, direction: MotorDirection, speed: int):
+    def set(self, direction: MotorDirection, speed: int = 0):
         speed = max(0, min(speed, 255))
         self._controller.set(direction)
-        self._pwn.setPWM(self._pwm_pin, 0, speed * self._K)
+        self._pwm.setPWM(self._pwm_pin, 0, speed * self._K)
 
-
-
-
-
-
-
-class AbsHAT(ABC):
-
-    def __init__(self, address=0x60, frequency=1600):
-        # default I2C address of the HAT
-        self._i2caddr = address
-        # default @1600Hz PWM frequency
-        self._frequency = frequency
-        # configure PWM
-        self._pwm = PWM(self._i2caddr, debug=False)
-        self._pwm.setPWMFreq(self._frequency)
-
-    @abstractmethod
-    def get_motor(self, num: int) -> Motor:
-        pass
-
-
-class HATv1(AbsHAT):
-    _MOTOR_NUM_TO_PINS: Dict[int, MotorPins] = {
-        0: MotorPins(10, 9, 8),
-        1: MotorPins(11, 12, 13),
-        2: MotorPins(4, 3, 2),
-        3: MotorPins(5, 6, 7),
-    }
-
-    def get_motor(self, num: int) -> Motor:
-        if num not in self._MOTOR_NUM_TO_PINS:
-            raise ValueError(f'Motor num `{num}` not supported. '
-                             f'Possible choices are `{self._MOTOR_NUM_TO_PINS.keys()}`.')
-        pins = self._MOTOR_NUM_TO_PINS[num]
-        return Motor(pins.in1, pins.in2, pins.pwm)
-
-
-
-
-
+    def __str__(self):
+        return f"Motor[name={self._name}, in1={self._in1_pin}, in2={self._in2_pin}, " \
+               f"pwm={self._pwm_pin}, controller={self._controller}]"
