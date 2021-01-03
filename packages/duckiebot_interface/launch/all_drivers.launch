@@ -74,4 +74,13 @@
         </include>
     </group>
 
+    <!-- Time-of-Flight sensor:
+        - DB21M: 1x ToF sensor at the Front Center      -->
+    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+        <include file="$(find tof_driver)/launch/tof_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="name" value="front_center"/>
+        </include>
+    </group>
+
 </launch>

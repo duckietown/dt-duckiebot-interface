@@ -1,0 +1,5 @@
+bus: 13
+address: 0x29
+sensor_name: "front_center"
+frequency: 20
+mode: "BETTER"
