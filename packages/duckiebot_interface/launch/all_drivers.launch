@@ -83,4 +83,20 @@
         </include>
     </group>
 
+    <!-- OLED Display driver:
+        - DB21M: 1x OLED 128x64 bi-color display attached to the top plate      -->
+    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+        <include file="$(find display_driver)/launch/display_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
+    </group>
+
+    <!-- Display renderers:
+        - health: rendering health and usage info about the robot      -->
+    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+        <include file="$(find display_renderers)/launch/health_renderer_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
+    </group>
+
 </launch>
