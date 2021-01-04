@@ -1,6 +1,8 @@
 # LIST YOUR APT PACKAGES HERE
 ros-noetic-tf-conversions
 ros-noetic-joy
+
+# camera pipeline inside the container for Jetson-based robots
 bc
 bzip2
 can-utils
