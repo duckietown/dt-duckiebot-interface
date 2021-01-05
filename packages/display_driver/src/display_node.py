@@ -1,66 +1,38 @@
 #!/usr/bin/env python3
-import time
-from threading import Semaphore
-from typing import Any
 
-import dataclasses
-import rospy
 import cv2
-from PIL import Image
+import rospy
 import numpy as np
-from cv_bridge import CvBridge
-from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
+
+from PIL import Image
+from typing import Any, Iterable
+from threading import Semaphore
+
 from luma.core.interface.serial import i2c
 from luma.oled.device import ssd1306
 
+from cv_bridge import CvBridge
+from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
+
 from duckietown.dtros import DTROS, NodeType, TopicType
 
-
-@dataclasses.dataclass
-class DisplayRegion:
-    name: str
-    width: int
-    height: int
-    x: int = 0
-    y: int = 0
-
-
-@dataclasses.dataclass
-class DisplayROI:
-    x: int
-    y: int
-    w: int
-    h: int
-
-    @staticmethod
-    def from_sensor_msgs_ROI(roi):
-        if roi.width + roi.height > 0:
-            return DisplayROI(roi.x_offset, roi.y_offset, roi.width, roi.height)
-        return None
-
-
-@dataclasses.dataclass
-class DisplayFragment:
-    data: np.ndarray
-    roi: DisplayROI
-    z: int
-    _time: float
-    _ttl: int
-
-    def ttl(self):
-        if self._ttl < 0:
-            # infinite ttl
-            return 1
-        elapsed = time.time() - self._time
-        ttl = self._ttl - elapsed
-        return ttl
+from display_renderer import \
+    REGION_FULL, \
+    REGION_HEADER, \
+    REGION_BODY, \
+    REGION_FOOTER, \
+    ALL_SCREENS, \
+    AbsDisplayFragmentRenderer, \
+    DisplayROI, \
+    DisplayFragment
 
 
 class DisplayNode(DTROS):
     _REGIONS = {
-        DisplayFragmentMsg.REGION_FULL: DisplayRegion("*", 128, 64),
-        DisplayFragmentMsg.REGION_HEADER: DisplayRegion('header', 128, 16),
-        DisplayFragmentMsg.REGION_BODY: DisplayRegion('body', 128, 48, y=16),
+        DisplayFragmentMsg.REGION_FULL: REGION_FULL,
+        DisplayFragmentMsg.REGION_HEADER: REGION_HEADER,
+        DisplayFragmentMsg.REGION_BODY: REGION_BODY,
+        DisplayFragmentMsg.REGION_FOOTER: REGION_FOOTER
     }
 
     def __init__(self):
@@ -76,6 +48,8 @@ class DisplayNode(DTROS):
         # create a display handler
         serial = i2c(port=self._i2c_bus, address=self._i2c_address)
         self._display = ssd1306(serial)
+        # screen selector
+        self._screen = 0
         # create a cv bridge instance
         self._bridge = CvBridge()
         # create buffers
@@ -98,6 +72,8 @@ class DisplayNode(DTROS):
             dt_topic_type=TopicType.DRIVER,
             dt_help="Data to display on the display"
         )
+        # create pager renderer
+        self._pager_renderer = PagerFragmentRenderer()
         # create rendering loop
         self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / self._frequency), self._render)
 
@@ -123,7 +99,7 @@ class DisplayNode(DTROS):
             # - find biggest offsets achievable
             fx, fy = min(region.width, roi.x), min(region.height, roi.y)
             # - find biggest canvas size achievable
-            cw, ch = min(region.width, roi.w) - fx, min(region.height, roi.h) - fy
+            cw, ch = min(region.width - fx, roi.w), min(region.height - fy, roi.h)
             # does it fit?
             if fw > cw or fh > ch:
                 img = cv2.resize(img, (cw, ch), interpolation=cv2.INTER_NEAREST)
@@ -136,7 +112,8 @@ class DisplayNode(DTROS):
         # list fragment for rendering
         with self._fragments_lock:
             self._fragments[msg.region][msg.id] = DisplayFragment(
-                data=img, roi=roi, z=msg.z, _ttl=msg.ttl, _time=msg.header.stamp.to_sec()
+                data=img, roi=roi, screen=msg.screen, z=msg.z,
+                _ttl=msg.ttl, _time=msg.header.stamp.to_sec()
             )
 
     def _render(self, _):
@@ -148,14 +125,22 @@ class DisplayNode(DTROS):
                     for fragment_id, fragment in fragments.items() if fragment.ttl() > 0
                 } for region, fragments in self._fragments.items()
             }
-            # sort fragments by z-index
+            # filter fragments by screen
             data = {
-                region: sorted(fragments.values(), key=lambda f: f.z)
-                for region, fragments in self._fragments.items()
+                region: [
+                    fragment for fragment in fragments.values()
+                    if fragment.screen in [ALL_SCREENS, self._screen]
+                ] for region, fragments in self._fragments.items()
             }
+        # sort fragments by z-index
+        data = {
+            region: sorted(fragments, key=lambda f: f.z)
+            for region, fragments in data.items()
+        }
         # clear buffer
         self._buffer.fill(0)
-        # render regions
+        # render fragments
+        screens = {0}
         for region_id, fragments in data.items():
             region = self._REGIONS[region_id]
             # render fragments
@@ -167,12 +152,17 @@ class DisplayNode(DTROS):
                 fy += region.y
                 # update buffer
                 self._buffer[fy:fy + fh, fx:fx + fw] = fragment.data
+                if fragment.screen != ALL_SCREENS:
+                    screens.add(fragment.screen)
         # convert buffer to 1-byte pixel
         buf = Image.fromarray(self._buffer, mode='L')
         buf = buf.convert(mode='1')
         # display buffer
         with self._device_lock:
             self._display.display(buf)
+        # update pager for the next iteration
+        self._pager_renderer.update(screens, self._screen)
+        self._fragment_cb(self._pager_renderer.as_msg())
 
     def on_shutdown(self):
         self.loginfo("Clearing buffer...")
@@ -185,6 +175,48 @@ class DisplayNode(DTROS):
         self.loginfo("Clearing display...")
         with self._device_lock:
             self._display.display(buf)
+
+
+class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
+
+    SPACING_PX = 7
+    UNSELECTED_SCREEN = np.array([
+        [0,       0,      0,      0,      0],
+        [0,       0,      0,      0,      0],
+        [0,       0,      0,      0,      0],
+        [0,     255,    255,    255,      0],
+    ])
+    SELECTED_SCREEN = np.array([
+        [0,       0,      0,      0,      0],
+        [255,   255,    255,    255,    255],
+        [255,   255,    255,    255,    255],
+        [255,   255,    255,    255,    255]
+    ])
+
+    def __init__(self):
+        super(PagerFragmentRenderer, self).__init__(
+            'pager',
+            screen=ALL_SCREENS,
+            region=REGION_FOOTER,
+            roi=DisplayROI(0, 0, REGION_FOOTER.width, REGION_FOOTER.height)
+        )
+        self._screens = [0]
+        self._screen = 0
+
+    def update(self, screens: Iterable[int], screen: int):
+        self._screens = screens
+        self._screen = screen if screen in screens else 0
+
+    def _render(self):
+        ch, cw = self.shape
+        _, sw = self.SELECTED_SCREEN.shape
+        num_screens = len(self._screens)
+        expected_w = num_screens * sw + (num_screens - 1) * self.SPACING_PX
+        offset = int(np.floor((cw - expected_w) * 0.5))
+        for screen in sorted(self._screens):
+            icon = self.SELECTED_SCREEN if screen == self._screen else self.UNSELECTED_SCREEN
+            self._buffer[:, offset:offset + sw] = icon
+            offset += sw + self.SPACING_PX
 
 
 if __name__ == '__main__':

@@ -88,3 +88,6 @@ RUN pip3 install --ignore-installed --force-reinstall RPi.GPIO
 
 # this is necessary for the camera pipeline to work on the Jetson Nano
 COPY assets/etc/ld.so.conf.d/nvidia-tegra.conf /etc/ld.so.conf.d/nvidia-tegra.conf
+
+# copy fonts
+COPY assets/usr/share/fonts/*.ttf /usr/share/fonts/
