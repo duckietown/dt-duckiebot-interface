@@ -4,3 +4,5 @@ from .roi import DisplayROI
 from .fragment import DisplayFragment
 from .text import monospace_screen
 from .renderer import AbsDisplayFragmentRenderer, TextFragmentRenderer, NumpyArrayFragmentRenderer
+
+Z_SYSTEM = 200

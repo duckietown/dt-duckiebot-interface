@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import cv2
+import copy
 import rospy
 import numpy as np
 
@@ -119,12 +120,10 @@ class DisplayNode(DTROS):
     def _render(self, _):
         with self._fragments_lock:
             # remove expired fragments
-            self._fragments = {
-                region: {
-                    fragment_id: fragment
-                    for fragment_id, fragment in fragments.items() if fragment.ttl() > 0
-                } for region, fragments in self._fragments.items()
-            }
+            for region, fragments in self._fragments.items():
+                for fragment_id in copy.copy(set(fragments.keys())):
+                    if fragments[fragment_id].ttl() <= 0:
+                        del self._fragments[region][fragment_id]
             # filter fragments by screen
             data = {
                 region: [

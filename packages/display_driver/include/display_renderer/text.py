@@ -5,7 +5,7 @@ from PIL import ImageFont, ImageDraw, Image
 
 FONT_FILEPATH = '/usr/share/fonts/ubuntu-mono-regular.ttf'
 FONT_SIZE = 8
-# NOTE: the following are dependent on the value of FONT_SIZE
+# NOTE: the following are dependent on the value of FONT_SIZE above
 CHAR_WIDTH_PX = 4
 CHAR_HEIGHT_PX = 7
 LINE_WIDTH_CHARS = 32
@@ -13,7 +13,6 @@ NUM_LINES_HEADER = 2
 NUM_LINES_BODY = 5
 LINE_HEIGHT_PX = 7
 LINE_SPACING = 2
-
 SAMPLE_CANVAS = """\
 |------------------------------|
 |                              |
@@ -44,9 +43,9 @@ def monospace_screen(shape: tuple, text: Union[Iterable[str], str], scale: Union
     pil_im = Image.fromarray(image)
     draw = ImageDraw.Draw(pil_im)
     # use a truetype font
-    font = ImageFont.truetype(FONT_FILEPATH, int(FONT_SIZE * scale))
+    font = ImageFont.truetype(FONT_FILEPATH, int(np.ceil(FONT_SIZE * scale)))
     # draw the text
     for i, line in enumerate(text):
-        draw.text((0, -2 + int(i * scale * (LINE_HEIGHT_PX + LINE_SPACING))), line, font=font)
+        draw.text((0, -2 + int(i * (scale * LINE_HEIGHT_PX + LINE_SPACING))), line, font=font)
     # get back the image as numpy array
     return np.array(pil_im).astype(np.uint8) * 255

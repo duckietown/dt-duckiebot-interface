@@ -69,15 +69,16 @@ class AbsDisplayFragmentRenderer(abc.ABC):
 class TextFragmentRenderer(AbsDisplayFragmentRenderer):
 
     def __init__(self, name: str, screen: int, region: DisplayRegion, roi: DisplayROI,
-                 *args, **kwargs):
-        super(TextFragmentRenderer, self).__init__(name, screen, region, roi, *args, **kwargs)
+                 scale: Union[str, float] = 1.0, **kwargs):
+        super(TextFragmentRenderer, self).__init__(name, screen, region, roi, **kwargs)
         self._text = ""
+        self._scale = scale
 
     def update(self, text: Union[Iterable[str], str]):
         self._text = text
 
     def _render(self):
-        self._buffer = monospace_screen((self._region.height, self._region.width), self._text)
+        self._buffer = monospace_screen(self.shape, self._text, scale=self._scale)
 
 
 class NumpyArrayFragmentRenderer(AbsDisplayFragmentRenderer):
