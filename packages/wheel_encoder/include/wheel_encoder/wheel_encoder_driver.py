@@ -13,7 +13,6 @@ else:
     raise Exception("Undefined Hardware!")
 
 
-
 class WheelEncoderDriver:
     """Class handling communication with a wheel encoder.
 

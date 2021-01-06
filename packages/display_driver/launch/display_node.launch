@@ -1,6 +1,5 @@
 <launch>
     <arg name="veh" doc="Specify a vehicle name"/>
-
     <arg name="pkg_name" value="display_driver"/>
     <arg name="node_name" value="display_node"/>
     <arg name="required" default="true"/>
