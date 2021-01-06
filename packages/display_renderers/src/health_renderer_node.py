@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 
 import os
-from typing import Union
-
 import cv2
 import rospy
 import requests
+from typing import Union
 from cv_bridge import CvBridge
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 
+from display_renderer.text import monospace_screen
 from display_renderer import \
     REGION_HEADER, \
     REGION_BODY, \
@@ -16,7 +16,7 @@ from display_renderer import \
     TextFragmentRenderer, \
     AbsDisplayFragmentRenderer, \
     Z_SYSTEM
-from display_renderer.text import monospace_screen
+
 from duckietown.dtros import DTROS, NodeType, TopicType
 
 
