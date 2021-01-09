@@ -6,8 +6,8 @@
     <arg name="node_name" value="tof_node"/>
     <arg name="required" default="true"/>
 
-    <group ns="$(arg veh)/tof">
-        <node pkg="$(arg pkg_name)" name="$(arg name)_node" type="$(arg node_name).py"
+    <group ns="$(arg veh)">
+        <node pkg="$(arg pkg_name)" name="$(arg name)_tof_driver_node" type="$(arg node_name).py"
               output="screen" required="$(arg required)">
             <param name="veh" value="$(arg veh)" />
             <rosparam command="load"
