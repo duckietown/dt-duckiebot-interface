@@ -15,7 +15,7 @@ from display_renderer import \
     DisplayROI, \
     TextFragmentRenderer, \
     AbsDisplayFragmentRenderer, \
-    Z_SYSTEM
+    Z_SYSTEM, ALL_SCREENS
 
 from duckietown.dtros import DTROS, NodeType, TopicType
 
@@ -83,7 +83,7 @@ class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
     def __init__(self, assets_dir: str):
         super(BatteryIndicatorFragmentRenderer, self).__init__(
             '__battery_indicator__',
-            screen=0,
+            screen=ALL_SCREENS,
             region=REGION_HEADER,
             roi=DisplayROI(90, 0, 38, 16),
             z=Z_SYSTEM
@@ -123,15 +123,16 @@ class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
 
     def _render(self):
         def _indicator(icon: str, text: str):
-            batt_not_found_icon = self._assets[icon]
-            ico_h, ico_w = batt_not_found_icon.shape
+            indicator_icon = self._assets[icon]
+            ico_h, ico_w = indicator_icon.shape
             ico_space = 2
             # draw icon
-            self._buffer[0:ico_h, 0:ico_w] = batt_not_found_icon
+            self._buffer[0:ico_h, 0:ico_w] = indicator_icon
             # draw text
-            text_h, text_w = 12, self._roi.w - ico_w - ico_space
-            text_buf = monospace_screen((text_h, text_w), text, scale='vfill')
-            self._buffer[3:3 + text_h, ico_w + ico_space:] = text_buf
+            vshift_px = 2
+            text_h, text_w = 14, self._roi.w - ico_w - ico_space
+            text_buf = monospace_screen((text_h, text_w), text, scale='fill')
+            self._buffer[vshift_px:vshift_px + text_h, ico_w + ico_space:] = text_buf
 
         # battery not found
         if not self._present:
@@ -162,7 +163,7 @@ DISK |{pdsk_bar}| {pdsk}
             screen=0,
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
-            scale='vfill'
+            scale='fill'
         )
         self._min_ctmp = 30
         self._max_ctmp = 100

@@ -2,7 +2,7 @@
     <arg name="veh" doc="Specify a vehicle name"/>
 
     <arg name="pkg_name" value="display_renderers"/>
-    <arg name="node_name" value="health_renderer_node"/>
+    <arg name="node_name" value="networking_renderer_node"/>
     <arg name="required" default="true"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman"/>
 
