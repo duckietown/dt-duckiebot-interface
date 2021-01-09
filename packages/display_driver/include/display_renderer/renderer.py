@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 
+import cv2
 import abc
 import rospy
 import numpy as np
+
+from typing import Union, Iterable
 
 from cv_bridge import CvBridge
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
@@ -10,7 +13,6 @@ from sensor_msgs.msg import RegionOfInterest
 from std_msgs.msg import Header
 
 from display_renderer import DisplayROI, DisplayRegion, monospace_screen
-from typing import Union, Iterable
 
 
 class AbsDisplayFragmentRenderer(abc.ABC):
@@ -89,3 +91,6 @@ class NumpyArrayFragmentRenderer(AbsDisplayFragmentRenderer):
 
     def _render(self):
         pass
+
+
+MonoImageFragmentRenderer = NumpyArrayFragmentRenderer

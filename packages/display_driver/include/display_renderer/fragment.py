@@ -14,10 +14,13 @@ class DisplayFragment:
     _time: float
     _ttl: int
 
+    @property
+    def given_ttl(self):
+        return self._ttl
+
     def ttl(self):
         if self._ttl < 0:
             # infinite ttl
             return 1
         elapsed = time.time() - self._time
-        ttl = self._ttl - elapsed
-        return ttl
+        return self._ttl - elapsed

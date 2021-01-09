@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 
 import cv2
 import copy
@@ -38,7 +39,7 @@ class DisplayNode(DTROS):
 
     def __init__(self):
         super(DisplayNode, self).__init__(
-            node_name='display_node',
+            node_name='display_driver_node',
             node_type=NodeType.DRIVER
         )
         # get parameters
@@ -69,7 +70,8 @@ class DisplayNode(DTROS):
             "~fragments",
             DisplayFragmentMsg,
             self._fragment_cb,
-            queue_size=1,
+            queue_size=10,
+            buf_size='10M',
             dt_topic_type=TopicType.DRIVER,
             dt_help="Data to display on the display"
         )
@@ -122,7 +124,11 @@ class DisplayNode(DTROS):
             # remove expired fragments
             for region, fragments in self._fragments.items():
                 for fragment_id in copy.copy(set(fragments.keys())):
-                    if fragments[fragment_id].ttl() <= 0:
+                    fragment = fragments[fragment_id]
+                    if fragment.ttl() <= 0:
+                        self.logdebug(f"Fragment `{fragment_id}` on screen `{fragment.screen}`, "
+                                      f"region `{region}` w/ TTL `{fragment.given_ttl}` "
+                                      f"expired, remove!")
                         del self._fragments[region][fragment_id]
             # filter fragments by screen
             data = {
@@ -140,6 +146,7 @@ class DisplayNode(DTROS):
         self._buffer.fill(0)
         # render fragments
         screens = {0}
+        screens.add(self._screen)
         for region_id, fragments in data.items():
             region = self._REGIONS[region_id]
             # render fragments
@@ -158,7 +165,10 @@ class DisplayNode(DTROS):
         buf = buf.convert(mode='1')
         # display buffer
         with self._device_lock:
-            self._display.display(buf)
+            try:
+                self._display.display(buf)
+            except BlockingIOError:
+                pass
         # update pager for the next iteration
         self._pager_renderer.update(screens, self._screen)
         self._fragment_cb(self._pager_renderer.as_msg())
@@ -173,7 +183,10 @@ class DisplayNode(DTROS):
         buf = Image.fromarray(self._buffer, mode='1')
         self.loginfo("Clearing display...")
         with self._device_lock:
-            self._display.display(buf)
+            try:
+                self._display.display(buf)
+            except BlockingIOError:
+                pass
 
 
 class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
@@ -199,7 +212,7 @@ class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
             region=REGION_FOOTER,
             roi=DisplayROI(0, 0, REGION_FOOTER.width, REGION_FOOTER.height)
         )
-        self._screens = [0]
+        self._screens = {0}
         self._screen = 0
 
     def update(self, screens: Iterable[int], screen: int):
