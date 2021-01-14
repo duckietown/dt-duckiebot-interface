@@ -15,7 +15,9 @@ from display_renderer import \
     DisplayROI, \
     TextFragmentRenderer, \
     AbsDisplayFragmentRenderer, \
-    Z_SYSTEM, ALL_SCREENS
+    Z_SYSTEM, \
+    ALL_PAGES, \
+    PAGE_HOME
 
 from duckietown.dtros import DTROS, NodeType, TopicType
 
@@ -83,7 +85,7 @@ class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
     def __init__(self, assets_dir: str):
         super(BatteryIndicatorFragmentRenderer, self).__init__(
             '__battery_indicator__',
-            screen=ALL_SCREENS,
+            page=ALL_PAGES,
             region=REGION_HEADER,
             roi=DisplayROI(90, 0, 38, 16),
             z=Z_SYSTEM
@@ -160,7 +162,7 @@ DISK |{pdsk_bar}| {pdsk}
     def __init__(self):
         super(UsageStatsFragmentRenderer, self).__init__(
             '__usage_stats__',
-            screen=0,
+            page=PAGE_HOME,
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
             scale='fill'
@@ -168,7 +170,8 @@ DISK |{pdsk_bar}| {pdsk}
         self._min_ctmp = 30
         self._max_ctmp = 100
 
-    def set(self, ctmp: Union[str, int], pcpu: Union[str, int], pmem: Union[str, int], pdsk: Union[str, int]):
+    def set(self, ctmp: Union[str, int], pcpu: Union[str, int], pmem: Union[str, int],
+            pdsk: Union[str, int]):
         ptmp = int(100 * (max(0, ctmp - self._min_ctmp) / (self._max_ctmp - self._min_ctmp))) \
             if isinstance(ctmp, int) else 0
         text = self.CANVAS.format(**{

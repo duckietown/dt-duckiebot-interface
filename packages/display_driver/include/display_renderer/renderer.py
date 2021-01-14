@@ -17,10 +17,10 @@ from display_renderer import DisplayROI, DisplayRegion, monospace_screen
 
 class AbsDisplayFragmentRenderer(abc.ABC):
 
-    def __init__(self, name: str, screen: int, region: DisplayRegion, roi: DisplayROI,
+    def __init__(self, name: str, page: int, region: DisplayRegion, roi: DisplayROI,
                  ttl: int = 10, z: int = 0):
         self._name = name
-        self._screen = screen
+        self._page = page
         self._region = region
         self._roi = roi
         self._ttl = ttl
@@ -51,7 +51,7 @@ class AbsDisplayFragmentRenderer(abc.ABC):
             header=Header(stamp=rospy.Time.now()),
             id=self._name,
             region=self._region.id,
-            screen=self._screen,
+            page=self._page,
             data=self._bridge.cv2_to_imgmsg(self._buffer, encoding="mono8"),
             location=RegionOfInterest(
                 x_offset=self._roi.x, y_offset=self._roi.y, width=self._roi.w, height=self._roi.h
@@ -70,9 +70,9 @@ class AbsDisplayFragmentRenderer(abc.ABC):
 
 class TextFragmentRenderer(AbsDisplayFragmentRenderer):
 
-    def __init__(self, name: str, screen: int, region: DisplayRegion, roi: DisplayROI,
+    def __init__(self, name: str, page: int, region: DisplayRegion, roi: DisplayROI,
                  scale: Union[str, float] = 1.0, **kwargs):
-        super(TextFragmentRenderer, self).__init__(name, screen, region, roi, **kwargs)
+        super(TextFragmentRenderer, self).__init__(name, page, region, roi, **kwargs)
         self._text = ""
         self._scale = scale
 

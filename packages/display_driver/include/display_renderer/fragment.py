@@ -9,7 +9,7 @@ from .roi import DisplayROI
 class DisplayFragment:
     data: np.ndarray
     roi: DisplayROI
-    screen: int
+    page: int
     z: int
     _time: float
     _ttl: int

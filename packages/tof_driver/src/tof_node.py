@@ -12,7 +12,7 @@ from dt_vl53l0x import \
     VL53L0X, \
     Vl53l0xAccuracyMode
 
-from display_renderer import TextFragmentRenderer, DisplayROI, SCREEN_TOF, REGION_HEADER, \
+from display_renderer import TextFragmentRenderer, DisplayROI, PAGE_TOF, REGION_HEADER, \
     REGION_BODY, MonoImageFragmentRenderer
 from display_renderer.text import monospace_screen
 from dt_class_utils import DTReminder
@@ -125,7 +125,7 @@ class ToFSensorFragmentRenderer(MonoImageFragmentRenderer):
     def __init__(self, name: str, accuracy: ToFAccuracy):
         super(ToFSensorFragmentRenderer, self).__init__(
             f'__tof_{name}__',
-            screen=SCREEN_TOF,
+            page=PAGE_TOF,
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height)
         )

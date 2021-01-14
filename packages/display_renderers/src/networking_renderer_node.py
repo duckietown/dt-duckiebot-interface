@@ -11,7 +11,7 @@ from display_renderer import \
     REGION_HEADER, \
     DisplayROI, \
     AbsDisplayFragmentRenderer, \
-    Z_SYSTEM, ALL_SCREENS
+    Z_SYSTEM, ALL_PAGES
 
 from duckietown.dtros import DTROS, NodeType, TopicType
 
@@ -61,7 +61,7 @@ class NetIFaceFragmentRenderer(AbsDisplayFragmentRenderer):
     def __init__(self, assets_dir: str, iface: str, roi: DisplayROI):
         super(NetIFaceFragmentRenderer, self).__init__(
             f'__iface_connection_{iface}__',
-            screen=ALL_SCREENS,
+            page=ALL_PAGES,
             region=REGION_HEADER,
             roi=roi,
             z=Z_SYSTEM

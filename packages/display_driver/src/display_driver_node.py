@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import time
 
 import cv2
 import copy
@@ -15,6 +14,7 @@ from luma.oled.device import ssd1306
 
 from cv_bridge import CvBridge
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
+from duckietown_msgs.msg import ButtonEvent as ButtonEventMsg
 
 from duckietown.dtros import DTROS, NodeType, TopicType
 
@@ -23,7 +23,8 @@ from display_renderer import \
     REGION_HEADER, \
     REGION_BODY, \
     REGION_FOOTER, \
-    ALL_SCREENS, \
+    ALL_PAGES, \
+    PAGE_HOME, \
     AbsDisplayFragmentRenderer, \
     DisplayROI, \
     DisplayFragment
@@ -50,8 +51,9 @@ class DisplayNode(DTROS):
         # create a display handler
         serial = i2c(port=self._i2c_bus, address=self._i2c_address)
         self._display = ssd1306(serial)
-        # screen selector
-        self._screen = 0
+        # page selector
+        self._page = PAGE_HOME
+        self._pages = {PAGE_HOME}
         # create a cv bridge instance
         self._bridge = CvBridge()
         # create buffers
@@ -66,7 +68,7 @@ class DisplayNode(DTROS):
         self._fragments_lock = Semaphore(1)
         self._device_lock = Semaphore(1)
         # create subscribers
-        self._sub = rospy.Subscriber(
+        self._fragments_sub = rospy.Subscriber(
             "~fragments",
             DisplayFragmentMsg,
             self._fragment_cb,
@@ -75,10 +77,30 @@ class DisplayNode(DTROS):
             dt_topic_type=TopicType.DRIVER,
             dt_help="Data to display on the display"
         )
+        self._button_sub = rospy.Subscriber(
+            "~button",
+            ButtonEventMsg,
+            self._button_event_cb,
+            queue_size=1,
+            dt_help="Button event"
+        )
         # create pager renderer
         self._pager_renderer = PagerFragmentRenderer()
         # create rendering loop
         self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / self._frequency), self._render)
+
+    def _button_event_cb(self, msg: Any):
+        if msg.event == ButtonEventMsg.EVENT_SINGLE_CLICK:
+            with self._fragments_lock:
+                pages = sorted(self._pages)
+                # move to the next page
+                try:
+                    i = pages.index(self._page)
+                    i = pages[(i + 1) % len(pages)]
+                except ValueError:
+                    i = 0
+                # select page
+                self._page = i
 
     def _fragment_cb(self, msg: Any):
         region = self._REGIONS[msg.region]
@@ -115,26 +137,34 @@ class DisplayNode(DTROS):
         # list fragment for rendering
         with self._fragments_lock:
             self._fragments[msg.region][msg.id] = DisplayFragment(
-                data=img, roi=roi, screen=msg.screen, z=msg.z,
+                data=img, roi=roi, page=msg.page, z=msg.z,
                 _ttl=msg.ttl, _time=msg.header.stamp.to_sec()
             )
 
     def _render(self, _):
         with self._fragments_lock:
-            # remove expired fragments
+            # clean pages
+            self._pages = {PAGE_HOME}
+            # remove expired fragments and annotate how many pages we need
             for region, fragments in self._fragments.items():
                 for fragment_id in copy.copy(set(fragments.keys())):
                     fragment = fragments[fragment_id]
                     if fragment.ttl() <= 0:
-                        self.logdebug(f"Fragment `{fragment_id}` on screen `{fragment.screen}`, "
+                        self.logdebug(f"Fragment `{fragment_id}` on page `{fragment.page}`, "
                                       f"region `{region}` w/ TTL `{fragment.given_ttl}` "
                                       f"expired, remove!")
                         del self._fragments[region][fragment_id]
-            # filter fragments by screen
+                    if fragment.page != ALL_PAGES:
+                        self._pages.add(fragment.page)
+            # sanitize page selector
+            if self._page not in self._pages:
+                # go back to home
+                self._page = PAGE_HOME
+            # filter fragments by page
             data = {
                 region: [
                     fragment for fragment in fragments.values()
-                    if fragment.screen in [ALL_SCREENS, self._screen]
+                    if fragment.page in [ALL_PAGES, self._page]
                 ] for region, fragments in self._fragments.items()
             }
         # sort fragments by z-index
@@ -145,8 +175,6 @@ class DisplayNode(DTROS):
         # clear buffer
         self._buffer.fill(0)
         # render fragments
-        screens = {0}
-        screens.add(self._screen)
         for region_id, fragments in data.items():
             region = self._REGIONS[region_id]
             # render fragments
@@ -158,8 +186,6 @@ class DisplayNode(DTROS):
                 fy += region.y
                 # update buffer
                 self._buffer[fy:fy + fh, fx:fx + fw] = fragment.data
-                if fragment.screen != ALL_SCREENS:
-                    screens.add(fragment.screen)
         # convert buffer to 1-byte pixel
         buf = Image.fromarray(self._buffer, mode='L')
         buf = buf.convert(mode='1')
@@ -170,7 +196,7 @@ class DisplayNode(DTROS):
             except BlockingIOError:
                 pass
         # update pager for the next iteration
-        self._pager_renderer.update(screens, self._screen)
+        self._pager_renderer.update(self._pages, self._page)
         self._fragment_cb(self._pager_renderer.as_msg())
 
     def on_shutdown(self):
@@ -192,13 +218,13 @@ class DisplayNode(DTROS):
 class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
 
     SPACING_PX = 7
-    UNSELECTED_SCREEN = np.array([
+    UNSELECTED_PAGE_ICON = np.array([
         [0,       0,      0,      0,      0],
         [0,       0,      0,      0,      0],
         [0,       0,      0,      0,      0],
         [0,     255,    255,    255,      0],
     ])
-    SELECTED_SCREEN = np.array([
+    SELECTED_PAGE_ICON = np.array([
         [0,       0,      0,      0,      0],
         [255,   255,    255,    255,    255],
         [255,   255,    255,    255,    255],
@@ -208,25 +234,25 @@ class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
     def __init__(self):
         super(PagerFragmentRenderer, self).__init__(
             'pager',
-            screen=ALL_SCREENS,
+            page=ALL_PAGES,
             region=REGION_FOOTER,
             roi=DisplayROI(0, 0, REGION_FOOTER.width, REGION_FOOTER.height)
         )
-        self._screens = {0}
-        self._screen = 0
+        self._pages = {0}
+        self._page = 0
 
-    def update(self, screens: Iterable[int], screen: int):
-        self._screens = screens
-        self._screen = screen if screen in screens else 0
+    def update(self, pages: Iterable[int], page: int):
+        self._pages = pages
+        self._page = page if page in pages else 0
 
     def _render(self):
         ch, cw = self.shape
-        _, sw = self.SELECTED_SCREEN.shape
-        num_screens = len(self._screens)
-        expected_w = num_screens * sw + (num_screens - 1) * self.SPACING_PX
+        _, sw = self.SELECTED_PAGE_ICON.shape
+        num_pages = len(self._pages)
+        expected_w = num_pages * sw + (num_pages - 1) * self.SPACING_PX
         offset = int(np.floor((cw - expected_w) * 0.5))
-        for screen in sorted(self._screens):
-            icon = self.SELECTED_SCREEN if screen == self._screen else self.UNSELECTED_SCREEN
+        for page in sorted(self._pages):
+            icon = self.SELECTED_PAGE_ICON if page == self._page else self.UNSELECTED_PAGE_ICON
             self._buffer[:, offset:offset + sw] = icon
             offset += sw + self.SPACING_PX
 

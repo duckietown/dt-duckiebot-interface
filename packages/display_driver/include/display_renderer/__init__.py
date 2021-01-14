@@ -1,5 +1,5 @@
 from .regions import REGION_FULL, REGION_HEADER, REGION_BODY, REGION_FOOTER, DisplayRegion
-from .screen import ALL_SCREENS
+from .page import ALL_PAGES
 from .roi import DisplayROI
 from .fragment import DisplayFragment
 from .text import monospace_screen
@@ -10,5 +10,5 @@ from .renderer import AbsDisplayFragmentRenderer, \
 
 Z_SYSTEM = 200
 
-SCREEN_HOME = 0
-SCREEN_TOF = 1
+PAGE_HOME = 0
+PAGE_TOF = 1
