@@ -16,6 +16,7 @@ from cv_bridge import CvBridge
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 from duckietown_msgs.msg import ButtonEvent as ButtonEventMsg
 
+from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, TopicType
 
 from display_renderer import \
@@ -37,6 +38,7 @@ class DisplayNode(DTROS):
         DisplayFragmentMsg.REGION_BODY: REGION_BODY,
         DisplayFragmentMsg.REGION_FOOTER: REGION_FOOTER
     }
+    _MAX_FREQUENCY_HZ = 5
 
     def __init__(self):
         super(DisplayNode, self).__init__(
@@ -84,10 +86,11 @@ class DisplayNode(DTROS):
             queue_size=1,
             dt_help="Button event"
         )
-        # create pager renderer
+        # create internal renderers
         self._pager_renderer = PagerFragmentRenderer()
         # create rendering loop
         self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / self._frequency), self._render)
+        self._reminder = DTReminder(frequency=self._MAX_FREQUENCY_HZ)
 
     def _button_event_cb(self, msg: Any):
         if msg.event == ButtonEventMsg.EVENT_SINGLE_CLICK:
@@ -140,8 +143,15 @@ class DisplayNode(DTROS):
                 data=img, roi=roi, page=msg.page, z=msg.z,
                 _ttl=msg.ttl, _time=msg.header.stamp.to_sec()
             )
+        # force refresh if this fragment is on the current page
+        if msg.page == self._page:
+            self._render(None)
 
     def _render(self, _):
+        # use a reminder object to control the maximum frequency
+        if not self._reminder.is_time():
+            return
+        # ---
         with self._fragments_lock:
             # clean pages
             self._pages = {PAGE_HOME}
@@ -167,6 +177,10 @@ class DisplayNode(DTROS):
                     if fragment.page in [ALL_PAGES, self._page]
                 ] for region, fragments in self._fragments.items()
             }
+        # add pager fragment
+        self._pager_renderer.update(self._pages, self._page)
+        if self._pager_renderer.page in [ALL_PAGES, self._page]:
+            data[self._pager_renderer.region.id].append(self._pager_renderer.as_fragment())
         # sort fragments by z-index
         data = {
             region: sorted(fragments, key=lambda f: f.z)
@@ -195,9 +209,6 @@ class DisplayNode(DTROS):
                 self._display.display(buf)
             except BlockingIOError:
                 pass
-        # update pager for the next iteration
-        self._pager_renderer.update(self._pages, self._page)
-        self._fragment_cb(self._pager_renderer.as_msg())
 
     def on_shutdown(self):
         self.loginfo("Clearing buffer...")
@@ -239,20 +250,29 @@ class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
             roi=DisplayROI(0, 0, REGION_FOOTER.width, REGION_FOOTER.height)
         )
         self._pages = {0}
-        self._page = 0
+        self._selected = 0
+
+    def as_fragment(self):
+        return DisplayFragment(
+            data=self.buffer, roi=self.roi, page=self._page, z=self._z,
+            _ttl=self._ttl, _time=rospy.Time.now().to_sec()
+        )
 
     def update(self, pages: Iterable[int], page: int):
         self._pages = pages
-        self._page = page if page in pages else 0
+        self._selected = page if page in pages else 0
 
     def _render(self):
+        # clear buffer
+        self._buffer.fill(0)
+        # render dots
         ch, cw = self.shape
         _, sw = self.SELECTED_PAGE_ICON.shape
         num_pages = len(self._pages)
         expected_w = num_pages * sw + (num_pages - 1) * self.SPACING_PX
         offset = int(np.floor((cw - expected_w) * 0.5))
         for page in sorted(self._pages):
-            icon = self.SELECTED_PAGE_ICON if page == self._page else self.UNSELECTED_PAGE_ICON
+            icon = self.SELECTED_PAGE_ICON if page == self._selected else self.UNSELECTED_PAGE_ICON
             self._buffer[:, offset:offset + sw] = icon
             offset += sw + self.SPACING_PX
 

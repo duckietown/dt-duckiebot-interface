@@ -33,12 +33,20 @@ class AbsDisplayFragmentRenderer(abc.ABC):
         return self._name
 
     @property
-    def shape(self) -> tuple:
-        return self._roi.h, self._roi.w
+    def page(self) -> int:
+        return self._page
+
+    @property
+    def region(self) -> DisplayRegion:
+        return self._region
 
     @property
     def roi(self) -> DisplayROI:
         return self._roi
+
+    @property
+    def shape(self) -> tuple:
+        return self._roi.h, self._roi.w
 
     @property
     def buffer(self) -> np.ndarray:
