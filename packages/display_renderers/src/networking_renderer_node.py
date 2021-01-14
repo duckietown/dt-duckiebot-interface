@@ -53,7 +53,8 @@ class NetworkingDisplayRendererNode(DTROS):
 
     def _publish(self, _):
         for renderer in self._renderers:
-            self._pub.publish(renderer.as_msg())
+            msg = renderer.as_msg()
+            self._pub.publish(msg)
 
 
 class NetIFaceFragmentRenderer(AbsDisplayFragmentRenderer):
@@ -64,7 +65,8 @@ class NetIFaceFragmentRenderer(AbsDisplayFragmentRenderer):
             page=ALL_PAGES,
             region=REGION_HEADER,
             roi=roi,
-            z=Z_SYSTEM
+            z=Z_SYSTEM,
+            ttl=30
         )
         self._assets_dir = assets_dir
         self._iface = iface
