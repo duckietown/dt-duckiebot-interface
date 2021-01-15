@@ -1,0 +1,2 @@
+led_gpio_pin: 37
+signal_gpio_pin: 40

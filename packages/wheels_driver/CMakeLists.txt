@@ -3,7 +3,6 @@ project(wheels_driver)
 
 find_package(catkin REQUIRED COMPONENTS
   rospy
-  adafruit_drivers
   duckietown_msgs # Every duckietown packages should use this.
 )
 

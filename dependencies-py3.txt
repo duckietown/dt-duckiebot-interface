@@ -6,3 +6,8 @@ Jetson.GPIO
 # RPi packages
 RPi.GPIO
 
+# VL53L0X ToF sensor driver
+dt-vl53l0x
+
+# dependencies for the OLED display
+luma.oled

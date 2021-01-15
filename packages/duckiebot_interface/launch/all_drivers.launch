@@ -14,7 +14,8 @@
     <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
     <param name="robot_description"
            command="xacro '$(arg robot_xurdf)' model:=$(arg robot_configuration) veh:=$(arg veh)"/>
-    <node pkg="robot_state_publisher" type="robot_state_publisher" name="robot_state_publisher"/>
+    <node ns="$(arg veh)" pkg="robot_state_publisher" type="robot_state_publisher"
+          name="robot_state_publisher"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <group unless="$(eval arg('robot_type') in ['duckietown'])">
@@ -57,9 +58,9 @@
 
     <!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
     <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')">
+        <!-- Left Wheel Encoder  -->
         <remap from="left_wheel_encoder_node/wheels_cmd_executed"
                to="wheels_driver_node/wheels_cmd_executed"/>
-        <!-- Left Wheel Encoder  -->
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="wheel" value="left"/>
@@ -73,6 +74,43 @@
             <arg name="veh" value="$(arg veh)"/>
             <arg name="wheel" value="right"/>
             <arg name="param_file_name" value="right_wheel"/>
+        </include>
+    </group>
+
+    <!-- Time-of-Flight sensor: -->
+    <!-- - DB21M: 1x ToF sensor at the Front Center      -->
+    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+        <remap from="front_center_tof_driver_node/fragments" to="display_driver_node/fragments"/>
+        <include file="$(find tof_driver)/launch/tof_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="name" value="front_center"/>
+        </include>
+    </group>
+
+    <!-- OLED Display driver: -->
+    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+        <remap from="display_driver_node/button" to="button_driver_node/event"/>
+        <include file="$(find display_driver)/launch/display_driver_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
+    </group>
+
+    <!-- Display renderers: -->
+    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+        <!-- health: renders health and usage info about the robot -->
+        <include file="$(find display_renderers)/launch/health_renderer_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
+        <!-- networking: renders connectivity status -->
+        <include file="$(find display_renderers)/launch/networking_renderer_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
+    </group>
+
+    <!-- Button driver -->
+    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+        <include file="$(find button_driver)/launch/button_driver_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
         </include>
     </group>
 
