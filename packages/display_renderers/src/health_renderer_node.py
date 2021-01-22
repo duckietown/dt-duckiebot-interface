@@ -64,10 +64,10 @@ class HealthDisplayRendererNode(DTROS):
         except:
             return
         self._usage_renderer.set(
-            ctmp=health_data['temp'],
-            pcpu=health_data['pcpu'],
-            pmem=health_data['mem']['pmem'],
-            pdsk=health_data['disk']['pdisk'],
+            ctmp=health_data['temperature'],
+            pcpu=health_data['cpu']['percentage'],
+            pmem=health_data['memory']['percentage'],
+            pdsk=health_data['disk']['percentage'],
         )
         self._battery_indicator.update(
             present=isinstance(health_data['battery']['cycle_count'], int),
