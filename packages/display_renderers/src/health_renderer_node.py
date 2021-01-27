@@ -70,7 +70,7 @@ class HealthDisplayRendererNode(DTROS):
             pdsk=health_data['disk']['percentage'],
         )
         self._battery_indicator.update(
-            present=isinstance(health_data['battery']['cycle_count'], int),
+            present=health_data['battery']['present'],
             charging=health_data['battery']['input_voltage'] > 3.0,
             percentage=health_data['battery']['percentage']
         )
@@ -167,19 +167,19 @@ DISK |{pdsk_bar}| {pdsk}
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
             scale='fill'
         )
-        self._min_ctmp = 30
+        self._min_ctmp = 20
         self._max_ctmp = 100
 
-    def set(self, ctmp: Union[str, int], pcpu: Union[str, int], pmem: Union[str, int],
+    def set(self, ctmp: Union[str, int, float], pcpu: Union[str, int], pmem: Union[str, int],
             pdsk: Union[str, int]):
         ptmp = int(100 * (max(0, ctmp - self._min_ctmp) / (self._max_ctmp - self._min_ctmp))) \
-            if isinstance(ctmp, int) else 0
+            if isinstance(ctmp, (int, float)) else 0
         text = self.CANVAS.format(**{
             'ctmp': self._fmt(ctmp, 'C'),
             'pcpu': self._fmt(pcpu, '%'),
             'pmem': self._fmt(pmem, '%'),
             'pdsk': self._fmt(pdsk, '%'),
-            'ctmp_bar': self._bar(ptmp, scale=1),
+            'ctmp_bar': self._bar(ptmp),
             'pcpu_bar': self._bar(pcpu),
             'pmem_bar': self._bar(pmem),
             'pdsk_bar': self._bar(pdsk)
@@ -193,10 +193,9 @@ DISK |{pdsk_bar}| {pdsk}
         return f"{int(value)}{suffix}"
 
     @classmethod
-    def _bar(cls, value: Union[str, int], scale: int = 100):
+    def _bar(cls, value: Union[str, int]):
         if isinstance(value, str):
             return f"ERR"
-        value /= scale
         full = int(cls.BAR_LEN * value)
         return "|" * full + " " * (cls.BAR_LEN - full)
 
