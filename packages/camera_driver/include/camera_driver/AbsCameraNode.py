@@ -1,20 +1,17 @@
 import os
 import time
-
 import yaml
 import copy
+import rospy
 import numpy as np
 from threading import Thread
 
-import rospy
+from abc import ABC, abstractmethod
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
 from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
-
-
-from abc import ABC, abstractmethod
 
 
 class AbsCameraNode(ABC, DTROS):
@@ -62,7 +59,6 @@ class AbsCameraNode(ABC, DTROS):
             node_type=NodeType.DRIVER,
             help="Reads a stream of images from a camera and publishes the frames over ROS"
         )
-
         # Add the node parameters to the parameters dictionary and load their default values
         self._res_w = DTParam(
             '~res_w',
