@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import os
-import cv2
 import rospy
 import requests
 from typing import Union
-from cv_bridge import CvBridge
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
+
+from PIL import Image, ImageOps
 
 from display_renderer.text import monospace_screen
 from display_renderer import \
@@ -20,6 +20,7 @@ from display_renderer import \
     PAGE_HOME
 
 from duckietown.dtros import DTROS, NodeType, TopicType
+from duckietown.utils.image.pil import pil_to_np
 
 
 class HealthDisplayRendererNode(DTROS):
@@ -33,8 +34,6 @@ class HealthDisplayRendererNode(DTROS):
         self._veh = rospy.get_param('~veh')
         self._assets_dir = rospy.get_param('~assets_dir')
         self._frequency = rospy.get_param('~frequency')
-        # create a cv bridge instance
-        self._bridge = CvBridge()
         # create publisher
         self._pub = rospy.Publisher(
             "~fragments",
@@ -59,9 +58,10 @@ class HealthDisplayRendererNode(DTROS):
 
     def _fetch(self):
         health_api_url = f"http://{self._veh}.local/health/"
+        # noinspection PyBroadException
         try:
             health_data = requests.get(health_api_url).json()
-        except:
+        except BaseException:
             return
         self._usage_renderer.set(
             ctmp=health_data['temperature'],
@@ -97,7 +97,7 @@ class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
         # load assets
         _asset_path = lambda a: os.path.join(self._assets_dir, 'icons', f'{a}.png')
         self._assets = {
-            asset: cv2.imread(_asset_path(asset), cv2.IMREAD_GRAYSCALE)
+            asset: pil_to_np(ImageOps.grayscale(Image.open(_asset_path(asset))))
             for asset in [
                 'battery_not_found',
                 'battery_charging',
@@ -193,9 +193,10 @@ DISK |{pdsk_bar}| {pdsk}
         return f"{int(value)}{suffix}"
 
     @classmethod
-    def _bar(cls, value: Union[str, int]):
+    def _bar(cls, value: Union[str, int], scale: int = 100):
         if isinstance(value, str):
             return f"ERR"
+        value /= scale
         full = int(cls.BAR_LEN * value)
         return "|" * full + " " * (cls.BAR_LEN - full)
 
