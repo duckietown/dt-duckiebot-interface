@@ -156,7 +156,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
                 sensor-mode={} exposuretimerange="{} {}" ! \
                 video/x-raw(memory:NVMM), width={}, height={}, format=NV12, framerate={}/1 ! \
                 nvvidconv ! 
-                video/x-raw, width={}, height={}, format=BGRx ! 
+                video/x-raw, format=BGRx ! 
                 videoconvert ! \
                 appsink \
             """.format(
@@ -164,9 +164,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
                 *exposure_time,
                 self._res_w.value,
                 self._res_h.value,
-                camera_mode.fps,
-                self._res_w.value,
-                self._res_h.value
+                self._framerate.value
             )
         # ---
         self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
