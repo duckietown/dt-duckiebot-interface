@@ -75,7 +75,7 @@ class DisplayNode(DTROS):
             DisplayFragmentMsg,
             self._fragment_cb,
             queue_size=10,
-            buf_size='10M',
+            buf_size='4M',
             dt_topic_type=TopicType.DRIVER,
             dt_help="Data to display on the display"
         )
@@ -150,6 +150,9 @@ class DisplayNode(DTROS):
     def _render(self, _):
         # use a reminder object to control the maximum frequency
         if not self._reminder.is_time():
+            return
+        # make sure we are not shutdown
+        if self.is_shutdown:
             return
         # ---
         with self._fragments_lock:
