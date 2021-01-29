@@ -5,10 +5,13 @@ import rospy
 import atexit
 import numpy as np
 
-from typing import Tuple
+from typing import Tuple, cast
 from collections import namedtuple
 
 from camera_driver import AbsCameraNode
+
+from sensor_msgs.msg import CompressedImage
+
 
 CameraMode = namedtuple('CameraMode', 'id width height fps fov')
 
@@ -39,6 +42,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
         super(JetsonNanoCameraNode, self).__init__()
         # parameters
         self._allow_partial_fov = rospy.get_param('~allow_partial_fov', False)
+        self._use_hw_acceleration = rospy.get_param('~use_hw_acceleration', False)
         # prepare gstreamer pipeline
         self._device = None
         # ---
@@ -56,12 +60,21 @@ class JetsonNanoCameraNode(AbsCameraNode):
         retval, image = self._device.read() if self._device else (False, None)
         # keep reading
         while (not self.is_stopped) and (not self.is_shutdown) and retval:
-            # generate the compressed image
             if image is not None:
-                image = np.uint8(image)
-            image_msg = self._bridge.cv2_to_compressed_imgmsg(image, dst_format='jpeg')
-            # publish the compressed image
-            self.publish(image_msg)
+                if self._use_hw_acceleration:
+                    # with HW acceleration, the NVJPG Engine module is used to encode RGB -> JPEG
+                    image = cast(np.ndarray, image)
+                    image_msg = CompressedImage()
+                    image_msg.header.stamp = rospy.Time.now()
+                    image_msg.format = "jpeg"
+                    image_msg.data = image.tobytes()
+                else:
+                    # without HW acceleration, the image is returned as RGB, encode on CPU
+                    if image is not None:
+                        image = np.uint8(image)
+                    image_msg = self._bridge.cv2_to_compressed_imgmsg(image, dst_format='jpeg')
+                # publish the compressed image
+                self.publish(image_msg)
             # grab next frame
             retval, image = self._device.read() if self._device else (False, None)
         self.loginfo('Camera worker stopped.')
@@ -122,23 +135,40 @@ class JetsonNanoCameraNode(AbsCameraNode):
             self.EXPOSURE_TIMERANGES[self.DEFAULT_EXPOSURE_MODE]
         )
         # compile gst pipeline
-        gst_pipeline = """ \
-            nvarguscamerasrc \
-            sensor-mode={} exposuretimerange="{} {}" ! \
-            video/x-raw(memory:NVMM), width={}, height={}, format=NV12, framerate={}/1 ! \
-            nvvidconv ! 
-            video/x-raw, width={}, height={}, format=BGRx ! 
-            videoconvert ! \
-            appsink \
-        """.format(
-            camera_mode.id,
-            *exposure_time,
-            camera_mode.width,
-            camera_mode.height,
-            camera_mode.fps,
-            self._res_w.value,
-            self._res_h.value
-        )
+        if self._use_hw_acceleration:
+            gst_pipeline = """ \
+                        nvarguscamerasrc \
+                        sensor-mode={} exposuretimerange="{} {}" ! \
+                        video/x-raw(memory:NVMM), width={}, height={}, format=NV12, 
+                            framerate={}/1 ! \
+                        nvjpegenc ! \
+                        appsink \
+                    """.format(
+                camera_mode.id,
+                *exposure_time,
+                self._res_w.value,
+                self._res_h.value,
+                camera_mode.fps
+            )
+        else:
+            gst_pipeline = """ \
+                nvarguscamerasrc \
+                sensor-mode={} exposuretimerange="{} {}" ! \
+                video/x-raw(memory:NVMM), width={}, height={}, format=NV12, framerate={}/1 ! \
+                nvvidconv ! 
+                video/x-raw, width={}, height={}, format=BGRx ! 
+                videoconvert ! \
+                appsink \
+            """.format(
+                camera_mode.id,
+                *exposure_time,
+                self._res_w.value,
+                self._res_h.value,
+                camera_mode.fps,
+                self._res_w.value,
+                self._res_h.value
+            )
+        # ---
         self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
         return gst_pipeline
 
