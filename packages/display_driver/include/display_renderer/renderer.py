@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 
-import cv2
 import abc
 import rospy
 import numpy as np
 
 from typing import Union, Iterable
 
-from cv_bridge import CvBridge
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 from sensor_msgs.msg import RegionOfInterest
 from std_msgs.msg import Header
 
 from display_renderer import DisplayROI, DisplayRegion, monospace_screen
+
+from duckietown.utils.image.ros import mono8_to_imgmsg, mono1_to_imgmsg
 
 
 class AbsDisplayFragmentRenderer(abc.ABC):
@@ -26,7 +26,6 @@ class AbsDisplayFragmentRenderer(abc.ABC):
         self._ttl = ttl
         self._z = z
         self._buffer = np.zeros((self._roi.h, self._roi.w), dtype=np.uint8)
-        self._bridge = CvBridge()
 
     @property
     def name(self) -> str:
@@ -60,7 +59,7 @@ class AbsDisplayFragmentRenderer(abc.ABC):
             id=self._name,
             region=self._region.id,
             page=self._page,
-            data=self._bridge.cv2_to_imgmsg(self._buffer, encoding="mono8"),
+            data=mono1_to_imgmsg(self._buffer),
             location=RegionOfInterest(
                 x_offset=self._roi.x, y_offset=self._roi.y, width=self._roi.w, height=self._roi.h
             ),

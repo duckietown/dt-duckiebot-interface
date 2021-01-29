@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import cv2
 import copy
 import rospy
 import numpy as np
@@ -12,7 +11,6 @@ from threading import Semaphore
 from luma.core.interface.serial import i2c
 from luma.oled.device import ssd1306
 
-from cv_bridge import CvBridge
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 from duckietown_msgs.msg import ButtonEvent as ButtonEventMsg
 
@@ -29,6 +27,9 @@ from display_renderer import \
     AbsDisplayFragmentRenderer, \
     DisplayROI, \
     DisplayFragment
+
+from duckietown.utils.image.pil import np_to_pil, pil_to_np
+from duckietown.utils.image.ros import imgmsg_to_mono8
 
 
 class DisplayNode(DTROS):
@@ -56,8 +57,6 @@ class DisplayNode(DTROS):
         # page selector
         self._page = PAGE_HOME
         self._pages = {PAGE_HOME}
-        # create a cv bridge instance
-        self._bridge = CvBridge()
         # create buffers
         self._fragments = {
             k: dict() for k in self._REGIONS
@@ -108,7 +107,7 @@ class DisplayNode(DTROS):
     def _fragment_cb(self, msg: Any):
         region = self._REGIONS[msg.region]
         # convert image to greyscale
-        img = self._bridge.imgmsg_to_cv2(msg.data, "mono8")
+        img = imgmsg_to_mono8(msg.data)
         # parse ROI
         roi = DisplayROI.from_sensor_msgs_ROI(msg.location)
         if roi is None:
@@ -118,7 +117,9 @@ class DisplayNode(DTROS):
             fh, fw = img.shape
             # does it fit?
             if fw > rw or fh > rh:
-                img = cv2.resize(img, (rw, rh), interpolation=cv2.INTER_NEAREST)
+                img = np_to_pil(img, mode="L")
+                img = img.resize((rw, rh), resample=Image.NEAREST)
+                img = pil_to_np(img)
                 fh, fw = rh, rw
             roi = DisplayROI(x=0, y=0, w=fw, h=fh)
         else:
@@ -130,7 +131,9 @@ class DisplayNode(DTROS):
             cw, ch = min(region.width - fx, roi.w), min(region.height - fy, roi.h)
             # does it fit?
             if fw > cw or fh > ch:
-                img = cv2.resize(img, (cw, ch), interpolation=cv2.INTER_NEAREST)
+                img = np_to_pil(img, mode="L")
+                img = img.resize((cw, ch), resample=Image.NEAREST)
+                img = pil_to_np(img)
                 fh, fw = ch, cw
             # update ROI
             roi = DisplayROI(x=fx, y=fy, w=fw, h=fh)
@@ -205,6 +208,7 @@ class DisplayNode(DTROS):
                 self._buffer[fy:fy + fh, fx:fx + fw] = fragment.data
         # convert buffer to 1-byte pixel
         buf = Image.fromarray(self._buffer, mode='L')
+        # convert 1-byte pixel to 1-bit pixel
         buf = buf.convert(mode='1')
         # display buffer
         with self._device_lock:

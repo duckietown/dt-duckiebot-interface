@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import os
-import cv2
 import rospy
 import netifaces
-from cv_bridge import CvBridge
+from PIL import Image, ImageOps
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 
 from display_renderer import \
@@ -14,6 +13,7 @@ from display_renderer import \
     Z_SYSTEM, ALL_PAGES
 
 from duckietown.dtros import DTROS, NodeType, TopicType
+from duckietown.utils.image.pil import pil_to_np
 
 
 class NetworkingDisplayRendererNode(DTROS):
@@ -27,8 +27,6 @@ class NetworkingDisplayRendererNode(DTROS):
         self._veh = rospy.get_param('~veh')
         self._assets_dir = rospy.get_param('~assets_dir')
         self._frequency = rospy.get_param('~frequency')
-        # create a cv bridge instance
-        self._bridge = CvBridge()
         # create publisher
         self._pub = rospy.Publisher(
             "~fragments",
@@ -73,7 +71,7 @@ class NetIFaceFragmentRenderer(AbsDisplayFragmentRenderer):
         # load assets
         _asset_path = lambda a: os.path.join(self._assets_dir, 'icons', f'{a}.png')
         self._assets = {
-            asset: cv2.imread(_asset_path(asset), cv2.IMREAD_GRAYSCALE)
+            asset: pil_to_np(ImageOps.grayscale(Image.open(_asset_path(asset))))
             for asset in [
                 f'{self._iface}_connected',
                 f'{self._iface}_not_connected'
