@@ -36,6 +36,7 @@ class ButtonDriverNode(DTROS):
         )
         # create button driver
         self._button = ButtonDriver(self._led_gpio_pin, self._signal_gpio_pin, self._event_cb)
+        self._button.led.on()
         # create event holder
         self._ongoing_event = None
 
