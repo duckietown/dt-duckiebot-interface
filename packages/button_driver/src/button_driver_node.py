@@ -9,6 +9,8 @@ from duckietown.dtros import DTROS, NodeType, TopicType
 
 from button_driver import ButtonEvent, ButtonDriver
 
+from dt_device_utils.device import shutdown_device
+
 
 class ButtonDriverNode(DTROS):
 
@@ -55,18 +57,30 @@ class ButtonDriverNode(DTROS):
         # - single click
         if duration < 0.5:
             self._publish(ButtonEventMsg.EVENT_SINGLE_CLICK)
+            self._react(ButtonEventMsg.EVENT_SINGLE_CLICK)
             return
         # - held for 3 secs
         if self._TIME_HOLD_3S < duration < 2 * self._TIME_HOLD_3S:
             self._publish(ButtonEventMsg.EVENT_HELD_3SEC)
+            self._react(ButtonEventMsg.EVENT_HELD_3SEC)
             return
         # - held for 10 secs
         if self._TIME_HOLD_10S < duration < 2 * self._TIME_HOLD_10S:
             self._publish(ButtonEventMsg.EVENT_HELD_10SEC)
+            self._react(ButtonEventMsg.EVENT_HELD_10SEC)
             return
 
     def _publish(self, event: int):
         self._pub.publish(ButtonEventMsg(event))
+
+    def _react(self, event: int):
+        if event == ButtonEventMsg.EVENT_HELD_3SEC:
+            # TODO: publish a new screen for the display
+            time.sleep(1)
+            # init shutdown sequence
+            res = shutdown_device()
+            if not res:
+                self.logerr("Could not initialize the shutdown sequence")
 
     def on_shutdown(self):
         if hasattr(self, '_button'):
