@@ -4,7 +4,7 @@
 
     <arg name="pkg_name" value="tof_driver"/>
     <arg name="node_name" value="tof_node"/>
-    <arg name="required" default="true"/>
+    <arg name="required" default="false"/>
 
     <group ns="$(arg veh)">
         <node pkg="$(arg pkg_name)" name="$(arg name)_tof_driver_node" type="$(arg node_name).py"
