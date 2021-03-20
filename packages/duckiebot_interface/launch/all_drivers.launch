@@ -109,6 +109,7 @@
 
     <!-- Button driver -->
     <group if="$(eval arg('robot_configuration') == 'DB21M')">
+        <remap from="button_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find button_driver)/launch/button_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
         </include>
