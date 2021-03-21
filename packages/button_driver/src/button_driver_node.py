@@ -95,7 +95,7 @@ class ButtonDriverNode(DTROS):
             self._react(ButtonEventMsg.EVENT_HELD_3SEC)
             return
         # - held for 10 secs
-        if self._TIME_HOLD_10S < duration < 2 * self._TIME_HOLD_10S:
+        if self._TIME_HOLD_10S < duration:
             self._publish(ButtonEventMsg.EVENT_HELD_10SEC)
             self._react(ButtonEventMsg.EVENT_HELD_10SEC)
             return
@@ -104,7 +104,7 @@ class ButtonDriverNode(DTROS):
         self._pub.publish(ButtonEventMsg(event))
 
     def _react(self, event: int):
-        if event == ButtonEventMsg.EVENT_HELD_3SEC:
+        if event in [ButtonEventMsg.EVENT_HELD_3SEC, ButtonEventMsg.EVENT_HELD_10SEC]:
             # blink top power button as a confirmation, too
             self._button.led.confirm_shutdown()
 
