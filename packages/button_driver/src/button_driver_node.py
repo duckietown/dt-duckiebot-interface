@@ -3,13 +3,30 @@
 import time
 import rospy
 
-from duckietown_msgs.msg import ButtonEvent as ButtonEventMsg
+from duckietown_msgs.msg import (
+    ButtonEvent as ButtonEventMsg,
+    DisplayFragment,
+)
 
 from duckietown.dtros import DTROS, NodeType, TopicType
 
 from button_driver import ButtonEvent, ButtonDriver
 
 from dt_device_utils.device import shutdown_device
+
+# for shutting down the front and back LEDs
+from duckietown_msgs.srv import ChangePattern
+from std_msgs.msg import String
+from duckietown.dtros.utils import apply_namespace
+
+# display renderer for shutdown confirmation
+from display_renderer import (
+    PAGE_SHUTDOWN,
+    MonoImageFragmentRenderer,
+    REGION_BODY,
+    DisplayROI,
+)
+from display_renderer.text import monospace_screen
 
 
 class ButtonDriverNode(DTROS):
@@ -37,6 +54,15 @@ class ButtonDriverNode(DTROS):
         # create button driver
         self._button = ButtonDriver(self._led_gpio_pin, self._signal_gpio_pin, self._event_cb)
         self._button.led.on()
+        # display to confirm shutdown
+        self._renderer = BatteryShutdownConfirmationRenderer()
+        self._display_pub = rospy.Publisher(
+            "~fragments",
+            DisplayFragment,
+            queue_size=1,
+            dt_topic_type=TopicType.VISUALIZATION,
+            dt_help="Fragments to display on the display"
+        )
         # create event holder
         self._ongoing_event = None
 
@@ -62,6 +88,9 @@ class ButtonDriverNode(DTROS):
             return
         # - held for 3 secs
         if self._TIME_HOLD_3S < duration < 2 * self._TIME_HOLD_3S:
+            # publish a display showing shutdown confirmation
+            self._display_pub.publish(self._renderer.as_msg())
+            time.sleep(1)
             self._publish(ButtonEventMsg.EVENT_HELD_3SEC)
             self._react(ButtonEventMsg.EVENT_HELD_3SEC)
             return
@@ -76,7 +105,23 @@ class ButtonDriverNode(DTROS):
 
     def _react(self, event: int):
         if event == ButtonEventMsg.EVENT_HELD_3SEC:
-            # TODO: publish a new screen for the display
+            # blink top power button as a confirmation, too
+            self._button.led.confirm_shutdown()
+
+            # turn off front and back LEDs
+            try:
+                srv = rospy.ServiceProxy(
+                    apply_namespace("led_emitter_node/set_pattern", ns_level=1),
+                    ChangePattern,
+                )
+                msg = String()
+                msg.data = "LIGHT_OFF"
+                resp = srv(msg)
+                self.loginfo(str(resp))
+            except rospy.ServiceException as e:
+                # not a big deal if failed this 
+                self.logerr("LED shutdown service call failed {}".format(e))
+
             time.sleep(1)
             # init shutdown sequence
             res = shutdown_device()
@@ -86,6 +131,24 @@ class ButtonDriverNode(DTROS):
     def on_shutdown(self):
         if hasattr(self, '_button'):
             self._button.shutdown()
+
+
+class BatteryShutdownConfirmationRenderer(MonoImageFragmentRenderer):
+
+    def __init__(self):
+        super(BatteryShutdownConfirmationRenderer, self).__init__(
+            name=f'__battery_shutdown_confirmation__',
+            page=PAGE_SHUTDOWN,
+            region=REGION_BODY,
+            roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
+            ttl=-1,  # on shutdown, just need one fixed screen
+        )
+
+        contents = monospace_screen(
+            (self.roi.h, self.roi.w),
+            "Shutting down", scale='hfill', align='center'
+        )
+        self.data[:,:] = contents 
 
 
 if __name__ == '__main__':

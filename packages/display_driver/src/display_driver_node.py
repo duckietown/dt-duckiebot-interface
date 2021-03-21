@@ -17,16 +17,18 @@ from duckietown_msgs.msg import ButtonEvent as ButtonEventMsg
 from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, TopicType
 
-from display_renderer import \
-    REGION_FULL, \
-    REGION_HEADER, \
-    REGION_BODY, \
-    REGION_FOOTER, \
-    ALL_PAGES, \
-    PAGE_HOME, \
-    AbsDisplayFragmentRenderer, \
-    DisplayROI, \
-    DisplayFragment
+from display_renderer import (
+    REGION_FULL,
+    REGION_HEADER,
+    REGION_BODY,
+    REGION_FOOTER,
+    ALL_PAGES,
+    PAGE_HOME,
+    PAGE_SHUTDOWN,
+    AbsDisplayFragmentRenderer,
+    DisplayROI,
+    DisplayFragment,
+)
 
 from duckietown.utils.image.pil import np_to_pil, pil_to_np
 from duckietown.utils.image.ros import imgmsg_to_mono8
@@ -103,6 +105,11 @@ class DisplayNode(DTROS):
                     i = 0
                 # select page
                 self._page = i
+
+        if msg.event == ButtonEventMsg.EVENT_HELD_3SEC:
+            with self._fragments_lock:
+                self._page = PAGE_SHUTDOWN
+                    
 
     def _fragment_cb(self, msg: Any):
         region = self._REGIONS[msg.region]
