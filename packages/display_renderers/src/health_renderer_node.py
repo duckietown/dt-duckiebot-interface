@@ -71,6 +71,7 @@ class HealthDisplayRendererNode(DTROS):
         )
         self._battery_indicator.update(
             present=health_data['battery']['present'],
+            # TODO: The device-health API now provides the field "charging:bool"
             charging=health_data['battery']['input_voltage'] > 3.0,
             percentage=health_data['battery']['percentage']
         )
