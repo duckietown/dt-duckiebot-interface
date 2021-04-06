@@ -3,7 +3,7 @@
 import rospy
 
 from rgb_led import RGB_LED
-from std_msgs.msg import String
+from std_msgs.msg import String, ColorRGBA
 from duckietown_msgs.srv import SetCustomLEDPattern, ChangePattern
 from duckietown_msgs.srv import SetCustomLEDPatternResponse, ChangePatternResponse
 
@@ -188,6 +188,24 @@ class LEDEmitterNode(DTROS):
             'frequency_mask': req.pattern.frequency_mask,
             'frequency': req.pattern.frequency
         }
+
+        # If the message contains
+        self.log(f"rgb_bals len: {len(req.pattern.rgb_vals)}")
+        self.log(f"color_list len: {len(req.pattern.color_list)}")
+
+        # If there is no data in color_list, we fallback to rgb_vals
+        override_color_list = False
+        if len(req.pattern.color_list) == 0:
+            override_color_list = True
+        elif len(req.pattern.color_list) == 1:
+            # This is the default empty initializer case
+            if not req.pattern.color_list[0]:
+                override_color_list = True
+
+        if len(req.pattern.rgb_vals) > 0 and override_color_list:
+            # Use immutable type for serialization
+            protocol['signals']['custom']['color_list'] = tuple([f"{c.r},{c.g},{c.b}" for c in req.pattern.rgb_vals])
+
         # update LED_protocol
         self._LED_protocol = protocol
         rospy.set_param("~LED_protocol", protocol)
@@ -284,6 +302,10 @@ class LEDEmitterNode(DTROS):
             # Extract the color from the protocol config file
             color_list = self._LED_protocol['signals'][pattern_name]['color_list']
 
+            # DEBUG
+            if pattern_name == "custom":
+                self.log(f">>>>>>Custom protocol: {self._LED_protocol['signals'][pattern_name]}")
+
             if type(color_list) is str:
                 self.pattern = [self._LED_protocol['colors'][color_list]]*5
             else:
@@ -294,16 +316,15 @@ class LEDEmitterNode(DTROS):
 
                 self.pattern = [[0, 0, 0]]*5
                 for i in range(len(color_list)):
-                    if isinstance(color_list[i], str):
-                        self.pattern[i] = self._LED_protocol['colors'][color_list[i]]
-                    elif isinstance(color_list[i], list) and len(color_list[i]) == 3:
-                        self.pattern[i] = color_list[i]
-                        self.pattern[i] = [max(0, min(c, 255)) for c in self.pattern[i]]
+                    # The color is either a string of RGB or a string of color name
+                    # We assume that if it has commas and at least one digit, then it is RGB
+                    if ',' in color_list[i] and any(char.isdigit() for char in color_list[i]):
+                        # RGB string
+                        self.pattern[i] = [float(c.strip()) for c in color_list[i].split(',')]
                     else:
-                        self.log(
-                            "LEDs color passed as RGB values must be expressed as lists of 3 "
-                            "values from the range [0, 255].", type='err')
-                        return
+                        self.pattern[i] = self._LED_protocol['colors'][color_list[i]]
+
+            self.log(f"Pattern set to {self.pattern}")
 
             # Extract the frequency from the protocol
             self.frequency_mask = self._LED_protocol['signals'][pattern_name]['frequency_mask']
