@@ -189,9 +189,6 @@ class LEDEmitterNode(DTROS):
             'frequency': req.pattern.frequency
         }
 
-        # If the message contains
-        self.log(f"rgb_bals len: {len(req.pattern.rgb_vals)}")
-        self.log(f"color_list len: {len(req.pattern.color_list)}")
 
         # If there is no data in color_list, we fallback to rgb_vals
         override_color_list = False
