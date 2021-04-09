@@ -378,6 +378,7 @@ class LEDEmitterNode(DTROS):
         At shutdown, changes the LED pattern to `LIGHT_OFF`.
         """
         # Turn off the lights when the node dies
+        self.loginfo("Shutting down. Turning LEDs off.")
         self.changePattern('LIGHT_OFF')
 
 
