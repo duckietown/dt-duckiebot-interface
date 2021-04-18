@@ -5,4 +5,4 @@ for talking to a single wheel encoder.
 .. autoclass:: wheel_encoder.WheelEncoderDriver
 
 """
-from .wheel_encoder_driver import WheelEncoderDriver, WheelDirection, WheelSide
+from .wheel_encoder_driver import WheelEncoderDriver, WheelDirection
