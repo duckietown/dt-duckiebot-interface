@@ -109,7 +109,6 @@ class DisplayNode(DTROS):
         if msg.event == ButtonEventMsg.EVENT_HELD_3SEC:
             with self._fragments_lock:
                 self._page = PAGE_SHUTDOWN
-                    
 
     def _fragment_cb(self, msg: Any):
         region = self._REGIONS[msg.region]
