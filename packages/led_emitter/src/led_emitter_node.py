@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 
 import rospy
 
@@ -380,6 +381,7 @@ class LEDEmitterNode(DTROS):
         # Turn off the lights when the node dies
         self.loginfo("Shutting down. Turning LEDs off.")
         self.changePattern('LIGHT_OFF')
+        time.sleep(1)
 
 
 if __name__ == '__main__':
