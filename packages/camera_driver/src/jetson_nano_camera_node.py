@@ -129,6 +129,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
         if fps > camera_mode.fps:
             self.logwarn("Camera framerate({}fps) too high for the camera mode (max: {}fps), "
                          "capping at {}fps.".format(fps, camera_mode.fps, camera_mode.fps))
+            fps = camera_mode.fps
         # get exposure time
         exposure_time = self.EXPOSURE_TIMERANGES.get(
             self._exposure_mode,
@@ -148,7 +149,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
                 *exposure_time,
                 self._res_w.value,
                 self._res_h.value,
-                camera_mode.fps
+                fps
             )
         else:
             gst_pipeline = """ \
@@ -164,7 +165,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
                 *exposure_time,
                 self._res_w.value,
                 self._res_h.value,
-                self._framerate.value
+                fps
             )
         # ---
         self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
