@@ -12,46 +12,53 @@ from camera_driver import AbsCameraNode
 
 from sensor_msgs.msg import CompressedImage
 
+from duckietown.utils.image.ros import rgb_to_compressed_imgmsg
 
 CameraMode = namedtuple('CameraMode', 'id width height fps fov')
 
 
-class JetsonNanoCameraNode(AbsCameraNode):
+class RaspberryPi64CameraNode(AbsCameraNode):
     """
     Handles the imagery on a Jetson Nano.
     """
 
     # each mode defines [width, height, fps]
     CAMERA_MODES = [
-        CameraMode(0, 3264, 2464, 21, 'full'),
-        CameraMode(1, 3264, 1848, 28, 'partial'),
-        CameraMode(2, 1920, 1080, 30, 'partial'),
-        CameraMode(3, 1640, 1232, 30, 'full'),
-        CameraMode(4, 1280, 720, 60, 'partial'),
-        CameraMode(5, 1280, 720, 120, 'partial'),
+        # All Modes as returned by `gst-inspect-1.0 rpicamsrc`
+        #
+        #       (0): automatic        - Automatic
+        #       (1): 1920x1080        - 1920x1080 16:9 1-30fps
+        #       (2): 2592x1944-fast   - 2592x1944 4:3 1-15fps / 3240x2464 15fps w/ v.2 board
+        #       (3): 2592x1944-slow   - 2592x1944 4:3 0.1666-1fps / 3240x2464 15fps w/ v.2 board
+        #       (4): 1296x972         - 1296x972 4:3 1-42fps
+        #       (5): 1296x730         - 1296x730 16:9 1-49fps
+        #       (6): 640x480-slow     - 640x480 4:3 42.1-60fps
+        #       (7): 640x480-fast     - 640x480 4:3 60.1-90fps
+        #
+        CameraMode(1, 1920, 1080, 30, 'partial'),
+        CameraMode(2, 2592, 1944, 15, 'full'),
+        CameraMode(3, 2592, 1944, 1, 'full'),
+        CameraMode(4, 1296, 972, 42, 'full'),
+        CameraMode(5, 1296, 730, 49, 'full'),
+        CameraMode(6, 640, 480, 60, 'full'),
+        CameraMode(7, 640, 480, 90, 'full'),
     ]
-    # exposure time range (ns)
-    EXPOSURE_TIMERANGES = {
-        "sports": [100000, 80000000],
-        "night":  [100000, 1000000000]
-    }
     DEFAULT_EXPOSURE_MODE = "sports"
 
     def __init__(self):
         # Initialize the DTROS parent class
-        super(JetsonNanoCameraNode, self).__init__()
+        super(RaspberryPi64CameraNode, self).__init__()
         # parameters
         self._allow_partial_fov = rospy.get_param('~allow_partial_fov', False)
-        self._use_hw_acceleration = rospy.get_param('~use_hw_acceleration', False)
         # prepare gstreamer pipeline
         self._device = None
         # ---
-        self.log("[JetsonNanoCameraNode]: Initialized.")
+        self.log("[RaspberryPi64CameraNode]: Initialized.")
 
     def run(self):
         """ Image capture procedure.
         
-            Captures a frame from the /dev/video2 image sink and publishes it.
+            Captures a frame from the /dev/video0 image sink and publishes it.
         """
         if self._device is None or not self._device.isOpened():
             self.logerr('Device was found closed')
@@ -61,18 +68,16 @@ class JetsonNanoCameraNode(AbsCameraNode):
         # keep reading
         while (not self.is_stopped) and (not self.is_shutdown) and retval:
             if image is not None:
-                if self._use_hw_acceleration:
-                    # with HW acceleration, the NVJPG Engine module is used to encode RGB -> JPEG
+                if image.shape[0] == 1:
+                    # image is already JPEG encoded
                     image = cast(np.ndarray, image)
                     image_msg = CompressedImage()
                     image_msg.header.stamp = rospy.Time.now()
                     image_msg.format = "jpeg"
                     image_msg.data = image.tobytes()
                 else:
-                    # without HW acceleration, the image is returned as RGB, encode on CPU
-                    if image is not None:
-                        image = np.uint8(image)
-                    image_msg = self._bridge.cv2_to_compressed_imgmsg(image, dst_format='jpeg')
+                    # image is a BGR array, encode first
+                    image_msg = rgb_to_compressed_imgmsg(image, encoding='jpeg')
                 # publish the compressed image
                 self.publish(image_msg)
             # grab next frame
@@ -125,48 +130,39 @@ class JetsonNanoCameraNode(AbsCameraNode):
         fov = ('full', 'partial') if self._allow_partial_fov else ('full',)
         # find best mode
         camera_mode = self.get_mode(res_w, res_h, fps, fov)
+        self.loginfo(f"Best camera mode based on requirements "
+                     f"(w:{res_w}, h:{res_h}, hz:{fps}, fov:{fov}) is #{camera_mode.id}: "
+                     f"{str(camera_mode)}")
         # cap frequency
         if fps > camera_mode.fps:
             self.logwarn("Camera framerate({}fps) too high for the camera mode (max: {}fps), "
                          "capping at {}fps.".format(fps, camera_mode.fps, camera_mode.fps))
-        # get exposure time
-        exposure_time = self.EXPOSURE_TIMERANGES.get(
-            self._exposure_mode,
-            self.EXPOSURE_TIMERANGES[self.DEFAULT_EXPOSURE_MODE]
-        )
+            fps = camera_mode.fps
         # compile gst pipeline
-        if self._use_hw_acceleration:
-            gst_pipeline = """ \
-                        nvarguscamerasrc \
-                        sensor-mode={} exposuretimerange="{} {}" ! \
-                        video/x-raw(memory:NVMM), width={}, height={}, format=NV12, 
-                            framerate={}/1 ! \
-                        nvjpegenc ! \
-                        appsink \
-                    """.format(
-                camera_mode.id,
-                *exposure_time,
-                self._res_w.value,
-                self._res_h.value,
-                camera_mode.fps
-            )
-        else:
-            gst_pipeline = """ \
-                nvarguscamerasrc \
-                sensor-mode={} exposuretimerange="{} {}" ! \
-                video/x-raw(memory:NVMM), width={}, height={}, format=NV12, framerate={}/1 ! \
-                nvvidconv ! 
-                video/x-raw, format=BGRx ! 
-                videoconvert ! \
-                appsink \
-            """.format(
-                camera_mode.id,
-                *exposure_time,
-                self._res_w.value,
-                self._res_h.value,
-                # TODO: this is wrong, fps should be min(given_fps, camera_mode.fps)
-                self._framerate.value
-            )
+        gst_pipeline = """ \
+            rpicamsrc \
+            sensor-mode={} exposure-mode={} ! \
+            video/x-raw, format=BGR, framerate={}/1 ! \
+            appsink \
+        """.format(
+            camera_mode.id,
+            self._exposure_mode.value,
+            # self._res_w.value,
+            # self._res_h.value,
+            fps
+        )
+        # gst_pipeline = """ \
+        #     rpicamsrc \
+        #     sensor-mode={} exposure-mode={} ! \
+        #     video/x-raw, width={}, height={}, format=BGR, framerate={}/1 ! \
+        #     appsink \
+        # """.format(
+        #     camera_mode.id,
+        #     self._exposure_mode.value,
+        #     self._res_w.value,
+        #     self._res_h.value,
+        #     fps
+        # )
         # ---
         self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
         return gst_pipeline
@@ -181,7 +177,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
 
 if __name__ == '__main__':
     # initialize the node
-    camera_node = JetsonNanoCameraNode()
+    camera_node = RaspberryPi64CameraNode()
     camera_node.start()
     # keep the node alive
     rospy.spin()

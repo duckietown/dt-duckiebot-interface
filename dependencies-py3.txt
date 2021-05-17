@@ -11,3 +11,6 @@ dt-vl53l0x
 
 # dependencies for the OLED display
 luma.oled
+
+# tools needed to build the `rpicamsrc` module to use the camera on a RaspberryPi with gstreamer
+meson

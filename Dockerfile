@@ -91,3 +91,19 @@ COPY assets/etc/ld.so.conf.d/nvidia-tegra.conf /etc/ld.so.conf.d/nvidia-tegra.co
 
 # copy fonts
 COPY assets/usr/share/fonts/*.ttf /usr/share/fonts/
+
+# install `rpicamsrc` module for gstreamer
+
+# TODO: these are temporary, move to dependencies-apt.txt
+RUN apt update && apt install -y libraspberrypi-bin libraspberrypi-dev
+
+# TODO: these are temporary, fix upstream
+RUN rm -rf /opt/vc && \
+    ldconfig
+
+RUN git clone https://github.com/thaytan/gst-rpicamsrc && \
+    cd ./gst-rpicamsrc && \
+    git reset --hard f6b57629777ae55a74b8c6071ef533645e4e4102 && \
+    meson --prefix=/usr build && \
+    ninja -C build -v && \
+    ninja -C build -v install
