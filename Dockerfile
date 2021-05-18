@@ -107,3 +107,5 @@ RUN git clone https://github.com/thaytan/gst-rpicamsrc && \
     meson --prefix=/usr build && \
     ninja -C build -v && \
     ninja -C build -v install
+
+RUN apt update && apt install -y v4l-utils

@@ -1,63 +1,40 @@
 #!/usr/bin/env python3
+import time
+from typing import cast
 
 import cv2
 import rospy
 import atexit
 import numpy as np
 
-from typing import Tuple, cast
-from collections import namedtuple
-
 from camera_driver import AbsCameraNode
-
-from sensor_msgs.msg import CompressedImage
 
 from duckietown.utils.image.ros import rgb_to_compressed_imgmsg
 
-CameraMode = namedtuple('CameraMode', 'id width height fps fov')
+from sensor_msgs.msg import CompressedImage
 
 
-class RaspberryPi64CameraNode(AbsCameraNode):
+class RaspberryPi64Camera(AbsCameraNode):
     """
-    Handles the imagery on a Jetson Nano.
+    Handles the imagery on a Raspberry Pi 64.
     """
 
-    # each mode defines [width, height, fps]
-    CAMERA_MODES = [
-        # All Modes as returned by `gst-inspect-1.0 rpicamsrc`
-        #
-        #       (0): automatic        - Automatic
-        #       (1): 1920x1080        - 1920x1080 16:9 1-30fps
-        #       (2): 2592x1944-fast   - 2592x1944 4:3 1-15fps / 3240x2464 15fps w/ v.2 board
-        #       (3): 2592x1944-slow   - 2592x1944 4:3 0.1666-1fps / 3240x2464 15fps w/ v.2 board
-        #       (4): 1296x972         - 1296x972 4:3 1-42fps
-        #       (5): 1296x730         - 1296x730 16:9 1-49fps
-        #       (6): 640x480-slow     - 640x480 4:3 42.1-60fps
-        #       (7): 640x480-fast     - 640x480 4:3 60.1-90fps
-        #
-        CameraMode(1, 1920, 1080, 30, 'partial'),
-        CameraMode(2, 2592, 1944, 15, 'full'),
-        CameraMode(3, 2592, 1944, 1, 'full'),
-        CameraMode(4, 1296, 972, 42, 'full'),
-        CameraMode(5, 1296, 730, 49, 'full'),
-        CameraMode(6, 640, 480, 60, 'full'),
-        CameraMode(7, 640, 480, 90, 'full'),
-    ]
-    DEFAULT_EXPOSURE_MODE = "sports"
+    VIDEO_DEVICE = "/dev/video0"
 
     def __init__(self):
         # Initialize the DTROS parent class
-        super(RaspberryPi64CameraNode, self).__init__()
-        # parameters
-        self._allow_partial_fov = rospy.get_param('~allow_partial_fov', False)
+        super(RaspberryPi64Camera, self).__init__()
         # prepare gstreamer pipeline
         self._device = None
         # ---
-        self.log("[RaspberryPi64CameraNode]: Initialized.")
+        self.log("[RaspberryPi64Camera]: Initialized.")
+
+
+        self._last_time = 0
 
     def run(self):
         """ Image capture procedure.
-        
+
             Captures a frame from the /dev/video0 image sink and publishes it.
         """
         if self._device is None or not self._device.isOpened():
@@ -68,18 +45,24 @@ class RaspberryPi64CameraNode(AbsCameraNode):
         # keep reading
         while (not self.is_stopped) and (not self.is_shutdown) and retval:
             if image is not None:
-                if image.shape[0] == 1:
-                    # image is already JPEG encoded
+
+                print(1.0 / (time.time() - self._last_time))
+                self._last_time = time.time()
+
+                if True:
+
                     image = cast(np.ndarray, image)
-                    image_msg = CompressedImage()
-                    image_msg.header.stamp = rospy.Time.now()
-                    image_msg.format = "jpeg"
-                    image_msg.data = image.tobytes()
-                else:
-                    # image is a BGR array, encode first
-                    image_msg = rgb_to_compressed_imgmsg(image, encoding='jpeg')
-                # publish the compressed image
-                self.publish(image_msg)
+                    if image.shape[0] == 1:
+                        # image is already JPEG encoded
+                        image_msg = CompressedImage()
+                        image_msg.header.stamp = rospy.Time.now()
+                        image_msg.format = "jpeg"
+                        image_msg.data = image.tobytes()
+                    else:
+                        # image is a BGR array, encode first
+                        image_msg = rgb_to_compressed_imgmsg(image, encoding='jpeg')
+                    # publish the compressed image
+                    self.publish(image_msg)
             # grab next frame
             retval, image = self._device.read() if self._device else (False, None)
         self.loginfo('Camera worker stopped.')
@@ -87,22 +70,54 @@ class RaspberryPi64CameraNode(AbsCameraNode):
     def setup(self):
         if self._device is None:
             self._device = cv2.VideoCapture()
-        # check if the device is opened
-        if self._device is None:
-            msg = "OpenCV cannot open gstreamer resource"
-            self.logerr(msg)
-            raise RuntimeError(msg)
         # open the device
         if not self._device.isOpened():
             try:
-                self._device.open(self.gst_pipeline_string(), cv2.CAP_GSTREAMER)
+                self._device.open(RaspberryPi64Camera.VIDEO_DEVICE, cv2.CAP_V4L2)
                 # make sure the device is open
                 if not self._device.isOpened():
-                    msg = "OpenCV cannot open gstreamer resource"
+                    msg = "OpenCV cannot open camera"
                     self.logerr(msg)
                     raise RuntimeError(msg)
+                # configure camera
+                # print(self._res_w.value)
+                # print(self._res_h.value)
+
+                #
+                # $ v4l2-ctl -d /dev/video0 --list-formats
+                # ioctl: VIDIOC_ENUM_FMT
+                # 	Type: Video Capture
+                #
+                # 	[0]: 'YU12' (Planar YUV 4:2:0)
+                # 	[1]: 'YUYV' (YUYV 4:2:2)
+                # 	[2]: 'RGB3' (24-bit RGB 8-8-8)
+                # 	[3]: 'JPEG' (JFIF JPEG, compressed)
+                # 	[4]: 'H264' (H.264, compressed)
+                # 	[5]: 'MJPG' (Motion-JPEG, compressed)
+                # 	[6]: 'YVYU' (YVYU 4:2:2)
+                # 	[7]: 'VYUY' (VYUY 4:2:2)
+                # 	[8]: 'UYVY' (UYVY 4:2:2)
+                # 	[9]: 'NV12' (Y/CbCr 4:2:0)
+                # 	[10]: 'BGR3' (24-bit BGR 8-8-8)
+                # 	[11]: 'YV12' (Planar YVU 4:2:0)
+                # 	[12]: 'NV21' (Y/CrCb 4:2:0)
+                # 	[13]: 'RX24' (32-bit XBGR 8-8-8-8)
+                #
+                #
+
+
+                # self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+
+
+                self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+                self._device.set(cv2.CAP_PROP_FRAME_WIDTH, 1296)
+                self._device.set(cv2.CAP_PROP_FRAME_HEIGHT, 972)
+                self._device.set(cv2.CAP_PROP_FPS, 30)
+                # self._device.set(cv2.CAP_PROP_CONVERT_RGB, True)
                 # try getting a sample image
                 retval, _ = self._device.read()
+
+
                 if not retval:
                     msg = "Could not read image from camera"
                     self.logerr(msg)
@@ -117,67 +132,19 @@ class RaspberryPi64CameraNode(AbsCameraNode):
 
     def release(self):
         if self._device is not None:
-            self.loginfo('Releasing GST pipeline...')
+            self.loginfo('Releasing camera...')
+            # noinspection PyBroadException
             try:
                 self._device.release()
             except Exception:
                 pass
-            self.loginfo('GST pipeline released.')
+            self.loginfo('Camera released.')
         self._device = None
-
-    def gst_pipeline_string(self):
-        res_w, res_h, fps = self._res_w.value, self._res_h.value, self._framerate.value
-        fov = ('full', 'partial') if self._allow_partial_fov else ('full',)
-        # find best mode
-        camera_mode = self.get_mode(res_w, res_h, fps, fov)
-        self.loginfo(f"Best camera mode based on requirements "
-                     f"(w:{res_w}, h:{res_h}, hz:{fps}, fov:{fov}) is #{camera_mode.id}: "
-                     f"{str(camera_mode)}")
-        # cap frequency
-        if fps > camera_mode.fps:
-            self.logwarn("Camera framerate({}fps) too high for the camera mode (max: {}fps), "
-                         "capping at {}fps.".format(fps, camera_mode.fps, camera_mode.fps))
-            fps = camera_mode.fps
-        # compile gst pipeline
-        gst_pipeline = """ \
-            rpicamsrc \
-            sensor-mode={} exposure-mode={} ! \
-            video/x-raw, format=BGR, framerate={}/1 ! \
-            appsink \
-        """.format(
-            camera_mode.id,
-            self._exposure_mode.value,
-            # self._res_w.value,
-            # self._res_h.value,
-            fps
-        )
-        # gst_pipeline = """ \
-        #     rpicamsrc \
-        #     sensor-mode={} exposure-mode={} ! \
-        #     video/x-raw, width={}, height={}, format=BGR, framerate={}/1 ! \
-        #     appsink \
-        # """.format(
-        #     camera_mode.id,
-        #     self._exposure_mode.value,
-        #     self._res_w.value,
-        #     self._res_h.value,
-        #     fps
-        # )
-        # ---
-        self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
-        return gst_pipeline
-
-    def get_mode(self, width: int, height: int, fps: int, fov: Tuple[str]) -> CameraMode:
-        candidates = {
-            m for m in self.CAMERA_MODES
-            if m.width >= width and m.height >= height and m.fps >= fps and m.fov in fov
-        }.union({self.CAMERA_MODES[0]})
-        return sorted(candidates, key=lambda m: m.id)[-1]
 
 
 if __name__ == '__main__':
     # initialize the node
-    camera_node = RaspberryPi64CameraNode()
+    camera_node = RaspberryPi64Camera()
     camera_node.start()
     # keep the node alive
     rospy.spin()
