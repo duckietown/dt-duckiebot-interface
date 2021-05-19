@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import subprocess
 import time
 from typing import cast
 
@@ -68,6 +69,22 @@ class RaspberryPi64Camera(AbsCameraNode):
         self.loginfo('Camera worker stopped.')
 
     def setup(self):
+
+        cam_props = {
+            'compression_quality': 100,
+            'video_bitrate': 25000000
+        }
+
+        ### go through and set each property; remember to change your video device if necessary~
+        ### on my RPi, video0 is the usb webcam, but for my laptop the built-in one is 0 and the
+        ### external usb cam is 1
+        for key in cam_props:
+            subprocess.call(['v4l2-ctl -d /dev/video0 -c {}={}'.format(key, str(cam_props[key]))],
+                            shell=True)
+
+
+
+
         if self._device is None:
             self._device = cv2.VideoCapture()
         # open the device
@@ -106,13 +123,19 @@ class RaspberryPi64Camera(AbsCameraNode):
                 #
 
 
+
+
                 # self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
 
 
                 self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
                 self._device.set(cv2.CAP_PROP_FRAME_WIDTH, 1296)
                 self._device.set(cv2.CAP_PROP_FRAME_HEIGHT, 972)
-                self._device.set(cv2.CAP_PROP_FPS, 30)
+                self._device.set(cv2.CAP_PROP_FPS, 20)
+
+                # self._device.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
+                # self._device.set(cv2.CAP_PROP_EXPOSURE, -4)
+
                 # self._device.set(cv2.CAP_PROP_CONVERT_RGB, True)
                 # try getting a sample image
                 retval, _ = self._device.read()
