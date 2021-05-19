@@ -2,4 +2,3 @@ framerate: 30
 res_w: 1296
 res_h: 972
 exposure_mode: sports
-allow_partial_fov: false

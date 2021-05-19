@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
-import subprocess
-import time
-from typing import cast
 
 import cv2
 import rospy
 import atexit
+import subprocess
 import numpy as np
+from typing import cast
 
 from camera_driver import AbsCameraNode
-
-from duckietown.utils.image.ros import rgb_to_compressed_imgmsg
-
 from sensor_msgs.msg import CompressedImage
 
 
@@ -30,9 +26,6 @@ class RaspberryPi64Camera(AbsCameraNode):
         # ---
         self.log("[RaspberryPi64Camera]: Initialized.")
 
-
-        self._last_time = 0
-
     def run(self):
         """ Image capture procedure.
 
@@ -46,45 +39,29 @@ class RaspberryPi64Camera(AbsCameraNode):
         # keep reading
         while (not self.is_stopped) and (not self.is_shutdown) and retval:
             if image is not None:
-
-                print(1.0 / (time.time() - self._last_time))
-                self._last_time = time.time()
-
-                if True:
-
-                    image = cast(np.ndarray, image)
-                    if image.shape[0] == 1:
-                        # image is already JPEG encoded
-                        image_msg = CompressedImage()
-                        image_msg.header.stamp = rospy.Time.now()
-                        image_msg.format = "jpeg"
-                        image_msg.data = image.tobytes()
-                    else:
-                        # image is a BGR array, encode first
-                        image_msg = rgb_to_compressed_imgmsg(image, encoding='jpeg')
-                    # publish the compressed image
-                    self.publish(image_msg)
+                # image is already JPEG encoded
+                image = cast(np.ndarray, image)
+                image_msg = CompressedImage()
+                image_msg.header.stamp = rospy.Time.now()
+                image_msg.format = "jpeg"
+                image_msg.data = image.tobytes()
+                # publish the compressed image
+                self.publish(image_msg)
             # grab next frame
             retval, image = self._device.read() if self._device else (False, None)
         self.loginfo('Camera worker stopped.')
 
     def setup(self):
-
+        # setup camera
         cam_props = {
-            'compression_quality': 100,
-            'video_bitrate': 25000000
+            'video_bitrate': 25000000,
         }
-
-        ### go through and set each property; remember to change your video device if necessary~
-        ### on my RPi, video0 is the usb webcam, but for my laptop the built-in one is 0 and the
-        ### external usb cam is 1
         for key in cam_props:
-            subprocess.call(['v4l2-ctl -d /dev/video0 -c {}={}'.format(key, str(cam_props[key]))],
-                            shell=True)
-
-
-
-
+            subprocess.call(
+                f'v4l2-ctl -d {RaspberryPi64Camera.VIDEO_DEVICE} -c {key}={str(cam_props[key])}',
+                shell=True
+            )
+        # create VideoCapture object
         if self._device is None:
             self._device = cv2.VideoCapture()
         # open the device
@@ -97,50 +74,13 @@ class RaspberryPi64Camera(AbsCameraNode):
                     self.logerr(msg)
                     raise RuntimeError(msg)
                 # configure camera
-                # print(self._res_w.value)
-                # print(self._res_h.value)
-
-                #
-                # $ v4l2-ctl -d /dev/video0 --list-formats
-                # ioctl: VIDIOC_ENUM_FMT
-                # 	Type: Video Capture
-                #
-                # 	[0]: 'YU12' (Planar YUV 4:2:0)
-                # 	[1]: 'YUYV' (YUYV 4:2:2)
-                # 	[2]: 'RGB3' (24-bit RGB 8-8-8)
-                # 	[3]: 'JPEG' (JFIF JPEG, compressed)
-                # 	[4]: 'H264' (H.264, compressed)
-                # 	[5]: 'MJPG' (Motion-JPEG, compressed)
-                # 	[6]: 'YVYU' (YVYU 4:2:2)
-                # 	[7]: 'VYUY' (VYUY 4:2:2)
-                # 	[8]: 'UYVY' (UYVY 4:2:2)
-                # 	[9]: 'NV12' (Y/CbCr 4:2:0)
-                # 	[10]: 'BGR3' (24-bit BGR 8-8-8)
-                # 	[11]: 'YV12' (Planar YVU 4:2:0)
-                # 	[12]: 'NV21' (Y/CrCb 4:2:0)
-                # 	[13]: 'RX24' (32-bit XBGR 8-8-8-8)
-                #
-                #
-
-
-
-
-                # self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-
-
                 self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
-                self._device.set(cv2.CAP_PROP_FRAME_WIDTH, 1296)
-                self._device.set(cv2.CAP_PROP_FRAME_HEIGHT, 972)
-                self._device.set(cv2.CAP_PROP_FPS, 20)
-
-                # self._device.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.25)
-                # self._device.set(cv2.CAP_PROP_EXPOSURE, -4)
-
-                # self._device.set(cv2.CAP_PROP_CONVERT_RGB, True)
+                self._device.set(cv2.CAP_PROP_FRAME_WIDTH, self._res_w.value)
+                self._device.set(cv2.CAP_PROP_FRAME_HEIGHT, self._res_h.value)
+                self._device.set(cv2.CAP_PROP_FPS, self._framerate.value)
+                self._device.set(cv2.CAP_PROP_CONVERT_RGB, False)
                 # try getting a sample image
                 retval, _ = self._device.read()
-
-
                 if not retval:
                     msg = "Could not read image from camera"
                     self.logerr(msg)
