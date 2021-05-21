@@ -3,7 +3,7 @@
   <arg name="pkg_name" value="camera_driver"/>
   <arg name="node_name" default="$(env ROBOT_HARDWARE)_camera_node"/>
   <arg name="param_file_name" default="duckiebot" doc="Specify a param file. ex:megaman"/>
-  <arg name="required" default="true" />
+  <arg name="required" default="false" />
 
   <group ns="$(arg veh)">
     <node name="camera_node" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" required="$(arg required)">
