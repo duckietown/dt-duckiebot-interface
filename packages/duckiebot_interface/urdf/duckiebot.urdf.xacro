@@ -478,7 +478,7 @@
             <joint name="${veh}_interaction_plate_to_tag_mount" type="fixed">
                 <parent link="${veh}/interaction_plate" />
                 <child link="${veh}/tag_mount" />
-                <origin xyz="-0.088 0 0" rpy="${pi} 0 -${0.5 * pi}" />
+                <origin xyz="-0.084 0 0" rpy="${pi} 0 -${0.5 * pi}" />
             </joint>
 
             <!-- camera mount -->
