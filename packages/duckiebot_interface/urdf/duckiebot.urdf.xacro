@@ -13,14 +13,14 @@
 
         <!-- START: Duckiebot -->
 
-        <!-- ~/footprint is located at the projection of the wheels axis' center on the ground -->
-        <link name="${veh}/footprint"/>
-
         <xacro:if value="${model in ['DB18', 'DB19']}" >
 
             <!-- START: Duckiebot: DB1X -->
 
             <xacro:property name="plate_thickness" value="0.003" />
+
+            <!-- ~/footprint is located at the projection of the wheels axis' center on the ground -->
+            <link name="${veh}/footprint"/>
 
             <!-- /base link is attached to the bottom of the bottom plate -->
             <link name="${veh}/base"/>
@@ -171,6 +171,14 @@
                 <parent link="${veh}/bottom_plate" />
                 <child link="${veh}/back_bumper" />
                 <origin xyz="-0.1 0 0.0155" rpy="0 0 ${pi}" />
+            </joint>
+
+            <!-- tag mount -->
+            <link name="${veh}/tag_mount"/>
+            <joint name="${veh}_top_plate_to_tag_mount" type="fixed">
+                <parent link="${veh}/top_plate" />
+                <child link="${veh}/tag_mount" />
+                <origin xyz="0.008 0 0.051" rpy="${pi} 0 -${0.5 * pi}" />
             </joint>
 
             <!-- camera mount -->
