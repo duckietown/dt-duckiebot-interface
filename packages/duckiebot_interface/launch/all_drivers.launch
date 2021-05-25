@@ -16,7 +16,7 @@
           name="robot_state_publisher"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
-    <group unless="$(eval arg('robot_type') in ['duckietown', 'workstation'])">
+    <group if="$(eval arg('robot_type') in ['duckiebot', 'watchtower', 'traffic_light', 'duckiedrone'])">
         <include file="$(find camera_driver)/launch/camera_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="$(arg robot_type)"/>
@@ -24,7 +24,7 @@
     </group>
 
     <!-- LED Emitter: reads ROS messages and commands the LEDs -->
-    <group unless="$(eval arg('robot_type') in ['watchtower', 'duckietown'])">
+    <group if="$(eval arg('robot_type') in ['duckiebot', 'traffic_light'])">
         <include file="$(find led_emitter)/launch/led_emitter_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="robot_type" value="$(arg robot_type)"/>
@@ -46,7 +46,7 @@
     </group>
 
     <!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
-    <group if="$(eval arg('robot_type') == 'traffic_light')">
+    <group if="$(eval arg('robot_type') in ['traffic_light'])">
         <remap from="led_emitter_node/custom_pattern" to="~custom_pattern"/>
         <include file="$(find traffic_light)/launch/traffic_light_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -76,7 +76,7 @@
 
     <!-- Time-of-Flight sensor: -->
     <!-- - DB21M: 1x ToF sensor at the Front Center      -->
-    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+    <group if="$(eval arg('robot_configuration') in ['DB21M'])">
         <remap from="front_center_tof_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find tof_driver)/launch/tof_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -85,7 +85,7 @@
     </group>
 
     <!-- OLED Display driver: -->
-    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+    <group if="$(eval arg('robot_configuration') in ['DB21M'])">
         <remap from="display_driver_node/button" to="button_driver_node/event"/>
         <include file="$(find display_driver)/launch/display_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -93,7 +93,7 @@
     </group>
 
     <!-- Display renderers: -->
-    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+    <group if="$(eval arg('robot_configuration') in ['DB21M'])">
         <!-- health: renders health and usage info about the robot -->
         <include file="$(find display_renderers)/launch/health_renderer_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -105,7 +105,7 @@
     </group>
 
     <!-- Button driver -->
-    <group if="$(eval arg('robot_configuration') == 'DB21M')">
+    <group if="$(eval arg('robot_configuration') in ['DB21M'])">
         <remap from="button_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find button_driver)/launch/button_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -113,10 +113,12 @@
     </group>
 
     <!-- Robot HTTP API: provides an HTTP API through which we can control the Robot -->
-    <include file="$(find robot_http_api)/launch/robot_http_api_node.launch">
-        <arg name="veh" value="$(arg veh)"/>
-        <arg name="robot_type" value="$(arg robot_type)"/>
-        <arg name="param_file_name" value="$(arg param_file_name)"/>
-    </include>
+    <group if="$(eval arg('robot_type') not in ['workstation'])">
+        <include file="$(find robot_http_api)/launch/robot_http_api_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="robot_type" value="$(arg robot_type)"/>
+            <arg name="param_file_name" value="$(arg param_file_name)"/>
+        </include>
+    </group>
 
 </launch>
