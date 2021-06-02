@@ -169,7 +169,7 @@ DISK |{pdsk_bar}| {pdsk}
             scale='fill'
         )
         self._min_ctmp = 20
-        self._max_ctmp = 100
+        self._max_ctmp = 60
 
     def set(self, ctmp: Union[str, int, float], pcpu: Union[str, int], pmem: Union[str, int],
             pdsk: Union[str, int]):
