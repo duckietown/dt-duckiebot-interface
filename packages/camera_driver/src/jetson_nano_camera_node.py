@@ -63,6 +63,8 @@ class JetsonNanoCameraNode(AbsCameraNode):
             # do nothing for the first `sleep_until` seconds, then check every 5 seconds
             if i > sleep_until and i % 5 == 0:
                 elapsed_since_last = time.time() - self._last_image_published_time
+                # TODO: this has to go
+                self.loginfo(f"Last image {elapsed_since_last} secs ago")
                 # reset nvargus if no images were received within the last 5 secs
                 if elapsed_since_last >= 5:
                     self.loginfo(f"Data flow monitor detected a period of "
