@@ -184,13 +184,14 @@ class AbsCameraNode(ABC, DTROS):
         except StopIteration:
             self.log("Exception thrown.")
 
-    def stop(self):
+    def stop(self, force: bool = False):
         self.loginfo('Stopping camera...')
         self._is_stopped = True
-        # wait for the camera thread to finish
-        if self._worker is not None:
-            self._worker.join()
-            time.sleep(1)
+        if not force:
+            # wait for the camera thread to finish
+            if self._worker is not None:
+                self._worker.join()
+                time.sleep(1)
         self._worker = None
         # release resources
         self.release()

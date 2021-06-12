@@ -88,7 +88,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
                             proc.kill()
                             time.sleep(2)
                             # - stop camera node, then wait 10 seconds
-                            self.stop()
+                            self.stop(force=True)
                             j = 0
                             while not self.is_shutdown:
                                 if j > 10:
