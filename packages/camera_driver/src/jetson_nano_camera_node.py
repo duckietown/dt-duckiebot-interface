@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
+import time
+from threading import Thread
 
 import cv2
+import psutil
 import rospy
 import atexit
 import numpy as np
@@ -45,8 +48,64 @@ class JetsonNanoCameraNode(AbsCameraNode):
         self._use_hw_acceleration = rospy.get_param('~use_hw_acceleration', False)
         # prepare gstreamer pipeline
         self._device = None
+        # prepare data flow monitor
+        self._flow_monitor = Thread(target=self._flow_monitor_fcn)
+        self._flow_monitor.setDaemon(True)
+        self._flow_monitor.start()
         # ---
         self.log("[JetsonNanoCameraNode]: Initialized.")
+
+    def _flow_monitor_fcn(self):
+        # TODO: this is hack used to reset the nvargus daemon process when it hangs
+        i = 0
+        sleep_until = 20
+        while not self.is_shutdown:
+            # do nothing for the first `sleep_until` seconds, then check every 5 seconds
+            if i > sleep_until and i % 5 == 0:
+                elapsed_since_last = time.time() - self._last_image_published_time
+                # reset nvargus if no images were received within the last 5 secs
+                if elapsed_since_last >= 5:
+                    self.loginfo(f"Data flow monitor detected a period of "
+                                f"{int(elapsed_since_last)} seconds during which no images were "
+                                f"produced, restarting camera process.")
+                    # find PID of the nvargus process
+                    killed = False
+                    for proc in psutil.process_iter():
+                        try:
+                            # get process name and pid from process object
+                            process_cmdline = proc.cmdline()
+                            if len(process_cmdline) <= 0:
+                                continue
+                            process_bin = process_cmdline[0]
+                            # if it is not the one we are looking for, skip
+                            if not process_bin.startswith("/usr/sbin/nvargus-daemon"):
+                                continue
+                            # this is the one we are looking for
+                            self.loginfo(f"Process 'nvargus-daemon' found with PID #{proc.pid}")
+                            # - kill nvargus
+                            proc.kill()
+                            time.sleep(2)
+                            # - stop camera node, then wait 10 seconds
+                            self.stop()
+                            j = 0
+                            while not self.is_shutdown:
+                                if j > 10:
+                                    break
+                                time.sleep(1)
+                                j += 1
+                            # - restart camera node
+                            self.start()
+                            # stop iterating over the processes
+                            break
+                        except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
+                            pass
+                    if not killed:
+                        self.loginfo("Process 'nvargus-daemon' not found.")
+                    # allow 20 seconds for the images to come back
+                    sleep_until = i + 20
+            # ---
+            i += 1
+            time.sleep(1)
 
     def run(self):
         """ Image capture procedure.

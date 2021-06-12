@@ -138,6 +138,9 @@ class AbsCameraNode(ABC, DTROS):
             SetCameraInfo,
             self.srv_set_camera_info_cb
         )
+
+        # monitor
+        self._last_image_published_time = 0
         # ---
         self.log("[AbsCameraNode]: Initialized.")
 
@@ -161,6 +164,7 @@ class AbsCameraNode(ABC, DTROS):
         self.pub_img.publish(image_msg)
         # publish camera info
         self.pub_camera_info.publish(self.current_camera_info)
+        self._last_image_published_time = time.time()
         # ---
         if not self._has_published:
             self.log("Published the first image.")
