@@ -194,7 +194,7 @@ class AbsCameraNode(ABC, DTROS):
                 time.sleep(1)
         self._worker = None
         # release resources
-        self.release()
+        self.release(force=force)
         time.sleep(1)
         self._is_stopped = False
         self.loginfo('Camera stopped.')
@@ -204,7 +204,7 @@ class AbsCameraNode(ABC, DTROS):
         raise NotImplementedError('Child classes should implement this method.')
 
     @abstractmethod
-    def release(self):
+    def release(self, force: bool = False):
         raise NotImplementedError('Child classes should implement this method.')
 
     @abstractmethod

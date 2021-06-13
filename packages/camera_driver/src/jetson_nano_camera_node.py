@@ -171,14 +171,17 @@ class JetsonNanoCameraNode(AbsCameraNode):
             # register self.close as cleanup function
             atexit.register(self.stop)
 
-    def release(self):
+    def release(self, force: bool = False):
         if self._device is not None:
-            self.loginfo('Releasing GST pipeline...')
-            try:
-                self._device.release()
-            except Exception:
-                pass
-            self.loginfo('GST pipeline released.')
+            if force:
+                self.loginfo('Forcing release of the GST pipeline...')
+            else:
+                self.loginfo('Releasing GST pipeline...')
+                try:
+                    self._device.release()
+                except Exception:
+                    pass
+        self.loginfo('GST pipeline released.')
         self._device = None
 
     def gst_pipeline_string(self):

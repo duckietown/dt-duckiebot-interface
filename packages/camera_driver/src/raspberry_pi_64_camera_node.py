@@ -93,7 +93,7 @@ class RaspberryPi64Camera(AbsCameraNode):
             # register self.close as cleanup function
             atexit.register(self.stop)
 
-    def release(self):
+    def release(self, force: bool = False):
         if self._device is not None:
             self.loginfo('Releasing camera...')
             # noinspection PyBroadException
