@@ -186,12 +186,6 @@ class AbsCameraNode(ABC, DTROS):
 
     def stop(self, force: bool = False):
         self.loginfo('Stopping camera...')
-
-        # TODO: remove
-        # import pdb
-        # pdb.set_trace()
-
-
         self._is_stopped = True
         if not force:
             # wait for the camera thread to finish
