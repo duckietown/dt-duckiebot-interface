@@ -71,7 +71,7 @@ class RaspberryPiCameraNode(AbsCameraNode):
             self._device.resolution = (self._res_w.value, self._res_h.value)
             self._device.exposure_mode = self._exposure_mode.value
 
-    def release(self):
+    def release(self, force: bool = False):
         if self._device is not None:
             self.loginfo('Releasing CSI camera...')
             try:
