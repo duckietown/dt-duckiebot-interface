@@ -188,8 +188,8 @@ class AbsCameraNode(ABC, DTROS):
         self.loginfo('Stopping camera...')
 
         # TODO: remove
-        import pdb
-        pdb.set_trace()
+        # import pdb
+        # pdb.set_trace()
 
 
         self._is_stopped = True
