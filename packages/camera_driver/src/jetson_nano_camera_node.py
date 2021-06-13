@@ -61,13 +61,14 @@ class JetsonNanoCameraNode(AbsCameraNode):
         sleep_until = 20
         while not self.is_shutdown:
             # do nothing for the first `sleep_until` seconds, then check every 5 seconds
-            if i > sleep_until and i % 5 == 0:
+            # TODO: checking every 2 secs? do 5
+            if i > sleep_until and i % 2 == 0:
                 elapsed_since_last = time.time() - self._last_image_published_time
                 # TODO: this has to go
-                self.loginfo(f"Last image {elapsed_since_last} secs ago")
+                self.loginfo(f"[data-flow-monitor]: Last image {elapsed_since_last} secs ago")
                 # reset nvargus if no images were received within the last 5 secs
                 if elapsed_since_last >= 5:
-                    self.loginfo(f"Data flow monitor detected a period of "
+                    self.loginfo(f"[data-flow-monitor]: Detected a period of "
                                 f"{int(elapsed_since_last)} seconds during which no images were "
                                 f"produced, restarting camera process.")
                     # find PID of the nvargus process
@@ -83,12 +84,16 @@ class JetsonNanoCameraNode(AbsCameraNode):
                             if not process_bin.startswith("/usr/sbin/nvargus-daemon"):
                                 continue
                             # this is the one we are looking for
-                            self.loginfo(f"Process 'nvargus-daemon' found with PID #{proc.pid}")
+                            self.loginfo(f"[data-flow-monitor]: Process 'nvargus-daemon' found "
+                                         f"with PID #{proc.pid}")
                             # - kill nvargus
+                            self.loginfo(f"[data-flow-monitor]: Killing nvargus.")
                             proc.kill()
                             time.sleep(2)
                             # - stop camera node, then wait 10 seconds
+                            self.loginfo(f"[data-flow-monitor]: Clearing camera...")
                             self.stop(force=True)
+                            self.loginfo(f"[data-flow-monitor]: Camera cleared. Waiting 10 secs.")
                             j = 0
                             while not self.is_shutdown:
                                 if j > 10:
@@ -96,13 +101,15 @@ class JetsonNanoCameraNode(AbsCameraNode):
                                 time.sleep(1)
                                 j += 1
                             # - restart camera node
+                            self.loginfo(f"[data-flow-monitor]: Restarting camera...")
                             self.start()
+                            self.loginfo(f"[data-flow-monitor]: Camera restarted.")
                             # stop iterating over the processes
                             break
                         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                             pass
                     if not killed:
-                        self.loginfo("Process 'nvargus-daemon' not found.")
+                        self.loginfo("[data-flow-monitor]: Process 'nvargus-daemon' not found.")
                     # allow 20 seconds for the images to come back
                     sleep_until = i + 20
             # ---
