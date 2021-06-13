@@ -93,10 +93,10 @@ class JetsonNanoCameraNode(AbsCameraNode):
                             # - stop camera node, then wait 10 seconds
                             self.loginfo(f"[data-flow-monitor]: Clearing camera...")
                             self.stop(force=True)
-                            self.loginfo(f"[data-flow-monitor]: Camera cleared. Waiting 10 secs.")
+                            self.loginfo(f"[data-flow-monitor]: Camera cleared. Waiting 20 secs.")
                             j = 0
                             while not self.is_shutdown:
-                                if j > 10:
+                                if j > 20:
                                     break
                                 time.sleep(1)
                                 j += 1
