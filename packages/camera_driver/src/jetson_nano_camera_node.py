@@ -56,9 +56,10 @@ class JetsonNanoCameraNode(AbsCameraNode):
 
     def _flow_monitor_fcn(self):
         i = 0
+        failure_timeout = 20
         while not self.is_shutdown:
             # do nothing for the first `sleep_until` seconds, then check every 5 seconds
-            if self._has_published and i % 5 == 0:
+            if (self._has_published or i > failure_timeout) and i % 5 == 0:
                 elapsed_since_last = time.time() - self._last_image_published_time
                 # reset nvargus if no images were received within the last 10 secs
                 if elapsed_since_last >= 10:
