@@ -6,7 +6,7 @@
   <arg name="required" default="false" />
 
   <group ns="$(arg veh)">
-    <node name="camera_node" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen" required="$(arg required)">
+    <node name="camera_node" pkg="$(arg pkg_name)" type="$(arg node_name).py" respawn="true" respawn_delay="10" output="screen" required="$(arg required)">
       <rosparam command="load" file="$(find camera_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
     </node>
   </group>

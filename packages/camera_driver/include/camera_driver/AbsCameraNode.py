@@ -177,9 +177,13 @@ class AbsCameraNode(ABC, DTROS):
         self.log("Start capturing.")
         # ---
         try:
-            self.setup()
+            try:
+                self.setup()
+            except RuntimeError as e:
+                rospy.signal_shutdown(str(e))
+                return
             # run camera thread
-            self._worker = Thread(target=self.run)
+            self._worker = Thread(target=self.run, daemon=True)
             self._worker.start()
         except StopIteration:
             self.log("Exception thrown.")
@@ -212,7 +216,7 @@ class AbsCameraNode(ABC, DTROS):
         raise NotImplementedError('Child classes should implement this method.')
 
     def on_shutdown(self):
-        self.stop()
+        self.stop(force=True)
 
     def srv_set_camera_info_cb(self, req):
         self.log("[srv_set_camera_info_cb] Callback!")

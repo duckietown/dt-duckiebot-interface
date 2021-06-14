@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-import time
-from threading import Thread
 
 import cv2
+import time
 import psutil
 import rospy
-import atexit
 import numpy as np
+from threading import Thread
 
 from typing import Tuple, cast
 from collections import namedtuple
@@ -56,21 +55,17 @@ class JetsonNanoCameraNode(AbsCameraNode):
         self.log("[JetsonNanoCameraNode]: Initialized.")
 
     def _flow_monitor_fcn(self):
-        # TODO: this is hack used to reset the nvargus daemon process when it hangs
         i = 0
-        sleep_until = 20
+        sleep_until = 10
         while not self.is_shutdown:
             # do nothing for the first `sleep_until` seconds, then check every 5 seconds
-            # TODO: checking every 2 secs? do 5
-            if i > sleep_until and i % 2 == 0:
+            if i > sleep_until and i % 5 == 0:
                 elapsed_since_last = time.time() - self._last_image_published_time
-                # TODO: this has to go
-                self.loginfo(f"[data-flow-monitor]: Last image {elapsed_since_last} secs ago")
                 # reset nvargus if no images were received within the last 5 secs
                 if elapsed_since_last >= 5:
                     self.loginfo(f"[data-flow-monitor]: Detected a period of "
-                                f"{int(elapsed_since_last)} seconds during which no images were "
-                                f"produced, restarting camera process.")
+                                 f"{int(elapsed_since_last)} seconds during which no "
+                                 f"images were produced, restarting camera process.")
                     # find PID of the nvargus process
                     killed = False
                     for proc in psutil.process_iter():
@@ -89,29 +84,19 @@ class JetsonNanoCameraNode(AbsCameraNode):
                             # - kill nvargus
                             self.loginfo(f"[data-flow-monitor]: Killing nvargus.")
                             proc.kill()
-                            time.sleep(2)
+                            time.sleep(1)
                             # - stop camera node, then wait 10 seconds
                             self.loginfo(f"[data-flow-monitor]: Clearing camera...")
                             self.stop(force=True)
-                            self.loginfo(f"[data-flow-monitor]: Camera cleared. Waiting 20 secs.")
-                            j = 0
-                            while not self.is_shutdown:
-                                if j > 20:
-                                    break
-                                time.sleep(1)
-                                j += 1
-                            # - restart camera node
-                            self.loginfo(f"[data-flow-monitor]: Restarting camera...")
-                            self.start()
-                            self.loginfo(f"[data-flow-monitor]: Camera restarted.")
-                            # stop iterating over the processes
-                            break
+                            self.loginfo(f"[data-flow-monitor]: Camera cleared. Rebooting.")
+                            # - exit camera node, roslaunch will respawn in 10 seconds
+                            rospy.signal_shutdown("Data flow monitor has closed the node")
+                            time.sleep(1)
+                            exit(1)
                         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
                             pass
                     if not killed:
                         self.loginfo("[data-flow-monitor]: Process 'nvargus-daemon' not found.")
-                    # allow 20 seconds for the images to come back
-                    sleep_until = i + 20
             # ---
             i += 1
             time.sleep(1)
@@ -175,8 +160,6 @@ class JetsonNanoCameraNode(AbsCameraNode):
                 msg = "Could not start camera"
                 self.logerr(msg)
                 raise RuntimeError(msg)
-            # register self.close as cleanup function
-            atexit.register(self.stop)
 
     def release(self, force: bool = False):
         if self._device is not None:
@@ -209,13 +192,12 @@ class JetsonNanoCameraNode(AbsCameraNode):
         # compile gst pipeline
         if self._use_hw_acceleration:
             gst_pipeline = """ \
-                        nvarguscamerasrc \
-                        sensor-mode={} exposuretimerange="{} {}" ! \
-                        video/x-raw(memory:NVMM), width={}, height={}, format=NV12, 
-                            framerate={}/1 ! \
-                        nvjpegenc ! \
-                        appsink \
-                    """.format(
+                nvarguscamerasrc \
+                sensor-mode={} exposuretimerange="{} {}" ! \
+                video/x-raw(memory:NVMM), width={}, height={}, format=NV12, framerate={}/1 ! \
+                nvjpegenc ! \
+                appsink \
+            """.format(
                 camera_mode.id,
                 *exposure_time,
                 self._res_w.value,
