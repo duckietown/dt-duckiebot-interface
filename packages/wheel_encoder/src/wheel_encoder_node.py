@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import os.path
 
 import rospy
 import uuid
 import tf
+import yaml
 
 from geometry_msgs.msg import TransformStamped, Transform, Quaternion
 from tf2_ros import TransformBroadcaster
@@ -47,6 +49,41 @@ class WheelEncoderNode(DTROS):
         self._resolution = rospy.get_param('~resolution')
         self._configuration = rospy.get_param('~configuration')
         self._publish_frequency = rospy.get_param('~publish_frequency')
+
+        # try using custom calibration file
+        calib_file = os.path.join(
+            '/data/config/calibrations/encoder',
+            f'{self._configuration}/{self._veh}.yaml',
+        )
+        try:
+            with open(calib_file, 'r') as f:
+                calib_data = yaml.safe_load(f)
+            custom_resolution = int(calib_data["resolution"])
+            rospy.set_param('~resolution', custom_resolution)
+            self._resolution = custom_resolution
+            self.loginfo((
+                f"With calibration file - {calib_file}, "
+                f"use custom encoder resolution: {self._resolution}"
+            ))
+        except FileNotFoundError:
+            self.logwarn((
+                f"No custom encoder calibration found at: {calib_file}. "
+                "Using default parameters."
+            ))
+        except KeyError:
+            self.logwarn((
+                "No valid field 'resolution' found in "
+                f"encoder calibration file at: {calib_file}. "
+                "Using default parameters."
+            ))
+        except ValueError:
+            self.logwarn((
+                "No valid integer 'resolution' value found in "
+                f"encoder calibration file at: {calib_file}. "
+                "Using default parameters."
+            ))
+        # throw exceptions for other situations
+
         # tick storage
         self._tick = 0
         # publisher for wheel encoder ticks
