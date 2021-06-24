@@ -75,8 +75,8 @@
     </group>
 
     <!-- Time-of-Flight sensor: -->
-    <!-- - DB21M: 1x ToF sensor at the Front Center      -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M'])">
+    <!-- - DB21x: 1x ToF sensor at the Front Center      -->
+    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21A', 'DB21B'])">
         <remap from="front_center_tof_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find tof_driver)/launch/tof_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -85,7 +85,7 @@
     </group>
 
     <!-- OLED Display driver: -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M'])">
+    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21A', 'DB21B'])">
         <remap from="display_driver_node/button" to="button_driver_node/event"/>
         <include file="$(find display_driver)/launch/display_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -93,7 +93,7 @@
     </group>
 
     <!-- Display renderers: -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M'])">
+    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21A', 'DB21B'])">
         <!-- health: renders health and usage info about the robot -->
         <include file="$(find display_renderers)/launch/health_renderer_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -105,7 +105,7 @@
     </group>
 
     <!-- Button driver -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M'])">
+    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21A', 'DB21B'])">
         <remap from="button_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find button_driver)/launch/button_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
