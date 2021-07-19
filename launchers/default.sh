@@ -26,7 +26,7 @@ dt-exec roslaunch --wait \
     veh:="$VEHICLE_NAME" \
     robot_type:="$ROBOT_TYPE" \
     robot_configuration:="$ROBOT_CONFIGURATION" \
-    disable_camera:="$DISABLE_CAMERA"
+    dt_sensor_disable_camera:="$DT_SENSOR_CAMERA_DISABLE"
 
 
 # ----------------------------------------------------------------------------
