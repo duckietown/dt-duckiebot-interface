@@ -1,6 +1,23 @@
 #!/usr/bin/env python3
 
-import RPi.GPIO as GPIO
+from enum import IntEnum
+
+from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+ROBOT_HARDWARE = get_device_hardware_brand()
+
+if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
+    import Jetson.GPIO as GPIO
+
+elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
+    import RPi.GPIO as GPIO
+
+else:
+    raise Exception("Undefined Hardware!")
+
+
+class WheelDirection(IntEnum):
+    FORWARD = 1
+    REVERSE = -1
 
 
 class WheelEncoderDriver:
@@ -30,9 +47,17 @@ class WheelEncoderDriver:
         # ---
         self._callback = callback
         self._ticks = 0
+        # wheel direction
+        self._direction = WheelDirection.FORWARD
+
+    def get_direction(self) -> WheelDirection:
+        return self._direction
+
+    def set_direction(self, direction: WheelDirection):
+        self._direction = direction
 
     def _cb(self, _):
-        self._ticks += 1
+        self._ticks += self._direction.value
         self._callback(self._ticks)
 
     def shutdown(self):

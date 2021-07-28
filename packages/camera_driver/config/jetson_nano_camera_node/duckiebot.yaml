@@ -1,0 +1,6 @@
+framerate: 30
+res_w: 640
+res_h: 480
+exposure_mode: sports
+allow_partial_fov: false
+use_hw_acceleration: true

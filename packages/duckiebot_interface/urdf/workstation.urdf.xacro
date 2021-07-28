@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<robot name="workstation" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!--
+    Required arguments are:
+
+        - veh:      Vehicle name (e.g., workstation01)
+
+    -->
+
+    <xacro:macro name="workstation" params="veh">
+        <link name="${veh}/footprint"/>
+    </xacro:macro>
+
+    <!--  Spawn Duckiebot  -->
+    <xacro:workstation veh="$(arg veh)" />
+
+</robot>

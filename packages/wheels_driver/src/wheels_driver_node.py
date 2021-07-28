@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 import rospy
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
@@ -9,21 +10,23 @@ from duckietown.dtros import DTROS, TopicType, NodeType
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
 
-        Subscribes to the requested wheels commands (linear velocities, i.e. velocity for the left and
-        the right wheels) and to an emergency stop flag. When the emergency flag `~emergency_stop` is set to
-        `False` it actuates the wheel driver with the velocities received from `~wheels_cmd`. Publishes
-        the execution of the commands to `~wheels_cmd_executed`.
+        Subscribes to the requested wheels commands (linear velocities, i.e. velocity for the left
+        and the right wheels) and to an emergency stop flag.
+        When the emergency flag `~emergency_stop` is set to `False` it actuates the wheel driver
+        with the velocities received from `~wheels_cmd`. Publishes the execution of the commands
+        to `~wheels_cmd_executed`.
 
         The emergency flag is `False` by default.
 
         Subscribers:
            ~wheels_cmd (:obj:`WheelsCmdStamped`): The requested wheel command
-           ~emergency_stop (:obj:`BoolStamped`): Emergency stop. Can stop the actual execution of the
-               wheel commands by the motors if set to `True`. Set to `False` for nominal operations.
+           ~emergency_stop (:obj:`BoolStamped`): Emergency stop. Can stop the actual execution of
+               the wheel commands by the motors if set to `True`. Set to `False` for nominal
+               operations.
         Publishers:
-           ~wheels_cmd_executed (:obj:`WheelsCmdStamped`): Publishes the actual commands executed, i.e. when
-               the emergency flag is `False` it publishes the requested command, and when it is `True`: zero
-               values for both motors.
+           ~wheels_cmd_executed (:obj:`WheelsCmdStamped`): Publishes the actual commands executed,
+               i.e. when the emergency flag is `False` it publishes the requested command, and
+               when it is `True`: zero values for both motors.
 
     """
 
@@ -83,7 +86,7 @@ class WheelsDriverNode(DTROS):
             vel_left = msg.vel_left
             vel_right = msg.vel_right
 
-        self.driver.setWheelsSpeed(left=vel_left, right=vel_right)
+        self.driver.set_wheels_speed(left=vel_left, right=vel_right)
         # Put the wheel commands in a message and publish
         self.msg_wheels_cmd.header = msg.header
         # Record the time the command was given to the wheels_driver
@@ -112,7 +115,7 @@ class WheelsDriverNode(DTROS):
 
         Publishes a zero velocity command at shutdown.
         """
-        self.driver.setWheelsSpeed(left=0.0, right=0.0)
+        self.driver.set_wheels_speed(left=0.0, right=0.0)
 
 
 if __name__ == '__main__':

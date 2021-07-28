@@ -1,0 +1,41 @@
+<?xml version="1.0"?>
+<robot name="duckiedrone" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+    <!--
+    Required arguments are:
+
+        - veh:      Vehicle name (e.g., duckiedrone01)
+        - model:    Robot configuration (e.g., DD18)
+
+    -->
+
+    <xacro:macro name="duckiedrone" params="veh model">
+
+        <!-- START: Duckiedrone -->
+
+        <!-- ~/footprint is located at the projection of the centroid of the base on the ground -->
+        <link name="${veh}/footprint"/>
+
+        <xacro:if value="${model == 'DD18'}" >
+
+            <!-- START: Duckiedrone: DD18 -->
+
+            <!-- /base link coincides with /footprint -->
+            <link name="${veh}/base"/>
+            <joint name="${veh}_footprint_to_base" type="fixed">
+                <parent link="${veh}/footprint" />
+                <child link="${veh}/base" />
+            </joint>
+
+            <!-- END: Duckiedrone: DD18 -->
+
+        </xacro:if>
+
+        <!-- END: Duckiedrone -->
+
+    </xacro:macro>
+
+    <!--  Spawn Duckiedrone  -->
+    <xacro:duckiedrone veh="$(arg veh)" model="$(arg model)" />
+
+</robot>

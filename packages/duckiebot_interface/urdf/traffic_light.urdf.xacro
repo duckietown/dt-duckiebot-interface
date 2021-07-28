@@ -8,11 +8,11 @@
         <!-- START: Traffic Light -->
 
         <!-- /footprint is located at the projection of the centroid of the base on the ground -->
-        <link name="/${veh}/footprint"/>
+        <link name="${veh}/footprint"/>
         <!-- TODO: this should not be fixed -->
         <joint name="${veh}_parent_to_footprint" type="fixed">
             <parent link="${parent}" />
-            <child link="/${veh}/footprint" />
+            <child link="${veh}/footprint" />
         </joint>
 
         <xacro:if value="${model == 'TL19'}" >

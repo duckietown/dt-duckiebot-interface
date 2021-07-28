@@ -1,30 +1,71 @@
 <?xml version="1.0"?>
 <robot name="watchtower" xmlns:xacro="http://www.ros.org/wiki/xacro">
 
-    <xacro:property name="pi" value="3.14159265359" />
+    <!--
+    Required arguments are:
 
-    <xacro:macro name="watchtower" params="model veh parent:=/world">
+        - veh:      Vehicle name (e.g., watchtower01)
+        - model:    Robot configuration (e.g., WT18)
+
+    -->
+
+    <xacro:macro name="watchtower" params="veh model">
 
         <!-- START: Watchtower -->
 
-        <!-- /footprint is located at the projection of the centroid of the base on the ground -->
-        <link name="/${veh}/footprint"/>
-        <!-- TODO: this should not be fixed -->
-        <joint name="${veh}_parent_to_footprint" type="fixed">
-            <parent link="${parent}" />
-            <child link="/${veh}/footprint" />
-        </joint>
+        <!-- ~/footprint is located at the projection of the centroid of the base on the ground -->
+        <link name="${veh}/footprint"/>
 
-        <xacro:if value="${model == 'WT18'}" >
-            <!-- START: Watchtower: WT18 -->
+        <xacro:if value="${model in ['WT18', 'WT19A', 'WT19B']}" >
 
+            <!-- START: Watchtower: WT18, WT19A, WT19B -->
 
+            <!-- /base link coincides with /footprint -->
+            <link name="${veh}/base"/>
+            <joint name="${veh}_footprint_to_base" type="fixed">
+                <parent link="${veh}/footprint" />
+                <child link="${veh}/base" />
+            </joint>
 
-            <!-- END: Watchtower: WT18 -->
+            <!-- camera support -->
+            <link name="${veh}/camera_support"/>
+            <joint name="${veh}_base_to_camera_support" type="fixed">
+                <parent link="${veh}/base" />
+                <child link="${veh}/camera_support" />
+                <origin xyz="0 0 0.63" />
+            </joint>
+
+            <!-- camera frame -->
+            <link name="${veh}/camera_frame">
+                <visual>
+                    <geometry>
+                        <mesh filename="package://duckietown/urdf/meshes/watchtower/DB18/fish_eye_camera.dae" />
+                    </geometry>
+                </visual>
+            </link>
+            <joint name="${veh}_camera_support_to_camera_frame" type="fixed">
+                <parent link="${veh}/camera_support" />
+                <child link="${veh}/camera_frame" />
+                <origin xyz="0.04 0 -0.01" rpy="0 1.22 0" />
+            </joint>
+
+            <!-- camera optical frame -->
+            <link name="${veh}/camera_optical_frame"/>
+            <joint name="${veh}_camera_frame_to_camera_optical_frame" type="fixed">
+                <parent link="${veh}/camera_frame" />
+                <child link="${veh}/camera_optical_frame" />
+                <origin xyz="0 0 0" rpy="-${0.5 * pi} 0 -${0.5 * pi}" />
+            </joint>
+
+            <!-- END: Watchtower: WT18, WT19A, WT19B -->
+
         </xacro:if>
 
         <!-- END: Watchtower -->
 
     </xacro:macro>
+
+    <!--  Spawn Watchtower  -->
+    <xacro:watchtower veh="$(arg veh)" model="$(arg model)" />
 
 </robot>

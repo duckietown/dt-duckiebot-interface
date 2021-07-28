@@ -7,8 +7,9 @@
     <group ns="$(arg veh)">
         <node pkg="wheel_encoder" type="$(arg node_name).py"
               name="$(arg wheel)_$(arg node_name)" output="screen" required="true">
-            <rosparam command="load" file="$(find wheel_encoder)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+            <param name="veh" type="str" value="$(arg veh)"/>
             <param name="name" type="str" value="$(arg wheel)"/>
+            <rosparam command="load" file="$(find wheel_encoder)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
         </node>
     </group>
 </launch>

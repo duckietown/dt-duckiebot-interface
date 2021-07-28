@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import time
 
 import rospy
 
@@ -294,7 +295,16 @@ class LEDEmitterNode(DTROS):
 
                 self.pattern = [[0, 0, 0]]*5
                 for i in range(len(color_list)):
-                    self.pattern[i] = self._LED_protocol['colors'][color_list[i]]
+                    if isinstance(color_list[i], str):
+                        self.pattern[i] = self._LED_protocol['colors'][color_list[i]]
+                    elif isinstance(color_list[i], list) and len(color_list[i]) == 3:
+                        self.pattern[i] = color_list[i]
+                        self.pattern[i] = [max(0, min(c, 255)) for c in self.pattern[i]]
+                    else:
+                        self.log(
+                            "LEDs color passed as RGB values must be expressed as lists of 3 "
+                            "values from the range [0, 255].", type='err')
+                        return
 
             # Extract the frequency from the protocol
             self.frequency_mask = self._LED_protocol['signals'][pattern_name]['frequency_mask']
@@ -369,7 +379,9 @@ class LEDEmitterNode(DTROS):
         At shutdown, changes the LED pattern to `LIGHT_OFF`.
         """
         # Turn off the lights when the node dies
+        self.loginfo("Shutting down. Turning LEDs off.")
         self.changePattern('LIGHT_OFF')
+        time.sleep(1)
 
 
 if __name__ == '__main__':

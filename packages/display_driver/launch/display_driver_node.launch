@@ -1,0 +1,16 @@
+<launch>
+    <arg name="veh" doc="Specify a vehicle name"/>
+    <arg name="pkg_name" value="display_driver"/>
+    <arg name="node_name" value="display_driver_node"/>
+    <arg name="required" default="false"/>
+    <arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman"/>
+
+    <group ns="$(arg veh)">
+        <node pkg="$(arg pkg_name)" name="$(arg node_name)" type="$(arg node_name).py"
+              output="screen" required="$(arg required)">
+            <param name="veh" value="$(arg veh)" />
+            <rosparam command="load"
+                      file="$(find display_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+        </node>
+    </group>
+</launch>
