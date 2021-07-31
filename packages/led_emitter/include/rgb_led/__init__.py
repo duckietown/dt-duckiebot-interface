@@ -10,3 +10,4 @@
 """
 
 from .rgb_led import RGB_LED
+from .virtual_rgb_led import Virtual_RGB_LED
