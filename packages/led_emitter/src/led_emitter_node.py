@@ -11,9 +11,9 @@ from dt_robot_utils import get_robot_hardware, RobotHardware
 from duckietown.dtros import DTROS, TopicType, NodeType
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
-    from rgb_led import Virtual_RGB_LED as RGB_LED
+    from rgb_led import VirtualRGBLED as RGBLED
 else:
-    from rgb_led import RGB_LED
+    from rgb_led import RGBLED
 
 
 class LEDEmitterNode(DTROS):
@@ -111,7 +111,7 @@ class LEDEmitterNode(DTROS):
             node_type=NodeType.DRIVER
         )
 
-        self.led = RGB_LED()
+        self.led = RGBLED()
 
         self.robot_type = rospy.get_param("~robot_type")
 

@@ -5,7 +5,7 @@ from Adafruit_PWM_Servo_Driver import PWM
 from led_emitter.include.rgb_led.RGBLEDAbs import RGBLEDAbs
 
 
-class RGB_LED(RGBLEDAbs):
+class RGBLED(RGBLEDAbs):
     """Object communicating to the LEDs.
 
         Low level class that creates the PWM messages that are sent to the

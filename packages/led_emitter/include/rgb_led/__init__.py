@@ -9,5 +9,11 @@
 
 """
 
-from .rgb_led import RGB_LED
-from .virtual_rgb_led import Virtual_RGB_LED
+from dt_robot_utils import get_robot_hardware, RobotHardware
+
+
+if get_robot_hardware() != RobotHardware.VIRTUAL:
+    # this breaks if imported when running on a virtual robot
+    from .rgb_led import RGBLED
+
+from .virtual_rgb_led import VirtualRGBLED

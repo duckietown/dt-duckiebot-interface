@@ -8,8 +8,8 @@ from camera_driver import AbsCameraNode
 from sensor_msgs.msg import CompressedImage
 
 from dt_duckiematrix_protocols.world.CameraFrame import CameraFrame
-from dt_duckiematrix_utils.configuration import get_matrix_avatar_name
 from dt_duckiematrix_utils.socket import DuckieMatrixSocket
+from dt_robot_utils import get_robot_name
 
 
 class VirtualCamera(AbsCameraNode):
@@ -23,10 +23,9 @@ class VirtualCamera(AbsCameraNode):
         # prepare zmq pipeline
         self._device: DuckieMatrixSocket = DuckieMatrixSocket.create()
         if self._device is None or not self._device.connected:
-            self.log("[VirtualCamera]: No virtual camera connection established. Exiting.")
-            exit(1)
-        # ---
-        self.log("[VirtualCamera]: Initialized.")
+            self.log("[VirtualCamera]: No virtual camera connection established.")
+        else:
+            self.log("[VirtualCamera]: Initialized.")
 
     def process_frame(self, msg: CameraFrame):
         if msg.frame is None:
@@ -55,10 +54,8 @@ class VirtualCamera(AbsCameraNode):
 
     def setup(self):
         # setup camera
-        avatar_name = get_matrix_avatar_name()
-        camera_0_topic = os.path.join(avatar_name, "camera_0")
-        self._device.subscribe(camera_0_topic, self.process_frame)
-        pass
+        camera_0_topic = os.path.join(get_robot_name(), "camera_0")
+        self._device.subscribe(camera_0_topic, CameraFrame, self.process_frame)
 
     def release(self, force: bool = False):
         if self._device is not None:
