@@ -8,7 +8,7 @@
          doc="The configuration of the robot. For example DB19, DB20, ..."/>
     <arg name="robot_xurdf" value="$(find duckiebot_interface)/urdf/$(arg robot_type).urdf.xacro"
          doc="Location of the URDF XACRO file for the robot type"/>
-    <arg name="dt_sensor_disable_camera" default="0"
+    <arg name="dt_sensor_disable_camera" default="$(optenv DT_SENSOR_CAMERA_DISABLE 0)"
          doc="If 1 the camera node is not started."/>
          
 
@@ -19,7 +19,7 @@
           name="robot_state_publisher"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
-    <group if="$(eval arg('dt_sensor_disable_camera') != 1)">
+    <group unless="$(arg dt_sensor_disable_camera)">
         <group if="$(eval arg('robot_type') in ['duckiebot', 'watchtower', 'traffic_light', 'duckiedrone'])">
             <include file="$(find camera_driver)/launch/camera_node.launch">
                 <arg name="veh" value="$(arg veh)"/>

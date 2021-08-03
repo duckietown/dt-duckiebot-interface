@@ -25,8 +25,7 @@ dt-exec roslaunch --wait \
     duckiebot_interface all_drivers.launch \
     veh:="$VEHICLE_NAME" \
     robot_type:="$ROBOT_TYPE" \
-    robot_configuration:="$ROBOT_CONFIGURATION" \
-    dt_sensor_disable_camera:="$DT_SENSOR_CAMERA_DISABLE"
+    robot_configuration:="$ROBOT_CONFIGURATION"
 
 
 # ----------------------------------------------------------------------------
