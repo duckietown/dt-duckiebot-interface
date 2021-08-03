@@ -79,11 +79,11 @@
     <!-- Time-of-Flight sensor: -->
     <!-- - DB21x: 1x ToF sensor at the Front Center      -->
     <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
-<!--        <remap from="front_center_tof_driver_node/fragments" to="display_driver_node/fragments"/>-->
-<!--        <include file="$(find tof_driver)/launch/tof_node.launch">-->
-<!--            <arg name="veh" value="$(arg veh)"/>-->
-<!--            <arg name="name" value="front_center"/>-->
-<!--        </include>-->
+        <remap from="front_center_tof_driver_node/fragments" to="display_driver_node/fragments"/>
+        <include file="$(find tof_driver)/launch/tof_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="name" value="front_center"/>
+        </include>
     </group>
 
     <!-- OLED Display driver: -->
