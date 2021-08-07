@@ -1,7 +1,7 @@
 import os
 from typing import Callable
 
-from dt_duckiematrix_protocols.world.WheelEncoder import WheelEncoder
+from dt_duckiematrix_protocols.world.WheelEncoderTicks import WheelEncoderTicks
 from dt_duckiematrix_utils.socket import DuckieMatrixSocket
 from dt_robot_utils import get_robot_name
 from wheel_encoder.wheel_encoder_abs import WheelEncoderDriverAbs
@@ -30,10 +30,10 @@ class VirtualWheelEncoderDriver(WheelEncoderDriverAbs):
             print("[VirtualWheelEncoder]: Initialized.")
         # setup topic
         self._topic = os.path.join(get_robot_name(), f"wheel_encoder_{name}")
-        self._device.subscribe(self._topic, WheelEncoder, self._cb)
+        self._device.subscribe(self._topic, WheelEncoderTicks, self._cb)
         self._device.start()
 
-    def _cb(self, msg: WheelEncoder):
+    def _cb(self, msg: WheelEncoderTicks):
         self._ticks = msg.ticks
         self._callback(self._ticks)
 
