@@ -11,3 +11,6 @@ dt-vl53l0x
 
 # dependencies for the OLED display
 luma.oled
+
+# these are the public protocols used to communicate to a duckiematrix engine
+dt-duckiematrix-protocols-ente

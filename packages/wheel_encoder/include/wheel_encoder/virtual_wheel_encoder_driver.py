@@ -1,7 +1,7 @@
 import os
 from typing import Callable
 
-from dt_duckiematrix_protocols.world.WheelEncoderTicks import WheelEncoderTicks
+from dt_duckiematrix_protocols.WheelEncoderTicks import WheelEncoderTicks
 from dt_duckiematrix_utils.socket import DuckieMatrixSocket
 from dt_robot_utils import get_robot_name
 from wheel_encoder.wheel_encoder_abs import WheelEncoderDriverAbs

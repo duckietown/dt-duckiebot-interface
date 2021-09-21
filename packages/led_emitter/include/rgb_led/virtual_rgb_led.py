@@ -1,7 +1,7 @@
 import os
 from typing import List
 
-from dt_duckiematrix_protocols.world.LEDsCommand import LEDsCommand, LEDCommand
+from dt_duckiematrix_protocols.LEDsCommand import LEDsCommand, LEDCommand
 from dt_duckiematrix_utils.socket import DuckieMatrixSocket
 from dt_robot_utils import get_robot_name
 from led_emitter.include.rgb_led.RGBLEDAbs import RGBLEDAbs

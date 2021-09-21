@@ -7,7 +7,7 @@ import rospy
 from camera_driver import AbsCameraNode
 from sensor_msgs.msg import CompressedImage
 
-from dt_duckiematrix_protocols.world.CameraFrame import CameraFrame
+from dt_duckiematrix_protocols.CameraFrame import CameraFrame
 from dt_duckiematrix_utils.socket import DuckieMatrixSocket
 from dt_robot_utils import get_robot_name
 

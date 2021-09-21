@@ -2,7 +2,7 @@ import os
 
 from tof_driver.tof_driver_abs import ToFDriverAbs, ToFAccuracy
 
-from dt_duckiematrix_protocols.world.TimeOfFlightRange import TimeOfFlightRange
+from dt_duckiematrix_protocols.TimeOfFlightRange import TimeOfFlightRange
 from dt_duckiematrix_utils.socket import DuckieMatrixSocket
 from dt_robot_utils import get_robot_name
 
