@@ -230,9 +230,9 @@
 
         </xacro:if>
 
-        <xacro:if value="${model in ['DB21M']}" >
+        <xacro:if value="${model in ['DB21M', 'DB21J', 'DB21R']}" >
 
-            <!-- START: Duckiebot: DB21M -->
+            <!-- START: Duckiebot: DB21M, DB21J, DB21R -->
 
             <xacro:property name="plate_thickness" value="0.003" />
 
