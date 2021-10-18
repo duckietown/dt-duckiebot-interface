@@ -8,6 +8,9 @@
          doc="The configuration of the robot. For example DB19, DB20, ..."/>
     <arg name="robot_xurdf" value="$(find duckiebot_interface)/urdf/$(arg robot_type).urdf.xacro"
          doc="Location of the URDF XACRO file for the robot type"/>
+    <arg name="camera_disabled" default="$(optenv DT_SENSOR_CAMERA_DISABLE 0)"
+         doc="If 1 the camera node is not started."/>
+         
 
     <!-- Robot Descriptor: takes a XACRO file, makes a URDF out of it and publishes it -->
     <param name="robot_description"
@@ -16,11 +19,13 @@
           name="robot_state_publisher"/>
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
-    <group if="$(eval arg('robot_type') in ['duckiebot', 'watchtower', 'traffic_light', 'duckiedrone'])">
-        <include file="$(find camera_driver)/launch/camera_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="param_file_name" value="$(arg robot_type)"/>
-        </include>
+    <group unless="$(arg camera_disabled)">
+        <group if="$(eval arg('robot_type') in ['duckiebot', 'watchtower', 'traffic_light', 'duckiedrone'])">
+            <include file="$(find camera_driver)/launch/camera_node.launch">
+                <arg name="veh" value="$(arg veh)"/>
+                <arg name="param_file_name" value="$(arg robot_type)"/>
+            </include>
+        </group>
     </group>
 
     <!-- LED Emitter: reads ROS messages and commands the LEDs -->

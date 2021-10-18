@@ -48,7 +48,7 @@ class Adafruit_I2C(object):
             # Force I2C1 (512MB Pi's)
             self.bus = smbus.SMBus(1)
 
-        elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
+        elif ROBOT_HARDWARE in [DeviceHardwareBrand.RASPBERRY_PI, DeviceHardwareBrand.RASPBERRY_PI_64]:
             self.bus = smbus.SMBus(busnum if busnum >= 0 else Adafruit_I2C.getPiI2CBusNumber())
 
         else:
