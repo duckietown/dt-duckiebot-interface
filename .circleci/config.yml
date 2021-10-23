@@ -1,3 +1,4 @@
+# TEMPLATED
 version: 2.1
 workflows:
   version: 2
@@ -17,35 +18,35 @@ jobs:
   build: &build
     docker:
     - image: ${DOCKER_REGISTRY}/duckietown/aido-submission-ci-test:daffy-amd64
-        auth:
-          username: $DOCKER_USERNAME
-          password: $DOCKER_PASSWORD
+      auth:
+        username: $DOCKER_USERNAME
+        password: $DOCKER_PASSWORD
     steps:
     - setup_remote_docker
     - checkout
 
-#    - run:
-#        name: Install dependencies
-#        command: |
-#          apt update && \
-#          apt install -y python3-pip git git-lfs curl && \
-#          rm -rf /var/lib/apt/lists/*
-#
-#    - run:
-#        name: Install Docker
-#        command: |
-#          curl -fsSL https://get.docker.com -o get-docker.sh
-#          sh get-docker.sh
-#          rm get-docker.sh
-#
-#    - run:
-#        name: Install dts
-#        command: |
-#          python3 -m pip install -U pip
-#          python3 -m pip check
-#          python3 -m pip install --no-cache-dir -U duckietown-shell
-#          python3 -m pip check
-#          export PATH="$PATH:$HOME/.local/bin"
+    #    - run:
+    #        name: Install dependencies
+    #        command: |
+    #          apt update && \
+    #          apt install -y python3-pip git git-lfs curl && \
+    #          rm -rf /var/lib/apt/lists/*
+    #
+    #    - run:
+    #        name: Install Docker
+    #        command: |
+    #          curl -fsSL https://get.docker.com -o get-docker.sh
+    #          sh get-docker.sh
+    #          rm get-docker.sh
+    #
+    #    - run:
+    #        name: Install dts
+    #        command: |
+    #          python3 -m pip install -U pip
+    #          python3 -m pip check
+    #          python3 -m pip install --no-cache-dir -U duckietown-shell
+    #          python3 -m pip check
+    #          export PATH="$PATH:$HOME/.local/bin"
     - run:
         name: Install dts commands
         command: |
@@ -54,7 +55,7 @@ jobs:
         name: config
         command: |
           dts --debug challenges config \
-            --docker-server "$DOCKER_REGISTRY" \
+            --docker-registry "$DOCKER_REGISTRY" \
             --docker-username "$DOCKER_USERNAME" \
             --docker-password "$DOCKER_PASSWORD"
     - run:
