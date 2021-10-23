@@ -24,29 +24,6 @@ jobs:
     steps:
     - setup_remote_docker
     - checkout
-
-    #    - run:
-    #        name: Install dependencies
-    #        command: |
-    #          apt update && \
-    #          apt install -y python3-pip git git-lfs curl && \
-    #          rm -rf /var/lib/apt/lists/*
-    #
-    #    - run:
-    #        name: Install Docker
-    #        command: |
-    #          curl -fsSL https://get.docker.com -o get-docker.sh
-    #          sh get-docker.sh
-    #          rm get-docker.sh
-    #
-    #    - run:
-    #        name: Install dts
-    #        command: |
-    #          python3 -m pip install -U pip
-    #          python3 -m pip check
-    #          python3 -m pip install --no-cache-dir -U duckietown-shell
-    #          python3 -m pip check
-    #          export PATH="$PATH:$HOME/.local/bin"
     - run:
         name: Install dts commands
         command: |
