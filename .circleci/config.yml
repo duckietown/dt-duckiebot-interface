@@ -1,46 +1,69 @@
 version: 2.1
-jobs:
+workflows:
+  version: 2
   build:
+    jobs:
+    - build-daffy-staging:
+        context: pip-staging
+        filters:
+          branches:
+            only: /daffy-staging.*/
+    - build-daffy-prod:
+        context: production
+        filters:
+          branches:
+            ignore: /daffy-staging.*/
+jobs:
+  build: &build
     docker:
-      - image: ubuntu:18.04
+    - image: ubuntu:18.04
 
     steps:
-      - setup_remote_docker
+    - setup_remote_docker
 
-      - run:
-          name: Install dependencies
-          command: |
-            apt update && \
-            apt install -y python3-pip git git-lfs curl && \
-            rm -rf /var/lib/apt/lists/*
+    - run:
+        name: Install dependencies
+        command: |
+          apt update && \
+          apt install -y python3-pip git git-lfs curl && \
+          rm -rf /var/lib/apt/lists/*
 
-      - run:
-          name: Install Docker
-          command: |
-            curl -fsSL https://get.docker.com -o get-docker.sh
-            sh get-docker.sh
-            rm get-docker.sh
+    - run:
+        name: Install Docker
+        command: |
+          curl -fsSL https://get.docker.com -o get-docker.sh
+          sh get-docker.sh
+          rm get-docker.sh
 
-      - run:
-          name: Install dts
-          command: |
-            python3 -m pip install --no-cache-dir --user -U duckietown-shell
-            export PATH="$PATH:$HOME/.local/bin"
-            dts --set-version $DTS_VERSION exit
+    - run:
+        name: Install dts
+        command: |
+          python3 -m pip install --no-cache-dir --user -U duckietown-shell
+          export PATH="$PATH:$HOME/.local/bin"
+          dts --set-version "$DTS_VERSION" exit
 
-      - checkout
+    - checkout
 
-      - run:
-          name: Build the docs
-          command: |
-            export PATH="$PATH:$HOME/.local/bin"
-            dts devel build --docs
+    - run:
+        name: Pull the image
+        command: |
+          export PATH="$PATH:$HOME/.local/bin"
+          dts devel pull
 
-      - store_artifacts:
-          path: html/out
-          destination: html
+    - run:
+        name: Build the docs
+        command: |
+          export PATH="$PATH:$HOME/.local/bin"
+          dts devel build --docs
 
-      - store_artifacts:
-          path: html/out/package.tgz
-          destination: out/package.tgz
+    - store_artifacts:
+        path: html
+        destination: html
+
+    - store_artifacts:
+        path: html/package.tgz
+        destination: out/package.tgz
+  build-daffy-prod: *build
+  build-daffy-staging: *build
+
 
