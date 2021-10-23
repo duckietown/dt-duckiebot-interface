@@ -41,7 +41,7 @@ jobs:
         command: |
           python3 -m pip install -U pip
           python3 -m pip check
-          python3 -m pip install --no-cache-dir --user -U duckietown-shell
+          python3 -m pip install --no-cache-dir -U duckietown-shell
           python3 -m pip check
           export PATH="$PATH:$HOME/.local/bin"
     - run:
