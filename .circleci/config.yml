@@ -44,8 +44,14 @@ jobs:
           python3 -m pip install --no-cache-dir --user -U duckietown-shell
           python3 -m pip check
           export PATH="$PATH:$HOME/.local/bin"
-          dts --set-version "$DTS_VERSION" exit
-          dts challenges config \
+    - run:
+        name: Install dts commands
+        command: |
+          dts --debug --set-version "$DTS_VERSION" exit
+    - run:
+        name: config
+        command: |
+          dts --debug challenges config \
             --docker-registry "$DOCKER_REGISTRY" \
             --docker-username "$DOCKER_USERNAME" \
             --docker-password "$DOCKER_PASSWORD"
