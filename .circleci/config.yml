@@ -67,7 +67,7 @@ jobs:
         name: Build the docs
         command: |
           export PATH="$PATH:$HOME/.local/bin"
-          dts devel build --docs
+          dts devel docs build
 
     - store_artifacts:
         path: html
