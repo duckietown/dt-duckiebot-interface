@@ -20,6 +20,7 @@ jobs:
 
     steps:
     - setup_remote_docker
+    - checkout
 
     - run:
         name: Install dependencies
@@ -38,11 +39,23 @@ jobs:
     - run:
         name: Install dts
         command: |
+          python3 -m pip install -U pip
+          python3 -m pip check
           python3 -m pip install --no-cache-dir --user -U duckietown-shell
+          python3 -m pip check
           export PATH="$PATH:$HOME/.local/bin"
           dts --set-version "$DTS_VERSION" exit
+    - run:
+        name: Python stats
+        command: |
+          mkdir -p build-stats
+          env | sort | tee  build-stats/env.txt
+          pip list   | sort | tee  build-stats/pip-list.txt
+          pip freeze | sort | tee  build-stats/pip-freeze.txt
+    - store_artifacts:
+        path: build-stats
+        destination: build-stats
 
-    - checkout
 
     - run:
         name: Pull the image
