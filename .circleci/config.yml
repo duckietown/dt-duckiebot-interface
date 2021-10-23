@@ -58,6 +58,7 @@ jobs:
             --docker-server "$DOCKER_REGISTRY" \
             --docker-username "$DOCKER_USERNAME" \
             --docker-password "$DOCKER_PASSWORD"
+
     - run:
         name: Python stats
         command: |
@@ -65,10 +66,10 @@ jobs:
           env | sort | tee  build-stats/env.txt
           pip list   | sort | tee  build-stats/pip-list.txt
           pip freeze | sort | tee  build-stats/pip-freeze.txt
+
     - store_artifacts:
         path: build-stats
         destination: build-stats
-
 
     - run:
         name: Pull the image
@@ -78,7 +79,7 @@ jobs:
     - run:
         name: Build the docs
         command: |
-          dts devel docs build --tag daffy
+          dts devel docs build --tag daffy -f
 
     - store_artifacts:
         path: html
