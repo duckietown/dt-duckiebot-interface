@@ -73,13 +73,11 @@ jobs:
     - run:
         name: Pull the image
         command: |
-          export PATH="$PATH:$HOME/.local/bin"
-          dts devel pull
+          dts devel pull --tag daffy
 
     - run:
         name: Build the docs
         command: |
-          export PATH="$PATH:$HOME/.local/bin"
           dts devel docs build --tag daffy
 
     - store_artifacts:
