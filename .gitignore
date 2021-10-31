@@ -3,3 +3,6 @@ docs/build
 
 .idea
 .vscode
+
+# otherwise CI thinks index not clean
+*.resolved
