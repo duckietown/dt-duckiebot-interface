@@ -83,7 +83,7 @@ class RaspberryPi64Camera(AbsCameraNode):
                 # TODO: this should be for watchtowers only
                 if self._exposure_mode.value == 'sports':
                     msg = "Setting exposure to 'sports' mode."
-                    self.logger(msg)
+                    self.loginfo(msg)
                     self._device.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
                     self._device.set(cv2.CAP_PROP_EXPOSURE, 40.0)
                 # try getting a sample image
