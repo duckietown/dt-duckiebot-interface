@@ -79,6 +79,13 @@ class RaspberryPi64Camera(AbsCameraNode):
                 self._device.set(cv2.CAP_PROP_FRAME_HEIGHT, self._res_h.value)
                 self._device.set(cv2.CAP_PROP_FPS, self._framerate.value)
                 self._device.set(cv2.CAP_PROP_CONVERT_RGB, False)
+                # Set auto exposure to false
+                # TODO: this should be for watchtowers only
+                if self._exposure_mode.value == 'sports':
+                    msg = "Setting exposure to 'sports' mode."
+                    self.logger(msg)
+                    self._device.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
+                    self._device.set(cv2.CAP_PROP_EXPOSURE, 40.0)
                 # try getting a sample image
                 retval, _ = self._device.read()
                 if not retval:
