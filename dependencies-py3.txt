@@ -13,4 +13,4 @@ dt-vl53l0x
 luma.oled
 
 # these are the public protocols used to communicate to a duckiematrix engine
-dt-duckiematrix-protocols-ente
+dt-duckiematrix-protocols-ente>=0.1.4
