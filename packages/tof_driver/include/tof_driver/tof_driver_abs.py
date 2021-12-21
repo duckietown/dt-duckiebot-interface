@@ -33,6 +33,10 @@ class ToFDriverAbs(ABC):
         self._name = name
         self._accuracy = accuracy
 
+    def setup(self, *args, **kwargs):
+        raise NotImplementedError("ToFDriverAbs is an abstract class, this method should be "
+                                  "implemented by the child class.")
+
     def start(self):
         raise NotImplementedError("ToFDriverAbs is an abstract class, this method should be "
                                   "implemented by the child class.")
@@ -41,6 +45,10 @@ class ToFDriverAbs(ABC):
         raise NotImplementedError("ToFDriverAbs is an abstract class, this method should be "
                                   "implemented by the child class.")
 
-    def shutdown(self):
+    def stop(self):
+        raise NotImplementedError("ToFDriverAbs is an abstract class, this method should be "
+                                  "implemented by the child class.")
+
+    def release(self):
         raise NotImplementedError("ToFDriverAbs is an abstract class, this method should be "
                                   "implemented by the child class.")

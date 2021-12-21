@@ -42,6 +42,7 @@ class ToFNode(DTROS):
                                                self._accuracy,
                                                i2c_bus=self._i2c_bus,
                                                i2c_address=self._i2c_address)
+        self._sensor.setup()
         # create publisher
         self._pub = rospy.Publisher(
             "~range",
@@ -75,6 +76,8 @@ class ToFNode(DTROS):
     def _timer_cb(self, _):
         # detect range
         distance_mm = self._sensor.get_distance()
+        if distance_mm is None:
+            return
         # pack observation into a message
         msg = Range(
             header=Header(
@@ -98,7 +101,7 @@ class ToFNode(DTROS):
     def on_shutdown(self):
         # noinspection PyBroadException
         try:
-            self._sensor.shutdown()
+            self._sensor.release()
         except BaseException:
             pass
 
