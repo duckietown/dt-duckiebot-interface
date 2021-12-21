@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
-import os
+
+from typing import Optional
 
 import numpy as np
 
-from dt_duckiematrix_protocols.WheelsCommand import WheelsCommand
-from dt_duckiematrix_utils.socket import DuckieMatrixSocket
-from dt_robot_utils import get_robot_configuration, get_robot_name
+from dt_duckiematrix_protocols import Matrix
+from dt_duckiematrix_protocols.robot.features.motion import DifferentialDrive
+from dt_duckiematrix_protocols.robot.robots import DifferentialDriveRobot
+from dt_duckiematrix_utils.ros import DuckiematrixLinkDescription, \
+    on_duckiematrix_connection_request
+from dt_robot_utils import get_robot_configuration
 
 
 class VirtualWheelsDriver:
@@ -20,25 +24,44 @@ class VirtualWheelsDriver:
 
     def __init__(self):
         rcfg = get_robot_configuration()
-        # print out some stats
-        this = self.__class__.__name__
-        print(f"[{this}] Running in configuration `{rcfg.name}`, using driver `virtual`")
-        print(f"[{this}] Motor #1: VIRTUAL(left)")
-        print(f"[{this}] Motor #2: VIRTUAL(right)")
-        # prepare zmq pipeline
-        self._device: DuckieMatrixSocket = DuckieMatrixSocket.create()
-        if self._device is None or not self._device.connected:
-            print("[VirtualMotors]: No virtual Motor connection established.")
-        else:
-            print("[VirtualMotors]: Initialized.")
-        # setup topic
-        self._topic = os.path.join(get_robot_name(), "wheels")
         # initialize state
         self._wheels = {
             "left": 0.0,
             "right": 0.0,
         }
+        # print out some stats
+        this = self.__class__.__name__
+        print(f"[{this}] Running in configuration `{rcfg.name}`, using driver `virtual`")
+        print(f"[{this}] Motor #1: VIRTUAL(left)")
+        print(f"[{this}] Motor #2: VIRTUAL(right)")
+        # register connection setup function
+        self._matrix: Optional[Matrix] = None
+        self._device: Optional[DifferentialDrive] = None
+        # register connection setup function
+        print(f"[VirtualMotors]: Waiting for connection request...")
+        self._connection_request: Optional[DuckiematrixLinkDescription] = None
+        on_duckiematrix_connection_request(self.on_connection_request)
+
+    def on_connection_request(self, link: DuckiematrixLinkDescription):
+        print(f"[VirtualMotors]: Received request to connect to Duckiematrix '{link.matrix}'.")
+        # store new connection request
+        self._connection_request = link
+        # switch over to the new connection
+        self.release()
+        self.setup()
+
+    def setup(self):
+        if self._connection_request is None:
+            return
+        # ---
+        link = self._connection_request
+        configuration = get_robot_configuration()
+        # prepare zmq pipeline
+        self._matrix: Matrix = Matrix(link.uri, auto_commit=True)
+        robot: DifferentialDriveRobot = self._matrix.robots.create(configuration.name, link.entity)
+        self._device: DifferentialDrive = robot.drive
         self._publish()
+        print(f"[VirtualMotors]: Initialized.")
 
     def set_wheels_speed(self, left: float, right: float):
         """Sets speed of motors.
@@ -60,16 +83,20 @@ class VirtualWheelsDriver:
         """
         Sends commands.
         """
-        if self._device.connected:
-            message = WheelsCommand(self._wheels)
-            self._device.publish(self._topic, message)
+        if self._device is None:
+            return
+        # ---
+        self._device(self._wheels["left"], self._wheels["right"])
 
-    def __del__(self):
+    def release(self):
         if self._device is not None:
             print('[VirtualMotors]: Releasing...')
-            self._device.release()
+            self._device(0.0, 0.0)
             print('[VirtualMotors]: Released.')
         self._device = None
+
+    def __del__(self):
+        self.release()
 
 
 def clamped_value(v, deadzone, min_v, max_v) -> float:
