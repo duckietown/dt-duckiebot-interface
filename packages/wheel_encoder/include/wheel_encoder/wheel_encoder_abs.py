@@ -37,5 +37,5 @@ class WheelEncoderDriverAbs(ABC):
     def set_direction(self, direction: WheelDirection):
         self._direction = direction
 
-    def shutdown(self):
+    def release(self):
         pass

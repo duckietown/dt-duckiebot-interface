@@ -41,5 +41,5 @@ class WheelEncoderDriver(WheelEncoderDriverAbs):
         self._ticks += self._direction.value
         self._callback(self._ticks)
 
-    def shutdown(self):
+    def release(self):
         GPIO.remove_event_detect(self._gpio_pin)

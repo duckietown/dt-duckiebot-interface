@@ -1,9 +1,12 @@
-import os
-from typing import Callable
+from typing import Callable, Optional
 
-from dt_duckiematrix_protocols.WheelEncoderTicks import WheelEncoderTicks
-from dt_duckiematrix_utils.socket import DuckieMatrixSocket
-from dt_robot_utils import get_robot_name
+from dt_duckiematrix_messages.WheelEncoderTicks import WheelEncoderTicks
+from dt_duckiematrix_protocols import Matrix
+from dt_duckiematrix_protocols.robot import WheeledRobot
+from dt_duckiematrix_protocols.robot.features.sensors import WheelEncoder
+from dt_duckiematrix_utils.ros import DuckiematrixLinkDescription, \
+    on_duckiematrix_connection_request
+from dt_robot_utils import get_robot_configuration
 from wheel_encoder.wheel_encoder_abs import WheelEncoderDriverAbs
 
 
@@ -23,23 +26,52 @@ class VirtualWheelEncoderDriver(WheelEncoderDriverAbs):
     def __init__(self, name: str, _: int, callback: Callable):
         super(VirtualWheelEncoderDriver, self).__init__(name, callback)
         # prepare zmq pipeline
-        self._device: DuckieMatrixSocket = DuckieMatrixSocket.create()
-        if self._device is None or not self._device.connected:
-            print("[VirtualWheelEncoder]: No virtual encoder connection established.")
-        else:
-            print("[VirtualWheelEncoder]: Initialized.")
-        # setup topic
-        self._topic = os.path.join(get_robot_name(), f"wheel_encoder_{name}")
-        self._device.subscribe(self._topic, WheelEncoderTicks, self._cb)
-        self._device.start()
+        self._reading: Optional[float] = None
+        # register connection setup function
+        self._matrix: Optional[Matrix] = None
+        self._device: Optional[WheelEncoder] = None
+        # register connection setup function
+        print(f"[VirtualWheelEncoder]: Waiting for connection request...")
+        self._connection_request: Optional[DuckiematrixLinkDescription] = None
+        on_duckiematrix_connection_request(self.on_connection_request)
 
-    def _cb(self, msg: WheelEncoderTicks):
+    def on_connection_request(self, link: DuckiematrixLinkDescription):
+        print(f"[VirtualWheelEncoder]: Received request to connect to "
+              f"Duckiematrix '{link.matrix}'.")
+        # store new connection request
+        self._connection_request = link
+        # switch over to the new connection
+        self.release()
+        self.setup()
+
+    def setup(self):
+        if self._connection_request is None:
+            return
+        # ---
+        link = self._connection_request
+        configuration = get_robot_configuration()
+        # prepare zmq pipeline
+        self._matrix: Matrix = Matrix(link.uri)
+        robot: WheeledRobot = self._matrix.robots.create(configuration.name, link.entity)
+        self._device: WheelEncoder = robot.wheels.get(self._name).encoder
+        # subscribe to encoder topic
+        self._device.attach(self._process_reading)
+
+    def start(self):
+        if self._device is not None:
+            self._device.start()
+
+    def stop(self):
+        self._device.stop()
+
+    def _process_reading(self, msg: WheelEncoderTicks):
         self._ticks = msg.ticks
         self._callback(self._ticks)
 
-    def shutdown(self):
+    def release(self):
         if self._device is not None:
             print('[VirtualWheelEncoder]: Releasing...')
-            self._device.shutdown()
+            self._device.detach(self._process_reading)
+            self._device.release()
             print('[VirtualWheelEncoder]: Released.')
         self._device = None
