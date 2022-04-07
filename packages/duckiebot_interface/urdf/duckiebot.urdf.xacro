@@ -13,7 +13,7 @@
 
         <!-- START: Duckiebot -->
 
-        <xacro:if value="${model in ['DB18', 'DB19']}" >
+        <xacro:if value="${model in ['DB18', 'DB19', 'DB19B']}" >
 
             <!-- START: Duckiebot: DB1X -->
 
