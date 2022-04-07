@@ -4,7 +4,7 @@ docs_config_version: v1
 project: "dt-duckiebot-interface"
 copyright: "Duckietown"
 author: "Andrea F. Daniele (afdaniele@ttic.edu)"
-version: "daffy"
+version: "ente"
 custom_sections:  [
   "Configuration",
   "Subscribers",

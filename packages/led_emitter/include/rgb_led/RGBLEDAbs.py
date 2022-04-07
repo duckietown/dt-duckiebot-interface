@@ -1,11 +1,7 @@
-#!/usr/bin/env python3
-
-from Adafruit_PWM_Servo_Driver import PWM
-
-from led_emitter.include.rgb_led.RGBLEDAbs import RGBLEDAbs
+from abc import ABC, abstractmethod
 
 
-class RGBLED(RGBLEDAbs):
+class RGBLEDAbs(ABC):
     """Object communicating to the LEDs.
 
         Low level class that creates the PWM messages that are sent to the
@@ -35,33 +31,7 @@ class RGBLED(RGBLEDAbs):
 
     """
 
-    # Class-specific constants
-    OFFSET_RED = 0    #: Offset address for the red color
-    OFFSET_GREEN = 1  #: Offset address for the green color
-    OFFSET_BLUE = 2   #: Offset address for the blue color
-
-    def __init__(self, debug=False):
-        self.pwm = PWM(address=0x40, debug=debug)
-        for i in range(15):
-            # Sets fully off all the pins
-            self.pwm.setPWM(i, 0, 4095)
-
-    def setLEDBrightness(self, led, offset, brightness):
-        """Sets value for brightness for one color on one LED.
-
-            Calls the function pwm.setPWM to set the PWM signal according to
-            the input brightness.
-
-            Typically shouldn't be used directly. Use :obj:`setRGB` instead.
-
-            Args:
-                led (:obj:`int`): Index of specific LED (from the table above)
-                offset (:obj:`int`): Offset for color
-                brightness (:obj:`int8`): Intensity of brightness (between 0 and 255)
-
-        """
-        self.pwm.setPWM(3 * led + offset, brightness << 4, 4095)
-
+    @abstractmethod
     def setRGB(self, led, color):
         """Sets value for brightness for all channels of one LED
 
@@ -72,20 +42,16 @@ class RGBLED(RGBLEDAbs):
 
             Args:
                 led (:obj:`int`): Index of specific LED (from the table above)    
-                color (:obj:`list` of :obj:`float`): Brightness for the three RGB channels, in interval [0,1]
+                color (:obj:`list` of :obj:`float`): Brightness for the three
+                                                     RGB channels, in interval [0,1]
         """
+        raise NotImplementedError("Reached abstract method `setRGB()`")
 
-        self.setLEDBrightness(led, self.OFFSET_RED, int(color[0] * 255))
-        self.setLEDBrightness(led, self.OFFSET_GREEN, int(color[1] * 255))
-        self.setLEDBrightness(led, self.OFFSET_BLUE, int(color[2] * 255))
-
+    @abstractmethod
     def __del__(self):
         """Destructur method.
 
             Turns off all the LEDs and deletes the PWM object.
 
         """
-        for i in range(15):
-            # Sets fully off all channels of all the LEDs (3 channles * 5 LEDs)
-            self.pwm.setPWM(i, 0, 4095)
-        del self.pwm
+        raise NotImplementedError("Reached abstract method `__del__()`")

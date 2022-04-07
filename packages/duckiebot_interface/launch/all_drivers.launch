@@ -2,6 +2,8 @@
 <launch>
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:default."/>
+    <arg name="robot_hardware"
+         doc="The hardware the robot is based on, e.g., raspberry_pi, jetson_nano, virtual, ..."/>
     <arg name="robot_type"
          doc="The type of the robot, e.g., duckiebot, watchtower, traffic_light, ..."/>
     <arg name="robot_configuration"
@@ -90,7 +92,7 @@
     </group>
 
     <!-- OLED Display driver: -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
+    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
         <remap from="display_driver_node/button" to="button_driver_node/event"/>
         <include file="$(find display_driver)/launch/display_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -98,7 +100,7 @@
     </group>
 
     <!-- Display renderers: -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
+    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
         <!-- health: renders health and usage info about the robot -->
         <include file="$(find display_renderers)/launch/health_renderer_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -110,7 +112,7 @@
     </group>
 
     <!-- Button driver -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
+    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
         <remap from="button_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find button_driver)/launch/button_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
