@@ -233,7 +233,6 @@
         <xacro:if value="${model in ['DB21M', 'DB21J', 'DB21R']}" >
 
             <!-- START: Duckiebot: DB21M, DB21J, DB21R -->
-
             <xacro:property name="plate_thickness" value="0.003" />
 
             <!-- ~/footprint is located at the projection of the wheels axis' center on the ground -->
@@ -526,7 +525,7 @@
                 <origin xyz="0.017 0 0" rpy="-${0.5 * pi} 0 -${0.5 * pi}" />
             </joint>
 
-            <!-- END: Duckiebot: DB21M -->
+            <!-- END: Duckiebot: DB21X -->
 
         </xacro:if>
 

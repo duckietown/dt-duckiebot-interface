@@ -2,3 +2,7 @@ docs/build
 *pyc
 
 .idea
+.vscode
+
+# otherwise CI thinks index not clean
+*.resolved
