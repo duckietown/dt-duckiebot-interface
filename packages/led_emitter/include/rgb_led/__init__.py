@@ -12,8 +12,7 @@
 from dt_robot_utils import get_robot_hardware, RobotHardware
 
 
-if get_robot_hardware() != RobotHardware.VIRTUAL:
-    # this breaks if imported when running on a virtual robot
+if get_robot_hardware() == RobotHardware.VIRTUAL:
+    from .virtual_rgb_led import VirtualRGBLED as RGBLED
+else:
     from .rgb_led import RGBLED
-
-from .virtual_rgb_led import VirtualRGBLED
