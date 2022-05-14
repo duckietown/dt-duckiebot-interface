@@ -3,7 +3,7 @@
     <arg name="veh" doc="Name of vehicle. ex: megaman"/>
     <arg name="param_file_name" default="default" doc="Specify a param file. ex:default."/>
     <arg name="robot_type"
-         doc="The type of the robot, e.g., duckiebot, watchtower, traffic_light, ..."/>
+         doc="The type of the robot, e.g., duckiebot, duckiedrone, watchtower, traffic_light, ..."/>
     <arg name="robot_configuration"
          doc="The configuration of the robot. For example DB19, DB20, ..."/>
     <arg name="robot_xurdf" value="$(find duckiebot_interface)/urdf/$(arg robot_type).urdf.xacro"
@@ -76,7 +76,7 @@
 
     <!-- Time-of-Flight sensor: -->
     <!-- - DB21x: 1x ToF sensor at the Front Center      -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
+    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R', 'DD21'])">
         <remap from="front_center_tof_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find tof_driver)/launch/tof_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -120,5 +120,13 @@
             <arg name="param_file_name" value="$(arg param_file_name)"/>
         </include>
     </group>
+
+
+    <group if="$(eval arg('robot_type') == 'duckiedrone')">
+        <include file="$(find flight_controller)/launch/flight_controller.launch">
+            <arg name="veh" value="$(arg veh)"/>
+            <arg name="robot_type" value="$(arg robot_type)"/>
+        </include>
+    </group> 
 
 </launch>
