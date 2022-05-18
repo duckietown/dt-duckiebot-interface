@@ -121,7 +121,7 @@
         </include>
     </group>
 
-
+    <!-- Fligth Controller -->
     <group if="$(eval arg('robot_type') == 'duckiedrone')">
         <include file="$(find flight_controller)/launch/flight_controller.launch">
             <arg name="veh" value="$(arg veh)"/>
