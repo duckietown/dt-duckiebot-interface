@@ -90,11 +90,11 @@ class MultiWii:
                                  bytesize=serial.EIGHTBITS,
                                  parity=serial.PARITY_NONE,
                                  stopbits=serial.STOPBITS_ONE,
-                                 timeout=1,
+                                 timeout=0.02,
                                  xonxoff=False,
                                  rtscts=False,
                                  dsrdtr=False,
-                                 writeTimeout=2,
+                                 writeTimeout=0.05,
                              )
 
     """Function for sending a command to the board."""

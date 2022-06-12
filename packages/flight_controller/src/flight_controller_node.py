@@ -217,7 +217,8 @@ class FlightController(object):
         # (if the flight cotroll usb is unplugged and plugged back in,
 
         board = None
-        board_usb_addr = '/dev/ttyUSB0'  # fixme
+        # board_usb_addr = '/dev/ttyUSB0'  # fixme
+        board_usb_addr = '/dev/ttyAMA0'  # fixme
         #  it becomes .../USB1)
         try:
             board = MultiWii(board_usb_addr)

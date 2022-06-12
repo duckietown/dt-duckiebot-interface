@@ -23,56 +23,56 @@
         </include>
     </group>
 
-    <!-- LED Emitter: reads ROS messages and commands the LEDs -->
-    <group if="$(eval arg('robot_type') in ['duckiebot', 'traffic_light'])">
-        <include file="$(find led_emitter)/launch/led_emitter_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="robot_type" value="$(arg robot_type)"/>
-        </include>
-    </group>
+<!--      --><!-- LED Emitter: reads ROS messages and commands the LEDs -->
+<!--     <group if="$(eval arg('robot_type') in ['duckiebot', 'traffic_light'])"> -->
+<!--         <include file="$(find led_emitter)/launch/led_emitter_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--             <arg name="robot_type" value="$(arg robot_type)"/> -->
+<!--         </include> -->
+<!--     </group> -->
 
-    <!-- Joystick: reads from a physical joystick and produces ROS messages -->
-    <group if="$(eval arg('robot_type') == 'duckiebot')">
-        <include file="$(find joystick)/launch/joystick_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-        </include>
+<!--      --><!-- Joystick: reads from a physical joystick and produces ROS messages -->
+<!--     <group if="$(eval arg('robot_type') == 'duckiebot')"> -->
+<!--         <include file="$(find joystick)/launch/joystick_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--             <arg name="param_file_name" value="$(arg param_file_name)"/> -->
+<!--         </include> -->
 
-        <!-- Wheel Drivers: reads ROS messages and spins the motors -->
-        <include file="$(find wheels_driver)/launch/wheels_driver_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-        </include>
-    </group>
+<!--          --><!-- Wheel Drivers: reads ROS messages and spins the motors -->
+<!--         <include file="$(find wheels_driver)/launch/wheels_driver_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--             <arg name="param_file_name" value="$(arg param_file_name)"/> -->
+<!--         </include> -->
+<!--     </group> -->
 
-    <!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
-    <group if="$(eval arg('robot_type') in ['traffic_light'])">
-        <remap from="led_emitter_node/custom_pattern" to="~custom_pattern"/>
-        <include file="$(find traffic_light)/launch/traffic_light_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-    </group>
+<!--      --><!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
+<!--     <group if="$(eval arg('robot_type') in ['traffic_light'])"> -->
+<!--         <remap from="led_emitter_node/custom_pattern" to="~custom_pattern"/> -->
+<!--         <include file="$(find traffic_light)/launch/traffic_light_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--         </include> -->
+<!--     </group> -->
 
-    <!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
-    <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')">
-        <!-- Left Wheel Encoder  -->
-        <remap from="left_wheel_encoder_node/wheels_cmd_executed"
-               to="wheels_driver_node/wheels_cmd_executed"/>
-        <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="wheel" value="left"/>
-            <arg name="param_file_name" value="left_wheel"/>
-        </include>
+<!--      --><!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
+<!--     <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')"> -->
+<!--          --><!-- Left Wheel Encoder  -->
+<!--         <remap from="left_wheel_encoder_node/wheels_cmd_executed" -->
+<!--                to="wheels_driver_node/wheels_cmd_executed"/> -->
+<!--         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--             <arg name="wheel" value="left"/> -->
+<!--             <arg name="param_file_name" value="left_wheel"/> -->
+<!--         </include> -->
 
-        <!-- Right Wheel Encoder  -->
-        <remap from="right_wheel_encoder_node/wheels_cmd_executed"
-               to="wheels_driver_node/wheels_cmd_executed"/>
-        <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="wheel" value="right"/>
-            <arg name="param_file_name" value="right_wheel"/>
-        </include>
-    </group>
+<!--          --><!-- Right Wheel Encoder  -->
+<!--         <remap from="right_wheel_encoder_node/wheels_cmd_executed" -->
+<!--                to="wheels_driver_node/wheels_cmd_executed"/> -->
+<!--         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--             <arg name="wheel" value="right"/> -->
+<!--             <arg name="param_file_name" value="right_wheel"/> -->
+<!--         </include> -->
+<!--     </group> -->
 
     <!-- Time-of-Flight sensor: -->
     <!-- - DB21x: 1x ToF sensor at the Front Center      -->
@@ -84,42 +84,42 @@
         </include>
     </group>
 
-    <!-- OLED Display driver: -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
-        <remap from="display_driver_node/button" to="button_driver_node/event"/>
-        <include file="$(find display_driver)/launch/display_driver_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-    </group>
+<!--      --><!-- OLED Display driver: -->
+<!--     <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])"> -->
+<!--         <remap from="display_driver_node/button" to="button_driver_node/event"/> -->
+<!--         <include file="$(find display_driver)/launch/display_driver_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--         </include> -->
+<!--     </group> -->
 
-    <!-- Display renderers: -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
-        <!-- health: renders health and usage info about the robot -->
-        <include file="$(find display_renderers)/launch/health_renderer_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-        <!-- networking: renders connectivity status -->
-        <include file="$(find display_renderers)/launch/networking_renderer_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-    </group>
+<!--      --><!-- Display renderers: -->
+<!--     <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])"> -->
+<!--          --><!-- health: renders health and usage info about the robot -->
+<!--         <include file="$(find display_renderers)/launch/health_renderer_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--         </include> -->
+<!--          --><!-- networking: renders connectivity status -->
+<!--         <include file="$(find display_renderers)/launch/networking_renderer_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--         </include> -->
+<!--     </group> -->
 
-    <!-- Button driver -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
-        <remap from="button_driver_node/fragments" to="display_driver_node/fragments"/>
-        <include file="$(find button_driver)/launch/button_driver_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-        </include>
-    </group>
+<!--      --><!-- Button driver -->
+<!--     <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])"> -->
+<!--         <remap from="button_driver_node/fragments" to="display_driver_node/fragments"/> -->
+<!--         <include file="$(find button_driver)/launch/button_driver_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--         </include> -->
+<!--     </group> -->
 
-    <!-- Robot HTTP API: provides an HTTP API through which we can control the Robot -->
-    <group if="$(eval arg('robot_type') not in ['workstation'])">
-        <include file="$(find robot_http_api)/launch/robot_http_api_node.launch">
-            <arg name="veh" value="$(arg veh)"/>
-            <arg name="robot_type" value="$(arg robot_type)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-        </include>
-    </group>
+<!--      --><!-- Robot HTTP API: provides an HTTP API through which we can control the Robot -->
+<!--     <group if="$(eval arg('robot_type') not in ['workstation'])"> -->
+<!--         <include file="$(find robot_http_api)/launch/robot_http_api_node.launch"> -->
+<!--             <arg name="veh" value="$(arg veh)"/> -->
+<!--             <arg name="robot_type" value="$(arg robot_type)"/> -->
+<!--             <arg name="param_file_name" value="$(arg param_file_name)"/> -->
+<!--         </include> -->
+<!--     </group> -->
 
     <!-- Fligth Controller -->
     <group if="$(eval arg('robot_type') == 'duckiedrone')">
