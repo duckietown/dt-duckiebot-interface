@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
+
 import time
 
 import rospy
-
-from rgb_led import RGB_LED
-from std_msgs.msg import String
 from duckietown_msgs.srv import SetCustomLEDPattern, ChangePattern
 from duckietown_msgs.srv import SetCustomLEDPatternResponse, ChangePatternResponse
+from std_msgs.msg import String
 
+from dt_robot_utils import get_robot_hardware, RobotHardware
 from duckietown.dtros import DTROS, TopicType, NodeType
+
+if get_robot_hardware() == RobotHardware.VIRTUAL:
+    from rgb_led import VirtualRGBLED as RGBLED
+else:
+    from rgb_led import RGBLED
 
 
 class LEDEmitterNode(DTROS):
@@ -106,7 +111,7 @@ class LEDEmitterNode(DTROS):
             node_type=NodeType.DRIVER
         )
 
-        self.led = RGB_LED()
+        self.led = RGBLED()
 
         self.robot_type = rospy.get_param("~robot_type")
 
@@ -122,10 +127,10 @@ class LEDEmitterNode(DTROS):
         self.changePattern(self.current_pattern_name)
 
         # Initialize the timer
-        self.frequency = 1.0/self._LED_protocol['signals']['CAR_SIGNAL_A']['frequency']
+        self.frequency = 1.0 / self._LED_protocol['signals']['CAR_SIGNAL_A']['frequency']
         self.is_on = False
         self.cycle_timer = rospy.Timer(
-            rospy.Duration.from_sec(self.frequency/2.0),
+            rospy.Duration.from_sec(self.frequency / 2.0),
             self._cycle_timer
         )
 
@@ -286,14 +291,14 @@ class LEDEmitterNode(DTROS):
             color_list = self._LED_protocol['signals'][pattern_name]['color_list']
 
             if type(color_list) is str:
-                self.pattern = [self._LED_protocol['colors'][color_list]]*5
+                self.pattern = [self._LED_protocol['colors'][color_list]] * 5
             else:
                 if len(color_list) != 5:
                     self.log("The color list should be a string or a list of length 5. Change of "
                              "pattern not executed.", type='err')
                     return
 
-                self.pattern = [[0, 0, 0]]*5
+                self.pattern = [[0, 0, 0]] * 5
                 for i in range(len(color_list)):
                     if isinstance(color_list[i], str):
                         self.pattern[i] = self._LED_protocol['colors'][color_list[i]]
@@ -337,7 +342,7 @@ class LEDEmitterNode(DTROS):
             try:
                 self.cycle_timer.shutdown()
                 # below, convert to hz
-                d = 1.0/(2.0*self.frequency)
+                d = 1.0 / (2.0 * self.frequency)
                 self.cycle_timer = rospy.Timer(rospy.Duration.from_sec(d), self._cycle_timer)
 
             except ValueError as e:
@@ -367,7 +372,7 @@ class LEDEmitterNode(DTROS):
             return color
 
         reordered_triplet = list()
-        rgb_map = {'R':0, 'G':1, 'B':2}
+        rgb_map = {'R': 0, 'G': 1, 'B': 2}
         for channel_color in requested_ordering:
             reordered_triplet.append(color[rgb_map[channel_color]])
 
