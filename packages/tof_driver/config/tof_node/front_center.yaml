@@ -1,4 +1,4 @@
-bus: 13
+bus: 1
 address: 0x29
 sensor_name: "front_center"
 frequency: 20
