@@ -12,9 +12,9 @@ from dt_vl53l0x import \
     VL53L0X, \
     Vl53l0xAccuracyMode
 
-from display_renderer import TextFragmentRenderer, DisplayROI, PAGE_TOF, REGION_HEADER, \
-    REGION_BODY, MonoImageFragmentRenderer
-from display_renderer.text import monospace_screen
+# from display_renderer import TextFragmentRenderer, DisplayROI, PAGE_TOF, REGION_HEADER, \
+#     REGION_BODY, MonoImageFragmentRenderer
+# from display_renderer.text import monospace_screen
 from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, TopicType
 
@@ -67,15 +67,15 @@ class ToFNode(DTROS):
             dt_topic_type=TopicType.DRIVER,
             dt_help="The distance to the closest object detected by the sensor"
         )
-        self._display_pub = rospy.Publisher(
-            "~fragments",
-            DisplayFragment,
-            queue_size=1,
-            dt_topic_type=TopicType.VISUALIZATION,
-            dt_help="Fragments to display on the display"
-        )
-        # create screen renderer
-        self._renderer = ToFSensorFragmentRenderer(self._sensor_name, self._accuracy)
+        # self._display_pub = rospy.Publisher(
+        #     "~fragments",
+        #     DisplayFragment,
+        #     queue_size=1,
+        #     dt_topic_type=TopicType.VISUALIZATION,
+        #     dt_help="Fragments to display on the display"
+        # )
+        # # create screen renderer
+        # self._renderer = ToFSensorFragmentRenderer(self._sensor_name, self._accuracy)
         # start ranging
         self._sensor.start_ranging(self._accuracy.mode)
         max_frequency = min(self._frequency, int(1.0 / self._accuracy.timing_budget))
@@ -87,7 +87,7 @@ class ToFNode(DTROS):
         self.loginfo(f"Frequency set to {self._frequency}Hz.")
         # create timers
         self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / max_frequency), self._timer_cb)
-        self._fragment_reminder = DTReminder(frequency=self._display_fragment_frequency)
+        # self._fragment_reminder = DTReminder(frequency=self._display_fragment_frequency)
 
     def _timer_cb(self, _):
         # detect range
@@ -106,11 +106,11 @@ class ToFNode(DTROS):
         )
         # publish
         self._pub.publish(msg)
-        # publish display rendering (if it is a good time to do so)
-        if self._fragment_reminder.is_time():
-            self._renderer.update(distance_mm)
-            msg = self._renderer.as_msg()
-            self._display_pub.publish(msg)
+        # # publish display rendering (if it is a good time to do so)
+        # if self._fragment_reminder.is_time():
+        #     self._renderer.update(distance_mm)
+        #     msg = self._renderer.as_msg()
+        #     self._display_pub.publish(msg)
 
     def on_shutdown(self):
         # noinspection PyBroadException
@@ -120,32 +120,32 @@ class ToFNode(DTROS):
             pass
 
 
-class ToFSensorFragmentRenderer(MonoImageFragmentRenderer):
-
-    def __init__(self, name: str, accuracy: ToFAccuracy):
-        super(ToFSensorFragmentRenderer, self).__init__(
-            f'__tof_{name}__',
-            page=PAGE_TOF,
-            region=REGION_BODY,
-            roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height)
-        )
-        self._name = name
-        self._accuracy = accuracy
-        name = self._name.replace('_', ' ').title()
-        self._title_h = 12
-        self._title = monospace_screen(
-            (self._title_h, self.roi.w), f"ToF / {name}:", scale='vfill'
-        )
-
-    def update(self, measurement_mm: float):
-        pretty_measurement = f" {(measurement_mm / 10):.1f}cm " \
-            if (measurement_mm / 1000) < self._accuracy.max_range else "Out-Of-Range"
-        reading = monospace_screen(
-            (self.roi.h - self._title_h, self.roi.w),
-            pretty_measurement, scale='hfill', align='center'
-        )
-        self.data[:self._title_h, :] = self._title
-        self.data[self._title_h:, :] = reading
+# class ToFSensorFragmentRenderer(MonoImageFragmentRenderer):
+#
+#     def __init__(self, name: str, accuracy: ToFAccuracy):
+#         super(ToFSensorFragmentRenderer, self).__init__(
+#             f'__tof_{name}__',
+#             page=PAGE_TOF,
+#             region=REGION_BODY,
+#             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height)
+#         )
+#         self._name = name
+#         self._accuracy = accuracy
+#         name = self._name.replace('_', ' ').title()
+#         self._title_h = 12
+#         self._title = monospace_screen(
+#             (self._title_h, self.roi.w), f"ToF / {name}:", scale='vfill'
+#         )
+#
+#     def update(self, measurement_mm: float):
+#         pretty_measurement = f" {(measurement_mm / 10):.1f}cm " \
+#             if (measurement_mm / 1000) < self._accuracy.max_range else "Out-Of-Range"
+#         reading = monospace_screen(
+#             (self.roi.h - self._title_h, self.roi.w),
+#             pretty_measurement, scale='hfill', align='center'
+#         )
+#         self.data[:self._title_h, :] = self._title
+#         self.data[self._title_h:, :] = reading
 
 
 if __name__ == '__main__':

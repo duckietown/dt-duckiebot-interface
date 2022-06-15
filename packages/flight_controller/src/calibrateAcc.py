@@ -4,8 +4,8 @@ from h2rMultiWii import MultiWii
 import time
 
 def main():
-    # board = MultiWii('/dev/ttyUSB0')
-    board = MultiWii('/dev/ttyAMA0')
+    board = MultiWii('/dev/ttyUSB0')
+    # board = MultiWii('/dev/ttyAMA0')
     print("Calibrate ACC... make sure we are level and still.")
     time.sleep(1)
     board.sendCMD(0, MultiWii.ACC_CALIBRATION, [])

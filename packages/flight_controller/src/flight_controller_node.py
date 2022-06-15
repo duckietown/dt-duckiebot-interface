@@ -217,8 +217,8 @@ class FlightController(object):
         # (if the flight cotroll usb is unplugged and plugged back in,
 
         board = None
-        # board_usb_addr = '/dev/ttyUSB0'  # fixme
-        board_usb_addr = '/dev/ttyAMA0'  # fixme
+        board_usb_addr = '/dev/ttyUSB0'  # fixme
+        # board_usb_addr = '/dev/ttyAMA0'  # fixme
         #  it becomes .../USB1)
         try:
             board = MultiWii(board_usb_addr)
@@ -277,15 +277,15 @@ class FlightController(object):
         """
         curr_time = rospy.Time.now()
         disarm = False
-        if self.battery_message.voltage != None and abs(self.battery_message.voltage) < self.minimum_voltage:
-            # abs is there bc some battery readings have a flipped sign.
-            print('\nSafety Failure: low battery\n')
-            print(('bat voltage ', self.battery_message.voltage, "<", self.minimum_voltage))
-            disarm = True
-        if curr_time - self.heartbeat_web_interface > rospy.Duration.from_sec(3):
-            print('\nSafety Failure: web interface heartbeat\n')
-            print('The web interface stopped responding. Check your browser')
-            disarm = True
+        # if self.battery_message.voltage != None and abs(self.battery_message.voltage) < self.minimum_voltage:
+        #     # abs is there bc some battery readings have a flipped sign.
+        #     print('\nSafety Failure: low battery\n')
+        #     print(('bat voltage ', self.battery_message.voltage, "<", self.minimum_voltage))
+        #     disarm = True
+        # if curr_time - self.heartbeat_web_interface > rospy.Duration.from_sec(3):
+        #     print('\nSafety Failure: web interface heartbeat\n')
+        #     print('The web interface stopped responding. Check your browser')
+        #     disarm = True
         if curr_time - self.heartbeat_pid_controller > rospy.Duration.from_sec(1):
             print('\nSafety Failure: not receiving flight commands.')
             print('Check the pid_controller node\n')
@@ -336,7 +336,7 @@ def main():
 
     # heartbeat subscribers
     rospy.Subscriber("heartbeat/altitude_node", Empty, fc.heartbeat_altitude_callback)
-    rospy.Subscriber("heartbeat/web_interface", Empty, fc.heartbeat_web_interface_callback)
+    # rospy.Subscriber("heartbeat/web_interface", Empty, fc.heartbeat_web_interface_callback)
     rospy.Subscriber("heartbeat/pid_controller", Empty, fc.heartbeat_pid_controller_callback)
     rospy.Subscriber("state_estimator_node", Odometry, fc.heartbeat_state_estimator_callback)
 
