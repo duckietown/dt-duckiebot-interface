@@ -12,8 +12,15 @@ from math import pi
 
 from std_msgs.msg import Header
 from duckietown_msgs.msg import WheelEncoderStamped, WheelsCmdStamped
-from wheel_encoder import WheelEncoderDriver, WheelDirection
+
+from dt_robot_utils import get_robot_hardware, RobotHardware
+from wheel_encoder import WheelDirection
 from duckietown.dtros import DTROS, TopicType, NodeType, DTParam, ParamType
+
+if get_robot_hardware() == RobotHardware.VIRTUAL:
+    from wheel_encoder import VirtualWheelEncoderDriver as WheelEncoderDriver
+else:
+    from wheel_encoder import WheelEncoderDriver
 
 
 class WheelEncoderNode(DTROS):
@@ -116,7 +123,7 @@ class WheelEncoderNode(DTROS):
             self._cb_publish
         )
         # setup the driver
-        self._driver = WheelEncoderDriver(self._gpio_pin, self._encoder_tick_cb)
+        self._driver = WheelEncoderDriver(self._name, self._gpio_pin, self._encoder_tick_cb)
 
     def _wheels_cmd_executed_cb(self,msg):
         if self._configuration == "left":

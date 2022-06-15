@@ -2,9 +2,14 @@
 
 import rospy
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
-from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
+from dt_robot_utils import RobotHardware, get_robot_hardware
 from duckietown.dtros import DTROS, TopicType, NodeType
+
+if get_robot_hardware() == RobotHardware.VIRTUAL:
+    from wheels_driver import VirtualWheelsDriver as WheelsDriver
+else:
+    from wheels_driver import DaguWheelsDriver as WheelsDriver
 
 
 class WheelsDriverNode(DTROS):
@@ -40,7 +45,7 @@ class WheelsDriverNode(DTROS):
         self.estop = False
 
         # Setup the driver
-        self.driver = DaguWheelsDriver()
+        self.driver = WheelsDriver()
 
         # Initialize the executed commands message
         self.msg_wheels_cmd = WheelsCmdStamped()

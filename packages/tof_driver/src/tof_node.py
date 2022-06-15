@@ -1,43 +1,24 @@
 #!/usr/bin/env python3
 
 import rospy
-import dataclasses
-import numpy as np
 
 from sensor_msgs.msg import Range
 from std_msgs.msg import Header
 from duckietown_msgs.msg import DisplayFragment
 
-from dt_vl53l0x import \
-    VL53L0X, \
-    Vl53l0xAccuracyMode
-
-from display_renderer import TextFragmentRenderer, DisplayROI, PAGE_TOF, REGION_HEADER, \
-    REGION_BODY, MonoImageFragmentRenderer
+from display_renderer import DisplayROI, PAGE_TOF, REGION_BODY, MonoImageFragmentRenderer
 from display_renderer.text import monospace_screen
 from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, TopicType
 
 
-@dataclasses.dataclass
-class ToFAccuracy:
-    mode: Vl53l0xAccuracyMode
-    timing_budget: float
-    max_range: float
-    # the following are taken from the sensor's datasheet
-    min_range: float = 0.05
-    fov: float = np.deg2rad(25)
+from dt_robot_utils import get_robot_hardware, RobotHardware
+from tof_driver import ToFAccuracy, ToFDriverAbs
 
-    @staticmethod
-    def from_string(mode: str):
-        ms = 1 / 1000
-        return {
-            "GOOD": ToFAccuracy(Vl53l0xAccuracyMode.GOOD, 33 * ms, 1.2),
-            "BETTER": ToFAccuracy(Vl53l0xAccuracyMode.BETTER, 66 * ms, 1.2),
-            "BEST": ToFAccuracy(Vl53l0xAccuracyMode.BEST, 200 * ms, 1.2),
-            "LONG_RANGE": ToFAccuracy(Vl53l0xAccuracyMode.LONG_RANGE, 33 * ms, 2.0),
-            "HIGH_SPEED": ToFAccuracy(Vl53l0xAccuracyMode.HIGH_SPEED, 20 * ms, 1.2)
-        }[mode]
+if get_robot_hardware() == RobotHardware.VIRTUAL:
+    from tof_driver import VirtualToFDriver as ToFDriver
+else:
+    from tof_driver import ToFDriver
 
 
 class ToFNode(DTROS):
@@ -57,8 +38,11 @@ class ToFNode(DTROS):
         self._display_fragment_frequency = rospy.get_param('~display_fragment_frequency', 4)
         self._accuracy = ToFAccuracy.from_string(self._mode)
         # create a VL53L0X sensor handler
-        self._sensor = VL53L0X(i2c_bus=self._i2c_bus, i2c_address=self._i2c_address)
-        self._sensor.open()
+        self._sensor: ToFDriverAbs = ToFDriver(self._sensor_name,
+                                               self._accuracy,
+                                               i2c_bus=self._i2c_bus,
+                                               i2c_address=self._i2c_address)
+        self._sensor.setup()
         # create publisher
         self._pub = rospy.Publisher(
             "~range",
@@ -77,7 +61,7 @@ class ToFNode(DTROS):
         # create screen renderer
         self._renderer = ToFSensorFragmentRenderer(self._sensor_name, self._accuracy)
         # start ranging
-        self._sensor.start_ranging(self._accuracy.mode)
+        self._sensor.start()
         max_frequency = min(self._frequency, int(1.0 / self._accuracy.timing_budget))
         if self._frequency > max_frequency:
             self.logwarn(f"Frequency of {self._frequency}Hz not supported. The selected mode "
@@ -92,6 +76,8 @@ class ToFNode(DTROS):
     def _timer_cb(self, _):
         # detect range
         distance_mm = self._sensor.get_distance()
+        if distance_mm is None:
+            return
         # pack observation into a message
         msg = Range(
             header=Header(
@@ -115,7 +101,7 @@ class ToFNode(DTROS):
     def on_shutdown(self):
         # noinspection PyBroadException
         try:
-            self._sensor.stop_ranging()
+            self._sensor.release()
         except BaseException:
             pass
 
