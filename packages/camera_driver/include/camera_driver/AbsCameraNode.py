@@ -307,7 +307,7 @@ class AbsCameraNode(ABC, DTROS):
     def load_camera_info(filename):
         """Loads the camera calibration files.
 
-        Loads the intrinsic and extrinsic camera matrices.
+        Loads the intrinsic camera matrices.
 
         Args:
             filename (:obj:`str`): filename of calibration files.
