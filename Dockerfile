@@ -69,8 +69,7 @@ COPY ./packages "${REPO_PATH}/packages"
 # build packages
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
   catkin build \
-    --workspace ${CATKIN_WS_DIR}/ \
-    flight_controller camera_driver tof_driver duckiebot_interface
+    --workspace ${CATKIN_WS_DIR}/
 
 # install launcher scripts
 COPY ./launchers/. "${LAUNCH_PATH}/"
