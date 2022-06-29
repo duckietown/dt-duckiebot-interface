@@ -12,8 +12,7 @@ from dt_vl53l0x import \
     VL53L0X, \
     Vl53l0xAccuracyMode
 
-from display_renderer import TextFragmentRenderer, DisplayROI, PAGE_TOF, REGION_HEADER, \
-    REGION_BODY, MonoImageFragmentRenderer
+from display_renderer import DisplayROI, PAGE_TOF, REGION_BODY, MonoImageFragmentRenderer
 from display_renderer.text import monospace_screen
 from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, TopicType

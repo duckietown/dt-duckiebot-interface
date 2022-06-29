@@ -5,13 +5,14 @@
     <arg name="pkg_name" value="tof_driver"/>
     <arg name="node_name" value="tof_node"/>
     <arg name="required" default="false"/>
+    <arg name="robot_type"/>
 
     <group ns="$(arg veh)">
         <node pkg="$(arg pkg_name)" name="$(arg name)_tof_driver_node" type="$(arg node_name).py"
               output="screen" required="$(arg required)">
             <param name="veh" value="$(arg veh)" />
             <rosparam command="load"
-                      file="$(find tof_driver)/config/$(arg node_name)/$(arg name).yaml"/>
+                      file="$(find tof_driver)/config/$(arg node_name)/$(arg robot_type)/$(arg name).yaml"/>
         </node>
     </group>
 </launch>
