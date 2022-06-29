@@ -2,5 +2,5 @@ bus: 1
 address: 0x29
 sensor_name: "altitude"
 frequency: 20
-mode: "BETTER"
+mode: "GOOD"
 display_fragment_frequency: 0
