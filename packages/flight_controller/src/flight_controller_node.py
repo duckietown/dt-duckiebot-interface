@@ -45,10 +45,12 @@ class FlightController(object):
         # Connect to the flight controller board
         self.board = self.getBoard()
         # stores the current and previous modes
-        self.curr_mode = 0         #initialize as disarmed
-        self.prev_mode = 0         #initialize as disarmed
+        self.curr_mode = 0         # initialize as disarmed
+        self.prev_mode = 0         # initialize as disarmed
+        self.mode_change_cycles = 20  # number of commands to publish to FC to arm/disarm
+        self.mode_change_counter = 0  # to counter if the above cycle has been reached
         # store the command to send to the flight controller
-        self.command = cmds.disarm_cmd      #initialize as disarmed
+        self.command = cmds.disarm_cmd      # initialize as disarmed
         self.last_command = cmds.disarm_cmd
         # store the mode publisher
         self.modepub = None
@@ -83,7 +85,6 @@ class FlightController(object):
         self.accZeroY = means["ay"] * self.accRawToMss
         self.accZeroZ = means["az"] * self.accRawToMss
 
-
     # ROS subscriber callback methods:
     ##################################
     def desired_mode_callback(self, msg):
@@ -99,9 +100,9 @@ class FlightController(object):
             p = msg.pitch
             y = msg.yaw
             t = msg.throttle
-            self.command = [int(r),int(p),int(y),int(t)] #these must be int 
-            #to be sent to the flight control board via h2rMultiWii.py
-
+            # these must be int
+            # to be sent to the flight control board via h2rMultiWii.py
+            self.command = [int(r), int(p), int(y), int(t)]
 
     # Update methods:
     #################
@@ -110,10 +111,17 @@ class FlightController(object):
         Compute the ROS IMU message by reading data from the board.
         """
 
-        # extract roll, pitch, heading
-        self.board.getData(MultiWii.ATTITUDE)
-        # extract lin_acc_x, lin_acc_y, lin_acc_z
-        self.board.getData(MultiWii.RAW_IMU)
+        for i in range(5):
+            try:
+                # extract roll, pitch, heading
+                self.board.getData(MultiWii.ATTITUDE)
+                # extract lin_acc_x, lin_acc_y, lin_acc_z
+                self.board.getData(MultiWii.RAW_IMU)
+                break
+            except Exception as e:
+                print(f"Unable to get IMU data {e}, retry...")
+                self.board.close()
+                self.board = self.getBoard()
 
         # calculate values to update imu_message:
         roll = np.deg2rad(self.board.attitude['angx'])
@@ -201,14 +209,21 @@ class FlightController(object):
         self.battery_message.current = self.board.analog['amperage']
 
     def update_command(self):
-        ''' Set command values if the mode is ARMED or DISARMED '''
-        if self.curr_mode == 0: #disarmed
+        """ Set command values if the mode is ARMED or DISARMED """
+        if self.curr_mode == 0:  # disarmed
             self.command = cmds.disarm_cmd
-        elif self.curr_mode == 1: #armed
-            if self.prev_mode == 0: #disarmed
+        elif self.curr_mode == 1:  # armed
+            if self.prev_mode == 0:  # not yet armed
                 self.command = cmds.arm_cmd
-            elif self.prev_mode == 1: #armed
-                self.command = cmds.idle_cmd
+            elif self.prev_mode == 1:  # already armed
+                if self.mode_change_counter < self.mode_change_cycles:
+                    self.command = cmds.arm_cmd
+                    self.mode_change_counter += 1
+                else:
+                    self.command = cmds.idle_cmd  # idle
+
+        if self.curr_mode != 1:
+            self.mode_change_counter = 0
 
     # Helper Methods:
     #################
@@ -232,11 +247,15 @@ class FlightController(object):
 
     def send_cmd(self):
         """ Send commands to the flight controller board """
-        self.board.sendCMD(8, MultiWii.SET_RAW_RC, self.command)
-        self.board.receiveDataPacket()
-        if (self.command != self.last_command):
-            print('command sent:', self.command)
-            self.last_command = self.command
+        try:
+            self.board.sendCMD(8, MultiWii.SET_RAW_RC, self.command)
+            self.board.receiveDataPacket()
+
+            if self.command != self.last_command:
+                print('command sent:', self.command)
+                self.last_command = self.command
+        except Exception as e:
+            print(f"Err communicate with board {e}. Reinit...")
 
     def near_zero(self, n):
         """ Set a number to zero if it is below a threshold value """
@@ -340,9 +359,6 @@ def main():
     rospy.Subscriber("heartbeat/pid_controller", Empty, fc.heartbeat_pid_controller_callback)
     rospy.Subscriber("state_estimator_node", Odometry, fc.heartbeat_state_estimator_callback)
 
-
-
-
     signal.signal(signal.SIGINT, fc.ctrl_c_handler)
     # set the loop rate (Hz)
     r = rospy.Rate(60)
@@ -353,27 +369,30 @@ def main():
             if fc.curr_mode != 0: #'DISARMED'
                 # Break the loop if a safety check has failed
                 if fc.shouldIDisarm():
+                    print("Should disarm.")
                     break
-                
-            # update and publish flight controller readings
-            fc.update_battery_message()
-            fc.update_imu_message()
-            imupub.publish(fc.imu_message)
-            batpub.publish(fc.battery_message)
 
-            # update and send the flight commands to the board
-            fc.update_command()
-            fc.send_cmd()
+            try:
+                # update and publish flight controller readings
+                # fc.update_battery_message()
+                fc.update_imu_message()
+                imupub.publish(fc.imu_message)
+                batpub.publish(fc.battery_message)
 
-            # publish the current mode of the drone
-            fc.modepub.publish(fc.curr_mode)
+                # update and send the flight commands to the board
+                fc.update_command()
+                fc.send_cmd()
+
+                # publish the current mode of the drone
+                fc.modepub.publish(fc.curr_mode)
+
+            except SerialException:
+                print('\nCannot connect to the flight controller board. Re-init')
+                fc.board.close()
+                fc.board = fc.getBoard()
 
             # sleep for the remainder of the loop time
             r.sleep()
-            
-    except SerialException:
-        print('\nCannot connect to the flight controller board.')
-        print('The USB is unplugged. Please check connection.')
     except Exception as e:
         traceback.print_exc()
         print('there was an internal error')
