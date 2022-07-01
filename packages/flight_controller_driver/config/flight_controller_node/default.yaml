@@ -1,0 +1,24 @@
+device: "/dev/ttyUSB0"
+frequency: 60
+
+accelerometer:
+    x: 0.3336673346693387
+    y: 0.22745490981963928
+    z: 512.6142284569138
+
+heartbeats:
+    altitude: false
+    joystick: true
+    pid: false
+    state_estimator: false
+
+motor_command_range: [1000, 2000]
+
+# These simulate various stick configurations on the remote controller that trigger special
+# behaviors on the flight controller, such as ARM, DISARM, etc.
+# Each list is [r, p, y, t], and the full list of "special" configurations can be found at:
+#    https://github.com/martinbudden/betaflight/blob/master/docs/Controls.md#stick-positions
+rc_commands:
+    disarm: [ 1500, 1500, 1000, 1000 ]
+    arm: [ 1500, 1500, 2000, 1000 ]
+    idle: [ 1500, 1500, 1500, 1100 ]

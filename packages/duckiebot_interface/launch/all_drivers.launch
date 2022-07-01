@@ -91,12 +91,11 @@
             <arg name="robot_type" value="$(arg robot_type)"/>
         </include>
     </group>
-    <!-- - DD21: 1x ToF sensor used to measure altitude      -->
+    <!-- - DD21: 1x ToF sensor used to measure distance to the ground (uncorrected altitude) -->
     <group if="$(eval arg('robot_configuration') in ['DD21'])">
-        <remap from="altitude_tof_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find tof_driver)/launch/tof_node.launch">
             <arg name="veh" value="$(arg veh)"/>
-            <arg name="name" value="altitude"/>
+            <arg name="name" value="bottom"/>
             <arg name="robot_type" value="$(arg robot_type)"/>
         </include>
     </group>
@@ -129,7 +128,7 @@
         </include>
     </group>
 
-<!--     Robot HTTP API: provides an HTTP API through which we can control the Robot -->
+    <!-- Robot HTTP API: provides an HTTP API through which we can control the Robot -->
     <group if="$(eval arg('robot_type') not in ['workstation'])">
         <include file="$(find robot_http_api)/launch/robot_http_api_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -140,9 +139,8 @@
 
     <!-- Fligth Controller -->
     <group if="$(eval arg('robot_type') == 'duckiedrone')">
-        <include file="$(find flight_controller)/launch/flight_controller.launch">
+        <include file="$(find flight_controller_driver)/launch/flight_controller_node.launch">
             <arg name="veh" value="$(arg veh)"/>
-            <arg name="robot_type" value="$(arg robot_type)"/>
         </include>
     </group> 
 
