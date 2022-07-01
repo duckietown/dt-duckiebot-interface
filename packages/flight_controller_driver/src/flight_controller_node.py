@@ -66,7 +66,7 @@ class FlightController(DTROS):
         # internal state
         self._last_imu_msg = None
         self._clock = rospy.Rate(self._frequency)
-        self._lock = Semaphore()
+        self._lock = Semaphore(1)
         self._requested_mode: DroneMode = DroneMode.DISARMED
         self._current_mode: DroneMode = DroneMode.DISARMED
 
@@ -165,14 +165,14 @@ class FlightController(DTROS):
 
     def _srv_calibrate_imu_cb(self, _):
         """ Calibrate IMU """
-        with self._lock:
-            self.loginfo("Calibrating IMU...")
-            try:
+        self.loginfo("Calibrating IMU...")
+        try:
+            with self._lock:
                 self._board.sendCMD(0, MultiWii.ACC_CALIBRATION, [])
                 self._board.receiveDataPacket()
-            except Exception as e:
-                traceback.print_exc()
-                return TriggerResponse(success=False, message=str(e))
+        except Exception as e:
+            traceback.print_exc()
+            return TriggerResponse(success=False, message=str(e))
         # respond
         return TriggerResponse(success=True)
 
