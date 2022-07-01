@@ -7,10 +7,10 @@ accelerometer:
     z: 512.6142284569138
 
 heartbeats:
-    altitude: false
+    altitude: true
     joystick: true
-    pid: false
-    state_estimator: false
+    pid: true
+    state_estimator: true
 
 motor_command_range: [1000, 2000]
 
