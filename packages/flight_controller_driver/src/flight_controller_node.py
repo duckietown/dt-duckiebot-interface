@@ -67,6 +67,7 @@ class FlightController(DTROS):
         self._last_imu_msg = None
         self._clock = rospy.Rate(self._frequency)
         self._lock = Semaphore(1)
+        self._last_published_mode: Optional[DroneMode] = None
         self._requested_mode: DroneMode = DroneMode.DISARMED
         self._current_mode: DroneMode = DroneMode.DISARMED
 
@@ -87,7 +88,7 @@ class FlightController(DTROS):
         self._imu_pub = rospy.Publisher("~imu", Imu, queue_size=1)
         self._motor_pub = rospy.Publisher("~motors", DroneMotorCommand, queue_size=1)
         self._bat_pub = rospy.Publisher("~battery", BatteryState, queue_size=1)
-        self._mode_pub = rospy.Publisher("~current_mode", DroneModeMsg, queue_size=1)
+        self._mode_pub = rospy.Publisher("~mode/current", DroneModeMsg, queue_size=1)
 
         # subscribers
         rospy.Subscriber('~commands', DroneControl, self._fly_commands_cb)
@@ -212,7 +213,9 @@ class FlightController(DTROS):
                         self._send_flight_commands()
 
                         # publish the current mode
-                        self._mode_pub.publish(self._requested_mode)
+                        if self._last_published_mode != self._requested_mode:
+                            self._mode_pub.publish(self._requested_mode)
+                            self._last_published_mode = self._requested_mode
                     except FCError:
                         self.logerr("Cannot talk to the flight controller. Reiniting comms...")
                         self._board.close()
