@@ -88,7 +88,7 @@ class FlightController(DTROS):
         self._imu_pub = rospy.Publisher("~imu", Imu, queue_size=1)
         self._motor_pub = rospy.Publisher("~motors", DroneMotorCommand, queue_size=1)
         self._bat_pub = rospy.Publisher("~battery", BatteryState, queue_size=1)
-        self._mode_pub = rospy.Publisher("~mode/current", DroneModeMsg, queue_size=1)
+        self._mode_pub = rospy.Publisher("~mode/current", DroneModeMsg, queue_size=1, latch=True)
 
         # subscribers
         rospy.Subscriber('~commands', DroneControl, self._fly_commands_cb)
@@ -136,11 +136,11 @@ class FlightController(DTROS):
 
     def _switch_to_mode(self, mode: DroneMode):
         """ Update desired mode """
-        # TODO: this is wrong, we can't wait for a new mode to come in to update _current_mode,
-        #  it should be done according to the data coming from the flight controller
         if mode is self._requested_mode:
             return
         # switch mode
+        # TODO: this is wrong, we can't wait for a new mode to come in to update _current_mode,
+        #  it should be done according to the data coming from the flight controller
         self._current_mode = self._requested_mode
         self._requested_mode = mode
         self._compute_flight_commands()
@@ -158,6 +158,7 @@ class FlightController(DTROS):
         # switch mode
         if do_switch:
             self._switch_to_mode(mode)
+        self._mode_pub.publish(self._requested_mode)
         # respond
         return SetDroneModeResponse(
             previous_mode=DroneModeMsg(mode=self._current_mode.value),
