@@ -24,7 +24,7 @@ class ToFAccuracy:
     timing_budget: float
     max_range: float
     # the following are taken from the sensor's datasheet
-    min_range: float = 0.05
+    min_range: float = 0.03
     fov: float = np.deg2rad(25)
 
     @staticmethod
@@ -40,6 +40,19 @@ class ToFAccuracy:
 
 
 class ToFNode(DTROS):
+    """
+    This class implements the communication logic with a Time-of-Flight sensor on the i2c bus.
+    It publishes both range measurements as well as display fragments to show on an LCD screen.
+
+    NOTE: Out-of-range readings do not stop the stream of messages. Instead, a message with a
+          range value well outside the domain [min_range, max_range] will be published.
+          Such value is sensor-specific and at the time of this writing, this number is 8.0.
+          As per the official ROS's documentation on the Range message
+          (https://docs.ros.org/en/noetic/api/sensor_msgs/html/msg/Range.html),
+          "values < range_min or > range_max should be discarded".
+          So, it is the consumer's responsibility to handle out-of-range readings.
+
+    """
 
     def __init__(self):
         super(ToFNode, self).__init__(
