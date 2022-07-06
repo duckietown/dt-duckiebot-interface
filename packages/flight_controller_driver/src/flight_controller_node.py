@@ -99,17 +99,17 @@ class FlightController(DTROS):
         self._mode_pub = rospy.Publisher("~mode/current", DroneModeMsg, queue_size=1, latch=True)
 
         # subscribers
-        rospy.Subscriber('~commands', DroneControl, self._fly_commands_cb)
+        rospy.Subscriber('~commands', DroneControl, self._fly_commands_cb, queue_size=1)
 
         # services
         self._srv_set_mode = rospy.Service("~set_mode", SetDroneMode, self._srv_set_mode_cb)
         self._srv_calib_imu = rospy.Service("~calibrate_imu", Trigger, self._srv_calibrate_imu_cb)
 
         # heartbeats
-        rospy.Subscriber("~heartbeat/altitude", Empty, self._heartbeat_altitude_cb)
-        rospy.Subscriber("~heartbeat/joystick", Empty, self._heartbeat_joystick_cb)
-        rospy.Subscriber("~heartbeat/pid", Empty, self._heartbeat_pid_cb)
-        rospy.Subscriber("~heartbeat/state_estimator", Empty, self._heartbeat_state_estimator_cb)
+        rospy.Subscriber("~heartbeat/altitude", Empty, self._heartbeat_altitude_cb, queue_size=1)
+        rospy.Subscriber("~heartbeat/joystick", Empty, self._heartbeat_joystick_cb, queue_size=1)
+        rospy.Subscriber("~heartbeat/pid", Empty, self._heartbeat_pid_cb, queue_size=1)
+        rospy.Subscriber("~heartbeat/state_estimator", Empty, self._heartbeat_state_estimator_cb, queue_size=1)
 
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self.rc_command(DroneMode.DISARMED)
@@ -137,16 +137,15 @@ class FlightController(DTROS):
     def _needs_heartbeat(self, name: str) -> bool:
         return self._heartbeats.get(name, False) is True
 
-    def _switch_to_mode(self, mode: DroneMode):
+    def _switch_to_mode(self, mode: DroneMode, quiet: bool = False):
         """ Update desired mode """
-        if mode is self._requested_mode:
-            return
         # switch mode
         # TODO: this is wrong, we can't wait for a new mode to come in to update _current_mode,
         #  it should be done according to the data coming from the flight controller
         self._current_mode = self._requested_mode
         self._requested_mode = mode
-        self._compute_flight_commands()
+        if not quiet:
+            self._compute_flight_commands()
 
     def _srv_set_mode_cb(self, req):
         """ Update desired mode """
@@ -222,8 +221,6 @@ class FlightController(DTROS):
                             self._last_published_mode = self._requested_mode
                     except FCError:
                         self.logerr("Cannot talk to the flight controller. Reiniting comms...")
-                        self._board.close()
-                        self._open_board()
 
                 # sleep for the remainder of the loop time
                 self._clock.sleep()
@@ -240,12 +237,14 @@ class FlightController(DTROS):
         if self._requested_mode is DroneMode.DISARMED:
             # disarm
             self._command = self.rc_command(DroneMode.DISARMED)
+            self._switch_to_mode(DroneMode.DISARMED, quiet=True)
 
         elif self._requested_mode is DroneMode.ARMED:
             # arm
             if self._current_mode is DroneMode.DISARMED:
                 # not yet armed
                 self._command = self.rc_command(DroneMode.ARMED)
+                self._switch_to_mode(DroneMode.ARMED, quiet=True)
 
             elif self._current_mode is DroneMode.ARMED:
                 # already armed
@@ -326,15 +325,12 @@ class FlightController(DTROS):
         """
         Reads the motor signals sent by the flight controller to the ESCs.
         """
-        # TODO: retry 5 times?
-        for i in range(5):
-            try:
-                # read m1, m2, m3, m4
-                self._board.getData(MultiWii.MOTOR)
-                break
-            except Exception as e:
-                self.logwarn(f"Unable to get MOTOR data {e}, retry...")
-                raise FCError(f"Unable to get MOTOR data {e}, retry...")
+        try:
+            # read m1, m2, m3, m4
+            self._board.getData(MultiWii.MOTOR)
+        except Exception as e:
+            self.logwarn(f"Unable to get MOTOR data {e}, retry...")
+            raise FCError(f"Unable to get MOTOR data {e}, retry...")
 
         # create Motor message
         return DroneMotorCommand(
@@ -351,17 +347,14 @@ class FlightController(DTROS):
         """
         Compute the ROS IMU message by reading data from the board.
         """
-        # TODO: retry 5 times?
-        for i in range(5):
-            try:
-                # read roll, pitch, heading
-                self._board.getData(MultiWii.ATTITUDE)
-                # read lin_acc_x, lin_acc_y, lin_acc_z
-                self._board.getData(MultiWii.RAW_IMU)
-                break
-            except Exception as e:
-                self.logwarn(f"Unable to get IMU data {e}, retry...")
-                raise FCError(f"Unable to get IMU data {e}, retry...")
+        try:
+            # read roll, pitch, heading
+            self._board.getData(MultiWii.ATTITUDE)
+            # read lin_acc_x, lin_acc_y, lin_acc_z
+            self._board.getData(MultiWii.RAW_IMU)
+        except Exception as e:
+            self.logwarn(f"Unable to get IMU data {e}, retry...")
+            raise FCError(f"Unable to get IMU data {e}, retry...")
 
         # create empty message
         msg = Imu()
