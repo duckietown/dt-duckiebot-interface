@@ -1,5 +1,8 @@
 device: "/dev/ttyUSB0"
-frequency: 60
+frequency:
+    commands: 60
+    imu: 10
+    motors: 10
 
 accelerometer:
     x: 0.3336673346693387
@@ -9,8 +12,8 @@ accelerometer:
 heartbeats:
     altitude: true
     joystick: true
-    pid: true
-    state_estimator: true
+    pid: false
+    state_estimator: false
 
 motor_command_range: [1000, 2000]
 

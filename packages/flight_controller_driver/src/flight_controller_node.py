@@ -19,6 +19,7 @@ from std_msgs.msg import Header, Empty
 from duckietown_msgs.srv import SetDroneMode, SetDroneModeResponse
 from std_srvs.srv import Trigger, TriggerResponse
 
+from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType
 from h2r_multiwii import MultiWii
 
@@ -68,12 +69,12 @@ class FlightController(DTROS):
         }
 
         # number of commands to publish to FC to arm/disarm, hold stick for at least 0.5 sec
-        self._mode_change_cycles = 0.5 * self._frequency
+        self._mode_change_cycles = 0.5 * self._frequency["commands"]
         self._mode_change_counter = 0
 
         # internal state
         self._last_imu_msg = None
-        self._clock = rospy.Rate(self._frequency)
+        self._clock = rospy.Rate(self._frequency["commands"])
         self._lock = Semaphore(1)
         self._last_published_mode: Optional[DroneMode] = None
         self._requested_mode: DroneMode = DroneMode.DISARMED
@@ -92,11 +93,16 @@ class FlightController(DTROS):
         if self._board is None:
             return
 
+        # reminders
+        self._motors_reminder = DTReminder(frequency=self._frequency["motors"])
+        self._imu_reminder = DTReminder(frequency=self._frequency["imu"])
+
         # publishers
         self._imu_pub = rospy.Publisher("~imu", Imu, queue_size=1)
         self._motor_pub = rospy.Publisher("~motors", DroneMotorCommand, queue_size=1)
         self._bat_pub = rospy.Publisher("~battery", BatteryState, queue_size=1)
         self._mode_pub = rospy.Publisher("~mode/current", DroneModeMsg, queue_size=1, latch=True)
+        self._commands_pub = rospy.Publisher('~commands/executed', DroneControl, queue_size=1)
 
         # subscribers
         rospy.Subscriber('~commands', DroneControl, self._fly_commands_cb, queue_size=1)
@@ -204,12 +210,14 @@ class FlightController(DTROS):
                     # noinspection PyBroadException
                     try:
                         # update and publish flight controller readings
-                        imu_msg = self._read_imu_message()
-                        self._imu_pub.publish(imu_msg)
+                        if self._imu_reminder.is_time():
+                            imu_msg = self._read_imu_message()
+                            self._imu_pub.publish(imu_msg)
 
                         # read PWM signals going to the motors
-                        motor_msg = self._read_motor_pwm_signals()
-                        self._motor_pub.publish(motor_msg)
+                        if self._motors_reminder.is_time():
+                            motor_msg = self._read_motor_pwm_signals()
+                            self._motor_pub.publish(motor_msg)
 
                         # update and send the flight commands to the board
                         self._compute_flight_commands()
@@ -220,7 +228,7 @@ class FlightController(DTROS):
                             self._mode_pub.publish(self._requested_mode)
                             self._last_published_mode = self._requested_mode
                     except FCError:
-                        self.logerr("Cannot talk to the flight controller. Reiniting comms...")
+                        self.logwarn("Could not talk to the flight controller")
 
                 # sleep for the remainder of the loop time
                 self._clock.sleep()
@@ -265,6 +273,7 @@ class FlightController(DTROS):
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command
+            self._commands_pub.publish(DroneControl(*self._command))
         except Exception as e:
             self.logerr(f"Error communicating with board {e}")
 
