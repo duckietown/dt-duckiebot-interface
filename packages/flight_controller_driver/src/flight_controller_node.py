@@ -68,8 +68,8 @@ class FlightController(DTROS):
             DroneMode.FLYING: None,
         }
 
-        # number of commands to publish to FC to arm/disarm, hold stick for at least 0.5 sec
-        self._mode_change_cycles = 0.5 * self._frequency["commands"]
+        # number of commands to publish to FC to arm/disarm, hold stick for at least 1.0 secs
+        self._mode_change_cycles = 1.0 * self._frequency["commands"]
         self._mode_change_counter = 0
 
         # internal state
@@ -229,6 +229,7 @@ class FlightController(DTROS):
                             self._last_published_mode = self._requested_mode
                     except FCError:
                         self.logwarn("Could not talk to the flight controller")
+                        continue
 
                 # sleep for the remainder of the loop time
                 self._clock.sleep()
