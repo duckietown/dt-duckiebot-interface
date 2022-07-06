@@ -59,6 +59,14 @@ class FlightController(DTROS):
         self._accelerometer_calib = rospy.get_param("~accelerometer")
         self._motor_command_range = rospy.get_param("~motor_command_range")
 
+        # mode -> RC command mapping
+        self._mode_to_rc_command = {
+            DroneMode.DISARMED: self._rc_commands["disarm"],
+            DroneMode.ARMED: self._rc_commands["arm"],
+            DroneMode.IDLE: self._rc_commands["idle"],
+            DroneMode.FLYING: None,
+        }
+
         # number of commands to publish to FC to arm/disarm, hold stick for at least 0.5 sec
         self._mode_change_cycles = 0.5 * self._frequency
         self._mode_change_counter = 0
@@ -124,15 +132,10 @@ class FlightController(DTROS):
             Raw RC command to send to the flight controller to trigger the given mode.
 
         """
-        return {
-            DroneMode.DISARMED: self._rc_commands["disarm"],
-            DroneMode.ARMED: self._rc_commands["arm"],
-            DroneMode.IDLE: self._rc_commands["idle"],
-            DroneMode.FLYING: None,
-        }.get(mode)
+        return self._mode_to_rc_command.get(mode)
 
     def _needs_heartbeat(self, name: str) -> bool:
-        return self._heartbeats.get(name) in ["1", 1, True]
+        return self._heartbeats.get(name, False) is True
 
     def _switch_to_mode(self, mode: DroneMode):
         """ Update desired mode """
