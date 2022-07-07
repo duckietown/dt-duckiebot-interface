@@ -23,9 +23,12 @@ class MultiWii:
     RAW_IMU = 102
     RAW_IMU_STRUCT = struct.Struct('<hhhhhhhhh')
     POS_EST = 123
+    POS_EST_STRUCT = struct.Struct('<hhh')
     SERVO = 103
     MOTOR = 104
+    MOTOR_STRUCT = struct.Struct('<hhhhhhhh')
     RC = 105
+    RC_STRUCT = struct.Struct('<hhhhhhhhhhhh')
     RAW_GPS = 106
     COMP_GPS = 107
     ATTITUDE = 108
@@ -261,7 +264,7 @@ class MultiWii:
 
             return self.ident
         elif code == MultiWii.RC:
-            temp = struct.unpack('<' + 'hhhhhhhhhhhh', data)
+            temp = MultiWii.RC_STRUCT.unpack(data)
             self.rcChannels['cmd'] = code
             self.rcChannels['roll'] = temp[0]
             self.rcChannels['pitch'] = temp[1]
@@ -290,7 +293,7 @@ class MultiWii:
             self.rawIMU['timestamp'] = readTime
             return self.rawIMU
         elif code == MultiWii.POS_EST:
-            temp = struct.unpack('<' + 'hhh', data)
+            temp = MultiWii.POS_EST_STRUCT.unpack(data)
             self.posest["cmd"] = code
             self.posest['x'] = float(temp[0])
             self.posest['y'] = float(temp[1])
@@ -299,7 +302,7 @@ class MultiWii:
             self.posest['timestamp'] = time.time()
             return self.posest
         elif code == MultiWii.MOTOR:
-            temp = struct.unpack('<' + 'hhhhhhhh', data)
+            temp = MultiWii.MOTOR_STRUCT.unpack(data)
             self.motor['cmd'] = code
             self.motor['m1'] = float(temp[0])
             self.motor['m2'] = float(temp[1])
