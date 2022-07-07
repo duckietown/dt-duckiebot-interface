@@ -19,6 +19,7 @@ class MultiWii:
     """Multiwii Serial Protocol message ID"""
     """ notice: just attitude, rc channels and raw imu, set raw rc are implemented at the moment """
     IDENT = 100
+    IDENT_STRUCT = struct.Struct('<BBBI')
     STATUS = 101
     RAW_IMU = 102
     RAW_IMU_STRUCT = struct.Struct('<hhhhhhhhh')
@@ -188,16 +189,23 @@ class MultiWii:
         start = time.time()
 
         header = self.ser.read(5)
-        # print(header, type(header), header[0], type(header[0]))
         if len(header) == 0:
             print("timeout on receiveDataPacket")
             return None
         elif header[0] != ord(b'$'):
             print("Didn't get valid header: ", header, header[0])
+            print(header, type(header), header[0], type(header[0]), len(header))
+            print('----------------------------------------------------------')
             raise
 
-        datalength = MultiWii.codeS.unpack(header[-2:-1])[0]
-        code = MultiWii.codeS.unpack(header[-1:])[0]
+        try:
+            datalength = MultiWii.codeS.unpack(header[-2:-1])[0]
+            code = MultiWii.codeS.unpack(header[-1:])[0]
+        except Exception as e:
+            print("Unpack issue", e)
+            print(header, type(header), header[0], type(header[0]), len(header))
+            print("***********************************************************")
+
         data = self.ser.read(datalength)
         checksum = self.ser.read()
         self.checkChecksum(data, checksum)  # noop now.
@@ -254,7 +262,7 @@ class MultiWii:
             print("len", len(data))
 
         elif code == MultiWii.IDENT:
-            temp = struct.unpack('<' + 'BBBI', data)
+            temp = MultiWii.IDENT_STRUCT.unpack(data)
             self.ident["cmd"] = code
             self.ident["version"] = temp[0]
             self.ident["multitype"] = temp[1]
