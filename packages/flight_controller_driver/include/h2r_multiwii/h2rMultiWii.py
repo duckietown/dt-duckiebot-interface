@@ -99,11 +99,11 @@ class MultiWii:
                                  bytesize=serial.EIGHTBITS,
                                  parity=serial.PARITY_NONE,
                                  stopbits=serial.STOPBITS_ONE,
-                                 timeout=0.02,
+                                 timeout=0.1,
                                  xonxoff=False,
                                  rtscts=False,
                                  dsrdtr=False,
-                                 writeTimeout=0.05,
+                                 writeTimeout=0.1,
                                  )
 
     """Function for sending a command to the board."""
@@ -205,6 +205,7 @@ class MultiWii:
             print("Unpack issue", e)
             print(header, type(header), header[0], type(header[0]), len(header))
             print("***********************************************************")
+            raise e
 
         data = self.ser.read(datalength)
         checksum = self.ser.read()
@@ -248,8 +249,7 @@ class MultiWii:
             self.boxnames = temp
             return self.boxnames
         elif code == MultiWii.STATUS:
-            print(data)
-            temp = struct.unpack('<' + 'HHHIb', data)
+            temp = struct.unpack('<HHHIB', data)
             self.status['cycleTime'] = temp[0]
             self.status['i2c_errors_count'] = temp[1]
             self.status['sensor'] = temp[2]
