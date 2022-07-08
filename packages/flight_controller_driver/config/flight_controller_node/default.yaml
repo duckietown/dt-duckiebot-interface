@@ -7,11 +7,6 @@ frequency:
     imu: 30
     motors: 5
 
-accelerometer:
-    x: 0.3336673346693387
-    y: 0.22745490981963928
-    z: 512.6142284569138
-
 heartbeats:
     altitude: false
     joystick: true

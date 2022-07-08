@@ -62,7 +62,6 @@ class FlightController(DTROS):
         self._frequency = rospy.get_param("~frequency")
         self._heartbeats = rospy.get_param("~heartbeats")
         self._rc_commands = rospy.get_param("~rc_commands")
-        self._accelerometer_calib = rospy.get_param("~accelerometer")
         self._motor_command_range = rospy.get_param("~motor_command_range")
 
         # mode -> RC command mapping
