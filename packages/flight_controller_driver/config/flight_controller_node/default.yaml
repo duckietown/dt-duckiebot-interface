@@ -3,9 +3,9 @@ device:
     product_id: "ea60"
 
 frequency:
-    commands: 60
-    imu: 10
-    motors: 10
+    commands: 40
+    imu: 30
+    motors: 5
 
 accelerometer:
     x: 0.3336673346693387
@@ -13,7 +13,7 @@ accelerometer:
     z: 512.6142284569138
 
 heartbeats:
-    altitude: true
+    altitude: false
     joystick: true
     pid: false
     state_estimator: false
