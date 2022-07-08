@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+import copy
 import json
+import os
 import traceback
 from enum import IntEnum
 from threading import Semaphore
@@ -10,6 +12,7 @@ import rospy
 import sys
 import tf
 import time
+import yaml
 from duckietown_msgs.msg import DroneMode as DroneModeMsg, DroneControl, DroneMotorCommand
 
 from serial import SerialException
@@ -99,6 +102,36 @@ class FlightController(DTROS):
         self._motors_reminder = DTReminder(frequency=self._frequency["motors"])
         self._imu_reminder = DTReminder(frequency=self._frequency["imu"])
 
+        # store the command to send to the flight controller, initialize as disarmed
+        self._command = self.rc_command(DroneMode.DISARMED)
+        self._last_command = self.rc_command(DroneMode.DISARMED)
+
+        # accelerometer calibration
+        calibs_folder = '/data/config/calibrations/accelerometer'
+        os.makedirs(calibs_folder, exist_ok=True)
+        self._accelerometer_frame_id = os.path.join(rospy.get_namespace(), 'accelerometer')
+        self._calib_file = os.path.join(calibs_folder, f"{self._veh}.yaml")
+        self._default_accelerometer_calib = {
+            "x": 0,
+            "y": 0,
+            "z": 512
+        }
+
+        # locate calibration yaml file or use the default otherwise
+        if not os.path.isfile(self._calib_file):
+            self.logwarn(f"Calibration not found: {self._calib_file}.\n Using default instead.")
+            self._accelerometer_calib = copy.deepcopy(self._default_accelerometer_calib)
+        else:
+            with open(self._calib_file, "rt") as fin:
+                self._accelerometer_calib = yaml.safe_load(fin)
+        self.loginfo(f"Using accelerometer calibration: {self._accelerometer_calib}")
+
+        # accelerometer parameters
+        self.accRawToMss = 9.81 / self._accelerometer_calib["z"]
+        self.accZeroX = self._accelerometer_calib["x"] * self.accRawToMss
+        self.accZeroY = self._accelerometer_calib["y"] * self.accRawToMss
+        self.accZeroZ = self._accelerometer_calib["z"] * self.accRawToMss
+
         # publishers
         self._imu_pub = rospy.Publisher("~imu", Imu, queue_size=1)
         self._motor_pub = rospy.Publisher("~motors", DroneMotorCommand, queue_size=1)
@@ -118,16 +151,6 @@ class FlightController(DTROS):
         rospy.Subscriber("~heartbeat/joystick", Empty, self._heartbeat_joystick_cb, queue_size=1)
         rospy.Subscriber("~heartbeat/pid", Empty, self._heartbeat_pid_cb, queue_size=1)
         rospy.Subscriber("~heartbeat/state_estimator", Empty, self._heartbeat_state_estimator_cb, queue_size=1)
-
-        # store the command to send to the flight controller, initialize as disarmed
-        self._command = self.rc_command(DroneMode.DISARMED)
-        self._last_command = self.rc_command(DroneMode.DISARMED)
-
-        # accelerometer parameters
-        self.accRawToMss = 9.8 / self._accelerometer_calib["z"]
-        self.accZeroX = self._accelerometer_calib["x"] * self.accRawToMss
-        self.accZeroY = self._accelerometer_calib["y"] * self.accRawToMss
-        self.accZeroZ = self._accelerometer_calib["z"] * self.accRawToMss
 
     def rc_command(self, mode: DroneMode) -> Optional[List[int]]:
         """
@@ -184,13 +207,37 @@ class FlightController(DTROS):
                 self._board.receiveDataPacket()
                 # wait 2 secs
                 time.sleep(2)
-                # read IMU
-                try:
-                    self._board.getData(MultiWii.RAW_IMU)
-                except Exception as e:
-                    self.logwarn(f"Unable to get IMU data {e} after the IMU calibration")
-                    raise FCError(f"Unable to get IMU data {e} after the IMU calibration")
-                print("IMU Calibration:", json.dumps(self._board.rawIMU, indent=4, sort_keys=True))
+                # read IMU 10 times
+                data = copy.deepcopy(self._default_accelerometer_calib)
+                counter = 1
+                num_points = 20
+                for _ in range(num_points):
+                    # noinspection PyBroadException
+                    try:
+                        self._board.getData(MultiWii.RAW_IMU)
+                        data["x"] += self._board.rawIMU["ax"]
+                        data["y"] += self._board.rawIMU["ay"]
+                        data["z"] += self._board.rawIMU["az"]
+                        counter += 1
+                        time.sleep(1.0 / self._frequency["imu"])
+                    except Exception:
+                        pass
+                if counter < num_points * 0.5:
+                    msg = f"After the calibration, we only received {counter-1} datapoints " \
+                          f"out of {num_points} expected. Aborting calibration..."
+                    self.logwarn(msg)
+                    return TriggerResponse(success=False, message=msg)
+                # compute calibration
+                calibration = {
+                    "x": data["x"] / counter,
+                    "y": data["y"] / counter,
+                    "z": data["z"] / counter
+                }
+                with open(self._calib_file, "wt") as fout:
+                    yaml.safe_dump(calibration, fout)
+                # ---
+                print(f"IMU Calibration based on {counter-1}/{num_points} datapoints:",
+                      json.dumps(calibration, indent=4, sort_keys=True))
 
         except Exception as e:
             traceback.print_exc()
