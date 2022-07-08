@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-
+import json
 import traceback
 from enum import IntEnum
 from threading import Semaphore
@@ -182,6 +182,16 @@ class FlightController(DTROS):
             with self._lock:
                 self._board.sendCMD(0, MultiWii.ACC_CALIBRATION, [])
                 self._board.receiveDataPacket()
+                # wait 2 secs
+                time.sleep(2)
+                # read IMU
+                try:
+                    self._board.getData(MultiWii.RAW_IMU)
+                except Exception as e:
+                    self.logwarn(f"Unable to get IMU data {e} after the IMU calibration")
+                    raise FCError(f"Unable to get IMU data {e} after the IMU calibration")
+                print("IMU Calibration:", json.dumps(self._board.rawIMU, indent=4, sort_keys=True))
+
         except Exception as e:
             traceback.print_exc()
             return TriggerResponse(success=False, message=str(e))
