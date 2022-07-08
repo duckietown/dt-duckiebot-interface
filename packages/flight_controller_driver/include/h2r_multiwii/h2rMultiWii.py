@@ -74,7 +74,6 @@ class MultiWii:
     """Class initialization"""
 
     def __init__(self, serPort):
-
         """Global variables of data"""
         self.rcChannels = {'roll': 0, 'pitch': 0, 'yaw': 0, 'throttle': 0, 'elapsed': 0,
                            'timestamp': 0}
