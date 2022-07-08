@@ -1,4 +1,7 @@
-device: "/dev/ttyUSB0"
+device:
+    vendor_id: "10c4"
+    product_id: "ea60"
+
 frequency:
     commands: 60
     imu: 10

@@ -12,8 +12,10 @@ import tf
 import time
 from duckietown_msgs.msg import DroneMode as DroneModeMsg, DroneControl, DroneMotorCommand
 
-from sensor_msgs.msg import Imu, BatteryState
 from serial import SerialException
+from serial.tools.list_ports import grep as serial_grep
+
+from sensor_msgs.msg import Imu, BatteryState
 from std_msgs.msg import Header, Empty
 
 from duckietown_msgs.srv import SetDroneMode, SetDroneModeResponse
@@ -458,16 +460,31 @@ class FlightController(DTROS):
 
     def _open_board(self):
         """ Connect to the flight controller board """
+        vid_pid_match = "VID:PID={}:{}".format(self._device["vendor_id"], self._device["product_id"])
+        ports = serial_grep(vid_pid_match)
+        devs = [p.device for p in ports]  # ['/dev/ttyUSB0', ...]
+        self.loginfo(f"Devices matching VID:PID are: {devs}")
+        # make sure we have at least one device
+        if len(devs) <= 0:
+            self.logfatal(f"Cannot find devices with properties: {self._device}.")
+            sys.exit(1)
+        # make sure we have no more than one device
+        if len(devs) > 1:
+            self.logfatal(f"Found {len(devs)} devices with properties: {self._device}.")
+            sys.exit(2)
+        # get device path
+        dev = devs[0]
+        # try connecting
         try:
-            board = MultiWii(self._device)
+            board = MultiWii(dev)
         except SerialException:
-            self.logfatal(f"Cannot connect to the flight controller board at '{self._device}'. "
+            self.logfatal(f"Cannot connect to the flight controller board at '{dev}'. "
                           f"The USB is unplugged. Please check connection.")
-            sys.exit()
+            sys.exit(3)
         # make sure we have a connection to the board
         if board is None:
-            self.logfatal(f"The flight controller board could not be found at '{self._device}'")
-            sys.exit()
+            self.logfatal(f"The flight controller board could not be found at '{dev}'")
+            sys.exit(4)
         # ---
         self._board = board
 
