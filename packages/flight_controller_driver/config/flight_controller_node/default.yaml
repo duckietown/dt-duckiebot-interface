@@ -9,7 +9,7 @@ frequency:
 
 heartbeats:
     altitude: false
-    joystick: false
+    joystick: true
     pid: false
     state_estimator: false
 
