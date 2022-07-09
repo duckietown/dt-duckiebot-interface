@@ -30,7 +30,7 @@
         </group>
     </group>
 
-<!--     LED Emitter: reads ROS messages and commands the LEDs -->
+    <!-- LED Emitter: reads ROS messages and commands the LEDs -->
     <group if="$(eval arg('robot_type') in ['duckiebot', 'traffic_light'])">
         <include file="$(find led_emitter)/launch/led_emitter_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -38,21 +38,21 @@
         </include>
     </group>
 
-<!--     Joystick: reads from a physical joystick and produces ROS messages -->
-    <group if="$(eval arg('robot_type') == 'duckiebot')">
+    <!-- Joystick: reads from a physical joystick and produces ROS messages -->
+    <group if="$(eval arg('robot_type') in ['duckiebot', 'duckiedrone'])">
         <include file="$(find joystick)/launch/joystick_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="$(arg param_file_name)"/>
         </include>
 
-<!--         Wheel Drivers: reads ROS messages and spins the motors -->
+    <!-- Wheel Drivers: reads ROS messages and spins the motors -->
         <include file="$(find wheels_driver)/launch/wheels_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="param_file_name" value="$(arg param_file_name)"/>
         </include>
     </group>
 
-<!--     Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
+    <!-- Traffic Light (Traffic Light robot only): commands the LEDs of a traffic light -->
     <group if="$(eval arg('robot_type') in ['traffic_light'])">
         <remap from="led_emitter_node/custom_pattern" to="~custom_pattern"/>
         <include file="$(find traffic_light)/launch/traffic_light_node.launch">
@@ -60,9 +60,9 @@
         </include>
     </group>
 
-<!--     Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
+    <!-- Wheel Encoders (DB19 and above robot only): reads data from wheel encoders -->
     <group if="$(eval arg('robot_type') == 'duckiebot' and arg('robot_configuration') != 'DB18')">
-<!--         Left Wheel Encoder  -->
+        <!-- Left Wheel Encoder  -->
         <remap from="left_wheel_encoder_node/wheels_cmd_executed"
                to="wheels_driver_node/wheels_cmd_executed"/>
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
@@ -71,7 +71,7 @@
             <arg name="param_file_name" value="left_wheel"/>
         </include>
 
-<!--         Right Wheel Encoder  -->
+        <!-- Right Wheel Encoder  -->
         <remap from="right_wheel_encoder_node/wheels_cmd_executed"
                to="wheels_driver_node/wheels_cmd_executed"/>
         <include file="$(find wheel_encoder)/launch/wheel_encoder_node.launch">
@@ -142,6 +142,6 @@
         <include file="$(find flight_controller_driver)/launch/flight_controller_node.launch">
             <arg name="veh" value="$(arg veh)"/>
         </include>
-    </group> 
+    </group>
 
 </launch>
