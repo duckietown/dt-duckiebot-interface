@@ -132,7 +132,7 @@ class FlightController(DTROS):
         self._imu_pub = rospy.Publisher("~imu", Imu, queue_size=1)
         self._motor_pub = rospy.Publisher("~motors", DroneMotorCommand, queue_size=1)
         self._bat_pub = rospy.Publisher("~battery", BatteryState, queue_size=1)
-        self._mode_pub = rospy.Publisher("~mode/current", DroneModeMsg, queue_size=1, latch=True)
+        self._mode_pub = rospy.Publisher("~mode/current", DroneModeMsg, queue_size=10, latch=True)
         self._commands_pub = rospy.Publisher('~commands/executed', DroneControl, queue_size=1)
 
         # subscribers
