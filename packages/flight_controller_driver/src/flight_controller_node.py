@@ -126,10 +126,7 @@ class FlightController(DTROS):
         self.loginfo(f"Using accelerometer calibration: {self._accelerometer_calib}")
 
         # accelerometer parameters
-        self.accRawToMss = 9.81 / self._accelerometer_calib["z"]
-        self.accZeroX = self._accelerometer_calib["x"] * self.accRawToMss
-        self.accZeroY = self._accelerometer_calib["y"] * self.accRawToMss
-        self.accZeroZ = self._accelerometer_calib["z"] * self.accRawToMss
+        self._apply_calibration()
 
         # publishers
         self._imu_pub = rospy.Publisher("~imu", Imu, queue_size=1)
@@ -163,6 +160,12 @@ class FlightController(DTROS):
 
         """
         return self._mode_to_rc_command.get(mode)
+
+    def _apply_calibration(self):
+        self.accRawToMss = 9.81 / self._accelerometer_calib["z"]
+        self.accZeroX = self._accelerometer_calib["x"] * self.accRawToMss
+        self.accZeroY = self._accelerometer_calib["y"] * self.accRawToMss
+        self.accZeroZ = self._accelerometer_calib["z"] * self.accRawToMss
 
     def _needs_heartbeat(self, name: str) -> bool:
         return self._heartbeats.get(name, False) is True
@@ -234,6 +237,9 @@ class FlightController(DTROS):
                 }
                 with open(self._calib_file, "wt") as fout:
                     yaml.safe_dump(calibration, fout)
+                # apply calibration
+                self._accelerometer_calib = calibration
+                self._apply_calibration()
                 # ---
                 print(f"IMU Calibration based on {counter-1}/{num_points} datapoints:",
                       json.dumps(calibration, indent=4, sort_keys=True))
