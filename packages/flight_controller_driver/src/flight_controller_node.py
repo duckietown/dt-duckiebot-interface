@@ -58,9 +58,9 @@ class FlightController(DTROS):
         self._veh = rospy.get_param("~veh")
         self._device = rospy.get_param("~device")
         self._frequency = rospy.get_param("~frequency")
-        self._heartbeats = rospy.get_param("~heartbeats")
         self._rc_commands = rospy.get_param("~rc_commands")
         self._motor_command_range = rospy.get_param("~motor_command_range")
+        self._heartbeats = DTParam("~heartbeats", param_type=ParamType.DICT)
 
         # mode -> RC command mapping
         self._mode_to_rc_command = {
@@ -211,7 +211,7 @@ class FlightController(DTROS):
         self.accZeroZ = self._accelerometer_calib["z"] * self.accRawToMss
 
     def _needs_heartbeat(self, name: str) -> bool:
-        return self._heartbeats.get(name, False) is True
+        return self._heartbeats.value.get(name, False) is True
 
     def _switch_to_mode(self, mode: DroneMode, quiet: bool = False):
         """ Update desired mode """
