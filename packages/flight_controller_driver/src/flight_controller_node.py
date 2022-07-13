@@ -14,14 +14,11 @@ import tf
 import time
 import yaml
 from duckietown_msgs.msg import DroneMode as DroneModeMsg, DroneControl, DroneMotorCommand
-
+from duckietown_msgs.srv import SetDroneMode, SetDroneModeResponse
+from sensor_msgs.msg import Imu, BatteryState
 from serial import SerialException
 from serial.tools.list_ports import grep as serial_grep
-
-from sensor_msgs.msg import Imu, BatteryState
 from std_msgs.msg import Header, Empty
-
-from duckietown_msgs.srv import SetDroneMode, SetDroneModeResponse
 from std_srvs.srv import Trigger, TriggerResponse
 
 from dt_class_utils import DTReminder
@@ -103,26 +100,44 @@ class FlightController(DTROS):
 
         # obtain default PID values
         initial_rpy_pids: MultiWiiRpyPid = self._board.get_pids_rpy()
-        self._param_roll_P = DTParam('~roll_P', default=initial_rpy_pids.roll_p, param_type=ParamType.INT)
-        self._param_roll_P.register_update_callback(lambda: self._board.set_pids_rpy(roll_p=self._param_roll_P.value))
-        self._param_roll_I = DTParam('~roll_I', default=initial_rpy_pids.roll_i, param_type=ParamType.INT)
-        self._param_roll_I.register_update_callback(lambda: self._board.set_pids_rpy(roll_i=self._param_roll_I.value))
-        self._param_roll_D = DTParam('~roll_D', default=initial_rpy_pids.roll_d, param_type=ParamType.INT)
-        self._param_roll_D.register_update_callback(lambda: self._board.set_pids_rpy(roll_d=self._param_roll_D.value))
+        self._param_roll_P = DTParam('~roll_P', default=initial_rpy_pids.roll_p,
+                                     param_type=ParamType.INT)
+        self._param_roll_P.register_update_callback(
+            lambda: self._board.set_pids_rpy(roll_p=self._param_roll_P.value))
+        self._param_roll_I = DTParam('~roll_I', default=initial_rpy_pids.roll_i,
+                                     param_type=ParamType.INT)
+        self._param_roll_I.register_update_callback(
+            lambda: self._board.set_pids_rpy(roll_i=self._param_roll_I.value))
+        self._param_roll_D = DTParam('~roll_D', default=initial_rpy_pids.roll_d,
+                                     param_type=ParamType.INT)
+        self._param_roll_D.register_update_callback(
+            lambda: self._board.set_pids_rpy(roll_d=self._param_roll_D.value))
 
-        self._param_pitch_P = DTParam('~pitch_P', default=initial_rpy_pids.pitch_p, param_type=ParamType.INT)
-        self._param_pitch_P.register_update_callback(lambda: self._board.set_pids_rpy(pitch_p=self._param_pitch_P.value))
-        self._param_pitch_I = DTParam('~pitch_I', default=initial_rpy_pids.pitch_i, param_type=ParamType.INT)
-        self._param_pitch_I.register_update_callback(lambda: self._board.set_pids_rpy(pitch_i=self._param_pitch_I.value))
-        self._param_pitch_D = DTParam('~pitch_D', default=initial_rpy_pids.pitch_d, param_type=ParamType.INT)
-        self._param_pitch_D.register_update_callback(lambda: self._board.set_pids_rpy(pitch_d=self._param_pitch_D.value))
+        self._param_pitch_P = DTParam('~pitch_P', default=initial_rpy_pids.pitch_p,
+                                      param_type=ParamType.INT)
+        self._param_pitch_P.register_update_callback(
+            lambda: self._board.set_pids_rpy(pitch_p=self._param_pitch_P.value))
+        self._param_pitch_I = DTParam('~pitch_I', default=initial_rpy_pids.pitch_i,
+                                      param_type=ParamType.INT)
+        self._param_pitch_I.register_update_callback(
+            lambda: self._board.set_pids_rpy(pitch_i=self._param_pitch_I.value))
+        self._param_pitch_D = DTParam('~pitch_D', default=initial_rpy_pids.pitch_d,
+                                      param_type=ParamType.INT)
+        self._param_pitch_D.register_update_callback(
+            lambda: self._board.set_pids_rpy(pitch_d=self._param_pitch_D.value))
 
-        self._param_yaw_P = DTParam('~yaw_P', default=initial_rpy_pids.yaw_p, param_type=ParamType.INT)
-        self._param_yaw_P.register_update_callback(lambda: self._board.set_pids_rpy(yaw_p=self._param_yaw_P.value))
-        self._param_yaw_I = DTParam('~yaw_I', default=initial_rpy_pids.yaw_i, param_type=ParamType.INT)
-        self._param_yaw_I.register_update_callback(lambda: self._board.set_pids_rpy(yaw_i=self._param_yaw_I.value))
-        self._param_yaw_D = DTParam('~yaw_D', default=initial_rpy_pids.yaw_d, param_type=ParamType.INT)
-        self._param_yaw_D.register_update_callback(lambda: self._board.set_pids_rpy(yaw_d=self._param_yaw_D.value))
+        self._param_yaw_P = DTParam('~yaw_P', default=initial_rpy_pids.yaw_p,
+                                    param_type=ParamType.INT)
+        self._param_yaw_P.register_update_callback(
+            lambda: self._board.set_pids_rpy(yaw_p=self._param_yaw_P.value))
+        self._param_yaw_I = DTParam('~yaw_I', default=initial_rpy_pids.yaw_i,
+                                    param_type=ParamType.INT)
+        self._param_yaw_I.register_update_callback(
+            lambda: self._board.set_pids_rpy(yaw_i=self._param_yaw_I.value))
+        self._param_yaw_D = DTParam('~yaw_D', default=initial_rpy_pids.yaw_d,
+                                    param_type=ParamType.INT)
+        self._param_yaw_D.register_update_callback(
+            lambda: self._board.set_pids_rpy(yaw_d=self._param_yaw_D.value))
 
         # reminders
         self._motors_reminder = DTReminder(frequency=self._frequency["motors"])
@@ -173,7 +188,8 @@ class FlightController(DTROS):
         rospy.Subscriber("~heartbeat/altitude", Empty, self._heartbeat_altitude_cb, queue_size=1)
         rospy.Subscriber("~heartbeat/joystick", Empty, self._heartbeat_joystick_cb, queue_size=1)
         rospy.Subscriber("~heartbeat/pid", Empty, self._heartbeat_pid_cb, queue_size=1)
-        rospy.Subscriber("~heartbeat/state_estimator", Empty, self._heartbeat_state_estimator_cb, queue_size=1)
+        rospy.Subscriber("~heartbeat/state_estimator", Empty, self._heartbeat_state_estimator_cb,
+                         queue_size=1)
 
     def rc_command(self, mode: DroneMode) -> Optional[List[int]]:
         """
@@ -252,7 +268,7 @@ class FlightController(DTROS):
                     except Exception:
                         pass
                 if counter < num_points * 0.5:
-                    msg = f"After the calibration, we only received {counter-1} datapoints " \
+                    msg = f"After the calibration, we only received {counter - 1} datapoints " \
                           f"out of {num_points} expected. Aborting calibration..."
                     self.logwarn(msg)
                     return TriggerResponse(success=False, message=msg)
@@ -268,7 +284,7 @@ class FlightController(DTROS):
                 self._accelerometer_calib = calibration
                 self._apply_calibration()
                 # ---
-                print(f"IMU Calibration based on {counter-1}/{num_points} datapoints:",
+                print(f"IMU Calibration based on {counter - 1}/{num_points} datapoints:",
                       json.dumps(calibration, indent=4, sort_keys=True))
 
         except Exception as e:
@@ -549,7 +565,8 @@ class FlightController(DTROS):
 
     def _open_board(self):
         """ Connect to the flight controller board """
-        vid_pid_match = "VID:PID={}:{}".format(self._device["vendor_id"], self._device["product_id"])
+        vid_pid_match = "VID:PID={}:{}".format(self._device["vendor_id"],
+                                               self._device["product_id"])
         ports = serial_grep(vid_pid_match)
         devs = [p.device for p in ports]  # ['/dev/ttyUSB0', ...]
         self.loginfo(f"Devices matching VID:PID are: {devs}")
