@@ -25,8 +25,9 @@ from duckietown_msgs.srv import SetDroneMode, SetDroneModeResponse
 from std_srvs.srv import Trigger, TriggerResponse
 
 from dt_class_utils import DTReminder
-from duckietown.dtros import DTROS, NodeType
+from duckietown.dtros import DTROS, NodeType, DTParam, ParamType
 from h2r_multiwii import MultiWii
+from h2r_multiwii.types import MultiWiiRpyPid
 
 
 class DroneMode(IntEnum):
@@ -96,6 +97,32 @@ class FlightController(DTROS):
         self._open_board()
         if self._board is None:
             return
+
+        # fixme: if update PID param failed with FC, ros param and FC PIDs are inconsistent
+        # low priority. the params will be of the true values on next container start-up
+
+        # obtain default PID values
+        initial_rpy_pids: MultiWiiRpyPid = self._board.get_pids_rpy()
+        self._param_roll_P = DTParam('~roll_P', default=initial_rpy_pids.roll_p, param_type=ParamType.INT)
+        self._param_roll_P.register_update_callback(lambda: self._board.set_pids_rpy(roll_p=self._param_roll_P.value))
+        self._param_roll_I = DTParam('~roll_I', default=initial_rpy_pids.roll_i, param_type=ParamType.INT)
+        self._param_roll_I.register_update_callback(lambda: self._board.set_pids_rpy(roll_i=self._param_roll_I.value))
+        self._param_roll_D = DTParam('~roll_D', default=initial_rpy_pids.roll_d, param_type=ParamType.INT)
+        self._param_roll_D.register_update_callback(lambda: self._board.set_pids_rpy(roll_d=self._param_roll_D.value))
+
+        self._param_pitch_P = DTParam('~pitch_P', default=initial_rpy_pids.pitch_p, param_type=ParamType.INT)
+        self._param_pitch_P.register_update_callback(lambda: self._board.set_pids_rpy(pitch_p=self._param_pitch_P.value))
+        self._param_pitch_I = DTParam('~pitch_I', default=initial_rpy_pids.pitch_i, param_type=ParamType.INT)
+        self._param_pitch_I.register_update_callback(lambda: self._board.set_pids_rpy(pitch_i=self._param_pitch_I.value))
+        self._param_pitch_D = DTParam('~pitch_D', default=initial_rpy_pids.pitch_d, param_type=ParamType.INT)
+        self._param_pitch_D.register_update_callback(lambda: self._board.set_pids_rpy(pitch_d=self._param_pitch_D.value))
+
+        self._param_yaw_P = DTParam('~yaw_P', default=initial_rpy_pids.yaw_p, param_type=ParamType.INT)
+        self._param_yaw_P.register_update_callback(lambda: self._board.set_pids_rpy(yaw_p=self._param_yaw_P.value))
+        self._param_yaw_I = DTParam('~yaw_I', default=initial_rpy_pids.yaw_i, param_type=ParamType.INT)
+        self._param_yaw_I.register_update_callback(lambda: self._board.set_pids_rpy(yaw_i=self._param_yaw_I.value))
+        self._param_yaw_D = DTParam('~yaw_D', default=initial_rpy_pids.yaw_d, param_type=ParamType.INT)
+        self._param_yaw_D.register_update_callback(lambda: self._board.set_pids_rpy(yaw_d=self._param_yaw_D.value))
 
         # reminders
         self._motors_reminder = DTReminder(frequency=self._frequency["motors"])
