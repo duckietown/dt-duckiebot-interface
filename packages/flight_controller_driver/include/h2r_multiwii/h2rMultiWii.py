@@ -16,7 +16,7 @@ import yaml
 import json
 from typing import Literal, Optional
 
-from .types import MultiWiiRpyPid
+from h2r_multiwii.types import MultiWiiRpyPid
 
 
 class MultiWii:
@@ -39,10 +39,11 @@ class MultiWii:
     ATTITUDE = 108
     ATTITUDE_STRUCT = struct.Struct('<hhh')
     ALTITUDE = 109
+    ALTITUDE_STRUCT = struct.Struct('<ih')
     ANALOG = 110
     RC_TUNING = 111
     PID = 112
-    PID_STRUCT = struct.Struct('<bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb')
+    PID_STRUCT = struct.Struct('<BBBBBBBBBBBBBBBBBBBBBBBBBBBBBB')
     BOX = 113
     MISC = 114
     MOTOR_PINS = 115
@@ -54,7 +55,7 @@ class MultiWii:
     SET_RAW_RC = 200
     SET_RAW_GPS = 201
     SET_PID = 202
-    SET_PID_STRUCT = struct.Struct('<2B%db' % 30)
+    SET_PID_STRUCT = struct.Struct('<2B%dB' % 30)
     SET_BOX = 203
     SET_RC_TUNING = 204
     ACC_CALIBRATION = 205
@@ -468,8 +469,15 @@ class MultiWii:
                 i += 1
 
             return self.pids
+        elif code == MultiWii.ALTITUDE:
+            temp = MultiWii.ALTITUDE_STRUCT.unpack(data)
+            return {
+                'EST_ALT': temp[0],
+                'VARIO': temp[1],
+            }
         else:
-            print("No return error!: %d" % code)
+            # print("No return error!: %d" % code)
+            print(f"[Unhandled data from FC in h2rMultiWii] code: {code} - data: {data}")
             raise
 
     """ Implement me to check the checksum. """
