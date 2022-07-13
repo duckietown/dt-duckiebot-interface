@@ -21,7 +21,7 @@ class ToFDriver(ToFDriverAbs):
         self._sensor.start_ranging(self._accuracy.mode)
 
     def get_distance(self) -> float:
-        return self._sensor.get_distance()
+        return max(0, self._sensor.get_distance())
 
     def stop(self):
         self._sensor.stop_ranging()
