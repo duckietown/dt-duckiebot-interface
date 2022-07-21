@@ -47,9 +47,9 @@ ENV DT_REPO_PATH "${REPO_PATH}"
 ENV DT_LAUNCH_PATH "${LAUNCH_PATH}"
 ENV DT_LAUNCHER "${LAUNCHER}"
 
-RUN apt-key adv \
-    --keyserver hkp://keyserver.ubuntu.com:80 \
-    --recv-keys F42ED6FBAB17C654
+# configure arch-specific environment
+COPY assets/setup/by-arch/${ARCH} /tmp/.setup-by-arch
+RUN /tmp/.setup-by-arch/setup.sh
 
 # install apt dependencies
 COPY ./dependencies-apt.txt "${REPO_PATH}/"
@@ -65,6 +65,15 @@ RUN python3 -m pip install  -r ${REPO_PATH}/dependencies-py3.txt
 
 # copy the source code
 COPY ./packages "${REPO_PATH}/packages"
+
+# on arm64v8, we can use the raspicam_node package as well
+RUN if [ "${ARCH}" = "arm64v8" ] ; then \
+    git clone \
+        --branch 0.5.0.duckietown.0 \
+        --depth 1 \
+        https://github.com/duckietown/raspicam_node \
+        "${REPO_PATH}/packages/raspicam_node" ; \
+    fi
 
 # build packages
 RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
@@ -93,7 +102,7 @@ LABEL org.duckietown.label.module.type="${REPO_NAME}" \
 # <==================================================
 
 # force reinstall RPi.GPIO to remove nVidia's dummy RPi libraries
-RUN python3 -m pip install --ignore-installed --force-reinstall RPi.GPIO
+RUN pip3 install --ignore-installed --force-reinstall RPi.GPIO
 
 # this is necessary for the camera pipeline to work on the Jetson Nano
 COPY assets/etc/ld.so.conf.d/nvidia-tegra.conf /etc/ld.so.conf.d/nvidia-tegra.conf

@@ -22,10 +22,18 @@
 
     <!-- Camera Node: reads frames from a physical camera and produces ROS messages -->
     <group unless="$(arg camera_disabled)">
-        <group if="$(eval arg('robot_type') in ['duckiebot', 'watchtower', 'traffic_light', 'duckiedrone'])">
+        <group if="$(eval arg('robot_type') in ['duckiebot', 'watchtower', 'traffic_light'])">
             <include file="$(find camera_driver)/launch/camera_node.launch">
                 <arg name="veh" value="$(arg veh)"/>
                 <arg name="param_file_name" value="$(arg robot_type)"/>
+            </include>
+        </group>
+
+        <group if="$(eval arg('robot_type') in ['duckiedrone'])">
+            <include file="$(find raspicam_node)/launch/camera_node.launch">
+                <arg name="veh" value="$(arg veh)"/>
+                <arg name="param_file_name" value="$(arg robot_type)"/>
+                <arg name="enable_imv" value="true"/>
             </include>
         </group>
     </group>
