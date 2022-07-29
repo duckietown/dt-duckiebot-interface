@@ -142,6 +142,7 @@ class FlightController(DTROS):
         # reminders
         self._motors_reminder = DTReminder(frequency=self._frequency["motors"])
         self._imu_reminder = DTReminder(frequency=self._frequency["imu"])
+        self._battery_reminder = DTReminder(frequency=self._frequency["battery"])
 
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self.rc_command(DroneMode.DISARMED)
@@ -299,6 +300,21 @@ class FlightController(DTROS):
             # compile command to be sent to the flight controller board via MultiWii
             self._command = [int(msg.roll), int(msg.pitch), int(msg.yaw), int(msg.throttle)]
 
+    def _read_battery_status(self):
+        try:
+            analog = self._board.getData(MultiWii.ANALOG)
+            voltage = analog['vbat'] / 10.0  # reading scale
+            assert voltage >= 0, f"Voltage reading {voltage} is invalid"
+        except Exception as e:
+            self.logwarn(f"Unable to get Battery data {e}, retry...")
+            raise FCError(f"Unable to get Battery data {e}, retry...")
+
+        msg = BatteryState()
+        msg.header = Header(stamp=rospy.Time.now())
+        msg.voltage = voltage
+        msg.present = True if voltage > 6.0 else False  # ~5V: power from Pi | 7V to 12.6V: power from battery
+        return msg
+
     def run(self):
         # noinspection PyBroadException
         try:
@@ -325,6 +341,11 @@ class FlightController(DTROS):
                         if self._motors_reminder.is_time():
                             motor_msg = self._read_motor_pwm_signals()
                             self._motor_pub.publish(motor_msg)
+
+                        # read battery status
+                        if self._battery_reminder.is_time():
+                            bat_msg = self._read_battery_status()
+                            self._bat_pub.publish(bat_msg)
 
                         # update and send the flight commands to the board
                         self._compute_flight_commands()

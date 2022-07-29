@@ -6,6 +6,7 @@ frequency:
     commands: 40
     imu: 30
     motors: 5
+    battery: 1
 
 heartbeats:
     altitude: true
