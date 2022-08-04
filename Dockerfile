@@ -69,7 +69,7 @@ COPY ./packages "${REPO_PATH}/packages"
 # on arm64v8, we can use the raspicam_node package as well
 RUN if [ "${ARCH}" = "arm64v8" ] ; then \
     git clone \
-        --branch 0.5.0.duckietown.0 \
+        --branch 0.5.0.duckietown.1 \
         --depth 1 \
         https://github.com/duckietown/raspicam_node \
         "${REPO_PATH}/packages/raspicam_node" ; \
