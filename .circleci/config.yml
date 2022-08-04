@@ -15,7 +15,7 @@ workflows:
           branches:
             ignore: /daffy-staging.*/
 jobs:
-  build: &build
+  build_template: &build_template
     docker:
     - image: ${DOCKER_REGISTRY}/duckietown/aido-submission-ci-test:daffy-amd64
       auth:
@@ -65,7 +65,5 @@ jobs:
     - store_artifacts:
         path: html/package.tgz
         destination: out/package.tgz
-  build-daffy-prod: *build
-  build-daffy-staging: *build
-
-
+  build-daffy-prod: *build_template
+  build-daffy-staging: *build_template
