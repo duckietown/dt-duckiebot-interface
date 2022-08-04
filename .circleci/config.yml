@@ -61,7 +61,11 @@ jobs:
     - store_artifacts:
         path: html
         destination: html
-
+    - run:
+        name: Create a .tgz of  the folder `html` into html/package.tgz
+        command: |
+          rm -f html/package.tgz
+          tar -czf html/package.tgz html
     - store_artifacts:
         path: html/package.tgz
         destination: out/package.tgz
