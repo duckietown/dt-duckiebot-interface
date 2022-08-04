@@ -64,8 +64,12 @@ jobs:
     - run:
         name: Create a .tgz of  the folder `html` into html/package.tgz
         command: |
+          # XXX: this a workaround for bugs in devel docs
+          file html/package.tgz
           rm -f html/package.tgz
-          tar -czf html/package.tgz html
+          tar -czf package.tgz html
+          mv package.tgz html/package.tgz
+          file html/package.tgz
     - store_artifacts:
         path: html/package.tgz
         destination: out/package.tgz
