@@ -99,6 +99,8 @@ class FlightController(DTROS):
         # low priority. the params will be of the true values on next container start-up
 
         # obtain default PID values
+        #self._board.receiveDataPacket()
+        #self._board.receiveDataPacket()
         initial_rpy_pids: MultiWiiRpyPid = self._board.get_pids_rpy()
         self._param_roll_P = DTParam('~roll_P', default=initial_rpy_pids.roll_p,
                                      param_type=ParamType.INT)
@@ -301,13 +303,17 @@ class FlightController(DTROS):
             self._command = [int(msg.roll), int(msg.pitch), int(msg.yaw), int(msg.throttle)]
 
     def _read_battery_status(self):
-        try:
-            analog = self._board.getData(MultiWii.ANALOG)
-            voltage = analog['vbat'] / 10.0  # reading scale
-            assert voltage >= 0, f"Voltage reading {voltage} is invalid"
-        except Exception as e:
-            self.logwarn(f"Unable to get Battery data {e}, retry...")
-            raise FCError(f"Unable to get Battery data {e}, retry...")
+        self._board.getData(MultiWii.ANALOG)
+        
+        if self._board.analog is not None:
+            if 'vbat' in self._board.analog:
+                voltage = self._board.analog['vbat'] / 10.0  # reading scale
+            else:
+                self.logwarn("Unable to get Battery data: " + str(self._board.analog))
+                voltage = -1
+        else:
+            voltage = -1
+            self.logwarn(f"Unable to get Battery data, analog is none")
 
         msg = BatteryState()
         msg.header = Header(stamp=rospy.Time.now())
@@ -320,6 +326,7 @@ class FlightController(DTROS):
         try:
             while not self.is_shutdown:
                 # if the current mode is anything other than disarmed, preform as safety check
+                self._board.receiveDataPacket()
                 if self._requested_mode is not DroneMode.DISARMED:
                     # break the loop if a safety check has failed
                     if self._should_disarm():
@@ -356,7 +363,7 @@ class FlightController(DTROS):
                             self._mode_pub.publish(self._requested_mode)
                             self._last_published_mode = self._requested_mode
                     except FCError:
-                        self.logwarn("Could not talk to the flight controller")
+                        self.logwarn("Could not talk to the flight controller" + str(FCError))
                         continue
 
                 # sleep for the remainder of the loop time
