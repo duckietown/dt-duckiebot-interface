@@ -17,7 +17,7 @@ workflows:
 jobs:
   build_template: &build_template
     docker:
-    - image: ${DOCKER_REGISTRY}/duckietown/aido-submission-ci-test:daffy-amd64
+    - image: ${DOCKER_REGISTRY}/duckietown/aido-submission-ci-test:daffy
       auth:
         username: $DOCKER_USERNAME
         password: $DOCKER_PASSWORD
