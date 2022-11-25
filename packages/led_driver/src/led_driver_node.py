@@ -9,7 +9,7 @@ from duckietown_msgs.msg import LEDPattern
 from duckietown.dtros import DTROS, TopicType, NodeType
 
 
-class LEDDrivererNode(DTROS):
+class LEDDriverNode(DTROS):
     """Node for controlling LEDs.
 
     Calls the low-level functions of class :obj:`RGB_LED` that creates the PWM
@@ -99,7 +99,7 @@ class LEDDrivererNode(DTROS):
 
     def __init__(self, node_name):
         # Initialize the DTROS parent class
-        super(LEDdriverNode, self).__init__(node_name=node_name, node_type=NodeType.DRIVER)
+        super(LEDDriverNode, self).__init__(node_name=node_name, node_type=NodeType.DRIVER)
 
         self.led = RGB_LED()
 
@@ -127,6 +127,6 @@ class LEDDrivererNode(DTROS):
 
 if __name__ == "__main__":
     # Create the LEDdriverNode object
-    led_driver_node = LEDdriverNode(node_name="led_driver_node")
+    led_driver_node = LEDDriverNode(node_name="led_driver_node")
     # Keep it spinning to keep the node alive
     rospy.spin()
