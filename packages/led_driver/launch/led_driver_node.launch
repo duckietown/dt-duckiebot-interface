@@ -5,7 +5,7 @@
 	<arg name="robot_type" default="duckiebot" doc="Type of robot"/>
 
 	<group ns="$(arg veh)">
-	    <node pkg="led_emitter" type="led_driver_node.py"  name="$(arg node_name)" output="screen" required="true">
+	    <node pkg="led_driver" type="led_driver_node.py"  name="$(arg node_name)" output="screen" required="true">
 			<rosparam command="load" file="$(find led_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
 			<param name="robot_type" value="$(arg robot_type)"/>
 		</node>
