@@ -41,6 +41,10 @@ class LEDDriverNode(DTROS):
 
         self.led = RGB_LED()
 
+        start_color = [0, 0, 0]
+        for i in range(5):
+            self.led.setRGB(i, start_color)
+
         self.sub_topic = rospy.Subscriber("~led_pattern", LEDPattern, self.led_cb, queue_size=1)
 
         self.log("Initialized.")
