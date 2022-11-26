@@ -1,7 +1,7 @@
 # parameters
 ARG REPO_NAME="dt-duckiebot-interface"
 ARG DESCRIPTION="Contains all the drivers needed to communicate with sensors and actuators on a Duckietown device"
-ARG MAINTAINER="Andrea F. Daniele (afdaniele@ttic.edu)"
+ARG MAINTAINER="Andrea F. Daniele (afdaniele@duckietown.com)"
 # pick an icon from: https://fontawesome.com/v4.7.0/icons/
 ARG ICON="wrench"
 
