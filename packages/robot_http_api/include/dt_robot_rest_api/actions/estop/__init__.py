@@ -4,7 +4,7 @@ from duckietown_msgs.msg import BoolStamped
 from dt_robot_rest_api.utils import response_ok
 
 
-estop_bp = Blueprint('estop', __name__)
+estop_bp = Blueprint("estop", __name__)
 
 
 def _estop_cb(msg):
@@ -22,19 +22,19 @@ def _estop(value: bool):
     return response_ok({})
 
 
-@estop_bp.route('/estop/on')
+@estop_bp.route("/estop/on")
 def _estop_on():
     # return current API car_estop
     return _estop(True)
 
 
-@estop_bp.route('/estop/status')
+@estop_bp.route("/estop/status")
 def _estop_status():
     # return current API car_estop
-    return response_ok({'engaged': _estop_value})
+    return response_ok({"engaged": _estop_value})
 
 
-@estop_bp.route('/estop/off')
+@estop_bp.route("/estop/off")
 def _estop_off():
     # return current API car_estop
     return _estop(False)

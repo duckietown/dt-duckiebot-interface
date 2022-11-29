@@ -7,7 +7,6 @@ from .motor import Motor, MotorPins, MotorDirectionControl
 
 
 class AbsHAT(ABC):
-
     def __init__(self, address=0x60, frequency=1600):
         # default I2C address of the HAT
         self._i2caddr = address
@@ -32,8 +31,10 @@ class HATv1(AbsHAT):
 
     def get_motor(self, num: int, name: str) -> Motor:
         if num not in self._MOTOR_NUM_TO_PINS:
-            raise ValueError(f'Motor num `{num}` not supported. '
-                             f'Possible choices are `{self._MOTOR_NUM_TO_PINS.keys()}`.')
+            raise ValueError(
+                f"Motor num `{num}` not supported. "
+                f"Possible choices are `{self._MOTOR_NUM_TO_PINS.keys()}`."
+            )
         pins = self._MOTOR_NUM_TO_PINS[num]
         return Motor(name, self._pwm, pins.in1, pins.in2, pins.pwm, control=pins.control)
 
@@ -45,5 +46,5 @@ class HATv2(HATv1):
 class HATv3(HATv2):
     _MOTOR_NUM_TO_PINS: Dict[int, MotorPins] = {
         1: MotorPins(10, 9, 8, MotorDirectionControl.PWM),
-        2: MotorPins(33, 31, 13, MotorDirectionControl.GPIO)
+        2: MotorPins(33, 31, 13, MotorDirectionControl.GPIO),
     }

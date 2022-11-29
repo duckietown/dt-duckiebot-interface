@@ -34,10 +34,7 @@ class TrafficLightNode(DTROS):
 
     def __init__(self, node_name):
         # Initialize the DTROS parent class
-        super(TrafficLightNode, self).__init__(
-            node_name=node_name,
-            node_type=NodeType.COMMUNICATION
-        )
+        super(TrafficLightNode, self).__init__(node_name=node_name, node_type=NodeType.COMMUNICATION)
 
         # Import protocols
         self._number_leds = rospy.get_param("~number_leds")
@@ -51,45 +48,41 @@ class TrafficLightNode(DTROS):
         cycle_duration = self._green_time + self._all_red_time
 
         # Create the color mask
-        self.color_mask = [0]*5
-        self.color_mask[0:self._number_leds] = [1]*self._number_leds
+        self.color_mask = [0] * 5
+        self.color_mask[0 : self._number_leds] = [1] * self._number_leds
 
         # Function mapping to LEDEmitterNode's `set_custom_pattern` service
         self.changePattern = rospy.ServiceProxy(
-            apply_namespace('led_emitter_node/set_custom_pattern', ns_level=1),
-            SetCustomLEDPattern
+            apply_namespace("led_emitter_node/set_custom_pattern", ns_level=1), SetCustomLEDPattern
         )
 
         # Start a timer that will regularly call a method that changes
         # the direction that get green light
-        self.traffic_cycle = rospy.Timer(
-            rospy.Duration(cycle_duration),
-            self.change_direction
-        )
+        self.traffic_cycle = rospy.Timer(rospy.Duration(cycle_duration), self.change_direction)
 
         self.log("Initialized.")
 
     def change_direction(self, event):
         """Callback changing direction of green light.
 
-            The callback iterates through the LEDs of a traffic light and
-            generates an LEDPattern message accordingly. The green light blinks
-            at the defined frequency, while the red light stays static. After
-            the green light blinks according to protocol, there is a dead zone
-            in which all directions are on red. The message is published as a
-            special pattern to the led_emitter_node.
+        The callback iterates through the LEDs of a traffic light and
+        generates an LEDPattern message accordingly. The green light blinks
+        at the defined frequency, while the red light stays static. After
+        the green light blinks according to protocol, there is a dead zone
+        in which all directions are on red. The message is published as a
+        special pattern to the led_emitter_node.
         """
         # Move to next light in list
         self.green_idx = (self.green_idx + 1) % self._number_leds
         green_LED = self._activation_order[self.green_idx]
 
         # Only blink the green LED
-        frequency_mask = [0]*5
+        frequency_mask = [0] * 5
         frequency_mask[green_LED] = 1
 
         # Create Protocol (we fake 5 LEDs, but the last will not be updated)
-        color_list = ['red'] * 5
-        color_list[green_LED] = 'green'
+        color_list = ["red"] * 5
+        color_list[green_LED] = "green"
 
         # Build message
         pattern_msg = LEDPattern()
@@ -104,7 +97,7 @@ class TrafficLightNode(DTROS):
         rospy.sleep(self._green_time)
 
         # Turn all on red for safety
-        pattern_msg.color_list = ['red'] * 5
+        pattern_msg.color_list = ["red"] * 5
         pattern_msg.frequency = 0
         self.changePattern(pattern_msg)
 
@@ -112,18 +105,18 @@ class TrafficLightNode(DTROS):
     def to_led_order(unordered_list):
         """Change ordering from successive (0,1,2,3,4) to the one expected by the led emitter (0,4,1,3,2)
 
-            Args:
-                unordered_list (:obj:`list`): List to be ordered.
-            Returns:
-                :obj: `list`: Permutated list of length ~number_leds.
+        Args:
+            unordered_list (:obj:`list`): List to be ordered.
+        Returns:
+            :obj: `list`: Permutated list of length ~number_leds.
         """
         ordering = [0, 4, 1, 3, 2]
         ordered_list = [unordered_list[i] for i in ordering]
         return ordered_list
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Initialize the node
-    traffic_light_node = TrafficLightNode(node_name='traffic_light')
+    traffic_light_node = TrafficLightNode(node_name="traffic_light")
     # Keep it spinning to keep the node alive
     rospy.spin()

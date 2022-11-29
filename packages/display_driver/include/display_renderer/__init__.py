@@ -3,10 +3,12 @@ from .page import ALL_PAGES
 from .roi import DisplayROI
 from .fragment import DisplayFragment
 from .text import monospace_screen
-from .renderer import AbsDisplayFragmentRenderer, \
-    TextFragmentRenderer, \
-    NumpyArrayFragmentRenderer, \
-    MonoImageFragmentRenderer
+from .renderer import (
+    AbsDisplayFragmentRenderer,
+    TextFragmentRenderer,
+    NumpyArrayFragmentRenderer,
+    MonoImageFragmentRenderer,
+)
 
 Z_SYSTEM = 200
 
