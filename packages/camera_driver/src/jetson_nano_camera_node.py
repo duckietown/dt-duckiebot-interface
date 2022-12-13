@@ -15,7 +15,7 @@ from camera_driver import AbsCameraNode
 from sensor_msgs.msg import CompressedImage
 
 
-CameraMode = namedtuple('CameraMode', 'id width height fps fov')
+CameraMode = namedtuple("CameraMode", "id width height fps fov")
 
 
 class JetsonNanoCameraNode(AbsCameraNode):
@@ -25,26 +25,23 @@ class JetsonNanoCameraNode(AbsCameraNode):
 
     # each mode defines [width, height, fps]
     CAMERA_MODES = [
-        CameraMode(0, 3264, 2464, 21, 'full'),
-        CameraMode(1, 3264, 1848, 28, 'partial'),
-        CameraMode(2, 1920, 1080, 30, 'partial'),
-        CameraMode(3, 1640, 1232, 30, 'full'),
-        CameraMode(4, 1280, 720, 60, 'partial'),
-        CameraMode(5, 1280, 720, 120, 'partial'),
+        CameraMode(0, 3264, 2464, 21, "full"),
+        CameraMode(1, 3264, 1848, 28, "partial"),
+        CameraMode(2, 1920, 1080, 30, "partial"),
+        CameraMode(3, 1640, 1232, 30, "full"),
+        CameraMode(4, 1280, 720, 60, "partial"),
+        CameraMode(5, 1280, 720, 120, "partial"),
     ]
     # exposure time range (ns)
-    EXPOSURE_TIMERANGES = {
-        "sports": [100000, 80000000],
-        "night":  [100000, 1000000000]
-    }
+    EXPOSURE_TIMERANGES = {"sports": [100000, 80000000], "night": [100000, 1000000000]}
     DEFAULT_EXPOSURE_MODE = "sports"
 
     def __init__(self):
         # Initialize the DTROS parent class
         super(JetsonNanoCameraNode, self).__init__()
         # parameters
-        self._allow_partial_fov = rospy.get_param('~allow_partial_fov', False)
-        self._use_hw_acceleration = rospy.get_param('~use_hw_acceleration', False)
+        self._allow_partial_fov = rospy.get_param("~allow_partial_fov", False)
+        self._use_hw_acceleration = rospy.get_param("~use_hw_acceleration", False)
         # prepare gstreamer pipeline
         self._device = None
         # prepare data flow monitor
@@ -63,9 +60,11 @@ class JetsonNanoCameraNode(AbsCameraNode):
                 elapsed_since_last = time.time() - self._last_image_published_time
                 # reset nvargus if no images were received within the last 10 secs
                 if elapsed_since_last >= 10:
-                    self.loginfo(f"[data-flow-monitor]: Detected a period of "
-                                 f"{int(elapsed_since_last)} seconds during which no "
-                                 f"images were produced, restarting camera process.")
+                    self.loginfo(
+                        f"[data-flow-monitor]: Detected a period of "
+                        f"{int(elapsed_since_last)} seconds during which no "
+                        f"images were produced, restarting camera process."
+                    )
                     # find PID of the nvargus process
                     killed = False
                     for proc in psutil.process_iter():
@@ -79,8 +78,10 @@ class JetsonNanoCameraNode(AbsCameraNode):
                             if not process_bin.startswith("/usr/sbin/nvargus-daemon"):
                                 continue
                             # this is the one we are looking for
-                            self.loginfo(f"[data-flow-monitor]: Process 'nvargus-daemon' found "
-                                         f"with PID #{proc.pid}")
+                            self.loginfo(
+                                f"[data-flow-monitor]: Process 'nvargus-daemon' found "
+                                f"with PID #{proc.pid}"
+                            )
                             # - kill nvargus
                             self.loginfo(f"[data-flow-monitor]: Killing nvargus.")
                             proc.kill()
@@ -102,12 +103,12 @@ class JetsonNanoCameraNode(AbsCameraNode):
             time.sleep(1)
 
     def run(self):
-        """ Image capture procedure.
-        
-            Captures a frame from the /dev/video2 image sink and publishes it.
+        """Image capture procedure.
+
+        Captures a frame from the /dev/video2 image sink and publishes it.
         """
         if self._device is None or not self._device.isOpened():
-            self.logerr('Device was found closed')
+            self.logerr("Device was found closed")
             return
         # get first frame
         retval, image = self._device.read() if self._device else (False, None)
@@ -125,12 +126,12 @@ class JetsonNanoCameraNode(AbsCameraNode):
                     # without HW acceleration, the image is returned as RGB, encode on CPU
                     if image is not None:
                         image = np.uint8(image)
-                    image_msg = self._bridge.cv2_to_compressed_imgmsg(image, dst_format='jpeg')
+                    image_msg = self._bridge.cv2_to_compressed_imgmsg(image, dst_format="jpeg")
                 # publish the compressed image
                 self.publish(image_msg)
             # grab next frame
             retval, image = self._device.read() if self._device else (False, None)
-        self.loginfo('Camera worker stopped.')
+        self.loginfo("Camera worker stopped.")
 
     def setup(self):
         if self._device is None:
@@ -164,30 +165,31 @@ class JetsonNanoCameraNode(AbsCameraNode):
     def release(self, force: bool = False):
         if self._device is not None:
             if force:
-                self.loginfo('Forcing release of the GST pipeline...')
+                self.loginfo("Forcing release of the GST pipeline...")
             else:
-                self.loginfo('Releasing GST pipeline...')
+                self.loginfo("Releasing GST pipeline...")
                 try:
                     self._device.release()
                 except Exception:
                     pass
-        self.loginfo('GST pipeline released.')
+        self.loginfo("GST pipeline released.")
         self._device = None
 
     def gst_pipeline_string(self):
         res_w, res_h, fps = self._res_w.value, self._res_h.value, self._framerate.value
-        fov = ('full', 'partial') if self._allow_partial_fov else ('full',)
+        fov = ("full", "partial") if self._allow_partial_fov else ("full",)
         # find best mode
         camera_mode = self.get_mode(res_w, res_h, fps, fov)
         # cap frequency
         if fps > camera_mode.fps:
-            self.logwarn("Camera framerate({}fps) too high for the camera mode (max: {}fps), "
-                         "capping at {}fps.".format(fps, camera_mode.fps, camera_mode.fps))
+            self.logwarn(
+                "Camera framerate({}fps) too high for the camera mode (max: {}fps), "
+                "capping at {}fps.".format(fps, camera_mode.fps, camera_mode.fps)
+            )
             fps = camera_mode.fps
         # get exposure time
         exposure_time = self.EXPOSURE_TIMERANGES.get(
-            self._exposure_mode,
-            self.EXPOSURE_TIMERANGES[self.DEFAULT_EXPOSURE_MODE]
+            self._exposure_mode, self.EXPOSURE_TIMERANGES[self.DEFAULT_EXPOSURE_MODE]
         )
         # compile gst pipeline
         if self._use_hw_acceleration:
@@ -198,11 +200,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
                 nvjpegenc ! \
                 appsink \
             """.format(
-                camera_mode.id,
-                *exposure_time,
-                self._res_w.value,
-                self._res_h.value,
-                fps
+                camera_mode.id, *exposure_time, self._res_w.value, self._res_h.value, fps
             )
         else:
             gst_pipeline = """ \
@@ -214,11 +212,7 @@ class JetsonNanoCameraNode(AbsCameraNode):
                 videoconvert ! \
                 appsink \
             """.format(
-                camera_mode.id,
-                *exposure_time,
-                self._res_w.value,
-                self._res_h.value,
-                fps
+                camera_mode.id, *exposure_time, self._res_w.value, self._res_h.value, fps
             )
         # ---
         self.logdebug("Using GST pipeline: `{}`".format(gst_pipeline))
@@ -226,13 +220,14 @@ class JetsonNanoCameraNode(AbsCameraNode):
 
     def get_mode(self, width: int, height: int, fps: int, fov: Tuple[str]) -> CameraMode:
         candidates = {
-            m for m in self.CAMERA_MODES
+            m
+            for m in self.CAMERA_MODES
             if m.width >= width and m.height >= height and m.fps >= fps and m.fov in fov
         }.union({self.CAMERA_MODES[0]})
         return sorted(candidates, key=lambda m: m.id)[-1]
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # initialize the node
     camera_node = JetsonNanoCameraNode()
     camera_node.start()

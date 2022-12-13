@@ -41,26 +41,21 @@ class RaspberryPiCameraNode(AbsCameraNode):
             # clear buffer
             stream.seek(0)
             stream.truncate()
-        self.loginfo('Camera worker stopped.')
+        self.loginfo("Camera worker stopped.")
 
     def run(self):
-        """ Image capture procedure.
+        """Image capture procedure.
 
-            Captures a frame from the CSI camera and publishes it.
+        Captures a frame from the CSI camera and publishes it.
         """
         if self._device is None or self._device.closed:
-            self.logerr('Device was found closed')
+            self.logerr("Device was found closed")
             return
         # create infinite iterator
         processor = self._process_frame(self._stream)
         # start processing data from camera
         try:
-            self._device.capture_sequence(
-                processor,
-                'jpeg',
-                use_video_port=True,
-                splitter_port=0
-            )
+            self._device.capture_sequence(processor, "jpeg", use_video_port=True, splitter_port=0)
         except StopIteration:
             pass
 
@@ -73,16 +68,16 @@ class RaspberryPiCameraNode(AbsCameraNode):
 
     def release(self, force: bool = False):
         if self._device is not None:
-            self.loginfo('Releasing CSI camera...')
+            self.loginfo("Releasing CSI camera...")
             try:
                 self._device.close()
             except Exception:
                 pass
-            self.loginfo('CSI camera released.')
+            self.loginfo("CSI camera released.")
         self._device = None
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # initialize the node
     camera_node = RaspberryPiCameraNode()
     camera_node.start()

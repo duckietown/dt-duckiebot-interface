@@ -36,20 +36,13 @@ class ButtonDriverNode(DTROS):
     _TIME_HOLD_10S = 10
 
     def __init__(self):
-        super(ButtonDriverNode, self).__init__(
-            node_name='button_driver_node',
-            node_type=NodeType.DRIVER
-        )
+        super(ButtonDriverNode, self).__init__(node_name="button_driver_node", node_type=NodeType.DRIVER)
         # get parameters
-        self._led_gpio_pin = rospy.get_param('~led_gpio_pin')
-        self._signal_gpio_pin = rospy.get_param('~signal_gpio_pin')
+        self._led_gpio_pin = rospy.get_param("~led_gpio_pin")
+        self._signal_gpio_pin = rospy.get_param("~signal_gpio_pin")
         # create publishers
         self._pub = rospy.Publisher(
-            "~event",
-            ButtonEventMsg,
-            queue_size=1,
-            dt_topic_type=TopicType.DRIVER,
-            dt_help="Button event"
+            "~event", ButtonEventMsg, queue_size=1, dt_topic_type=TopicType.DRIVER, dt_help="Button event"
         )
         # create button driver
         self._button = ButtonDriver(self._led_gpio_pin, self._signal_gpio_pin, self._event_cb)
@@ -61,7 +54,7 @@ class ButtonDriverNode(DTROS):
             DisplayFragment,
             queue_size=1,
             dt_topic_type=TopicType.VISUALIZATION,
-            dt_help="Fragments to display on the display"
+            dt_help="Fragments to display on the display",
         )
         # create event holder
         self._ongoing_event = None
@@ -119,7 +112,7 @@ class ButtonDriverNode(DTROS):
                 resp = srv(msg)
                 self.loginfo(str(resp))
             except rospy.ServiceException as e:
-                # not a big deal if failed this 
+                # not a big deal if failed this
                 self.logerr("LED shutdown service call failed {}".format(e))
 
             time.sleep(1)
@@ -129,28 +122,24 @@ class ButtonDriverNode(DTROS):
                 self.logerr("Could not initialize the shutdown sequence")
 
     def on_shutdown(self):
-        if hasattr(self, '_button'):
+        if hasattr(self, "_button"):
             self._button.shutdown()
 
 
 class BatteryShutdownConfirmationRenderer(MonoImageFragmentRenderer):
-
     def __init__(self):
         super(BatteryShutdownConfirmationRenderer, self).__init__(
-            name=f'__battery_shutdown_confirmation__',
+            name=f"__battery_shutdown_confirmation__",
             page=PAGE_SHUTDOWN,
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
             ttl=-1,  # on shutdown, just need one fixed screen
         )
 
-        contents = monospace_screen(
-            (self.roi.h, self.roi.w),
-            "Shutting down", scale='hfill', align='center'
-        )
-        self.data[:,:] = contents 
+        contents = monospace_screen((self.roi.h, self.roi.w), "Shutting down", scale="hfill", align="center")
+        self.data[:, :] = contents
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     node = ButtonDriverNode()
     rospy.spin()
