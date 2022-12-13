@@ -30,6 +30,7 @@
 
     <!-- LED Driver: reads ROS messages and commands the LEDs -->
     <group if="$(eval arg('robot_type') in ['duckiebot', 'traffic_light'])">
+        <remap from="led_driver_node/led_pattern" to="led_emitter_node/led_pattern"/>
         <include file="$(find led_driver)/launch/led_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="robot_type" value="$(arg robot_type)"/>
