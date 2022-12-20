@@ -7,9 +7,12 @@ import numpy as np
 from threading import Thread
 
 from abc import ABC, abstractmethod
-from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
+
+# NOTE: it is important to import cv2 before cvbridge
+import cv2
+from cv_bridge import CvBridge
 
 from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
 
