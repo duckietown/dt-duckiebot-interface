@@ -1,46 +1,77 @@
+# TEMPLATED
 version: 2.1
-jobs:
+workflows:
+  version: 2
   build:
+    jobs:
+    - build-daffy-staging:
+        context: pip-staging
+        filters:
+          branches:
+            only: /daffy-staging.*/
+    - build-daffy-prod:
+        context: production
+        filters:
+          branches:
+            ignore: /daffy-staging.*/
+jobs:
+  build_template: &build_template
     docker:
-      - image: ubuntu:18.04
-
+    - image: ${DOCKER_REGISTRY}/duckietown/aido-submission-ci-test:daffy
+      auth:
+        username: $DOCKER_USERNAME
+        password: $DOCKER_PASSWORD
     steps:
-      - setup_remote_docker
+    - setup_remote_docker
+    - checkout
+    - run:
+        name: Install dts commands
+        command: |
+          pip install -U duckietown-shell
+          dts --debug --set-version "$DTS_VERSION" exit
+    - run:
+        name: config
+        command: |
+          dts --debug challenges config \
+            --docker-server "$DOCKER_REGISTRY" \
+            --docker-username "$DOCKER_USERNAME" \
+            --docker-password "$DOCKER_PASSWORD"
 
-      - run:
-          name: Install dependencies
-          command: |
-            apt update && \
-            apt install -y python3-pip git git-lfs curl && \
-            rm -rf /var/lib/apt/lists/*
+    - run:
+        name: Python stats
+        command: |
+          mkdir -p build-stats
+          env | sort | tee  build-stats/env.txt
+          pip list   | sort | tee  build-stats/pip-list.txt
+          pip freeze | sort | tee  build-stats/pip-freeze.txt
 
-      - run:
-          name: Install Docker
-          command: |
-            curl -fsSL https://get.docker.com -o get-docker.sh
-            sh get-docker.sh
-            rm get-docker.sh
+    - store_artifacts:
+        path: build-stats
+        destination: build-stats
 
-      - run:
-          name: Install dts
-          command: |
-            python3 -m pip install --no-cache-dir --user -U duckietown-shell
-            export PATH="$PATH:$HOME/.local/bin"
-            dts --set-version daffy exit
+    - run:
+        name: Pull the image
+        command: |
+          dts devel pull --tag daffy
 
-      - checkout
+    - run:
+        name: Build the docs
+        command: |
+          dts devel docs build --tag daffy -f
 
-      - run:
-          name: Build the docs
-          command: |
-            export PATH="$PATH:$HOME/.local/bin"
-            dts devel build --docs
-
-      - store_artifacts:
-          path: html/out
-          destination: html
-
-      - store_artifacts:
-          path: html/out/package.tgz
-          destination: out/package.tgz
-
+    - store_artifacts:
+        path: html
+        destination: html
+    - run:
+        name: Create a .tgz of  the folder `html` into html/package.tgz
+        command: |
+          # XXX: this a workaround for bugs in devel docs
+          rm -f html/package.tgz
+          tar -czf package.tgz -C html .
+          mv package.tgz html/package.tgz
+          tar tfz html/package.tgz
+    - store_artifacts:
+        path: html/package.tgz
+        destination: out/package.tgz
+  build-daffy-prod: *build_template
+  build-daffy-staging: *build_template

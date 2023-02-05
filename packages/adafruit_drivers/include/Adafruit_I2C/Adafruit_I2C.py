@@ -11,19 +11,19 @@ ROBOT_HARDWARE = get_device_hardware_brand()
 # Adafruit_I2C Class
 # ===========================================================================
 
-class Adafruit_I2C(object):
 
+class Adafruit_I2C(object):
     @staticmethod
     def getPiRevision():
         """Gets the version number of the Raspberry Pi board"""
         # Revision list available at: http://elinux.org/RPi_HardwareHistory#Board_Revision_History
         try:
-            with open('/proc/cpuinfo', 'r') as infile:
+            with open("/proc/cpuinfo", "r") as infile:
                 for line in infile:
                     # Match a line of the form "Revision : 0002" while ignoring extra
                     # info in front of the revsion (like 1000 when the Pi was over-volted).
-                    match = re.match('Revision\s+:\s+.*(\w{4})$', line)
-                    if match and match.group(1) in ['0000', '0002', '0003']:
+                    match = re.match("Revision\s+:\s+.*(\w{4})$", line)
+                    if match and match.group(1) in ["0000", "0002", "0003"]:
                         # Return revision 1 if revision ends with 0000, 0002 or 0003.
                         return 1
                     elif match:
@@ -48,7 +48,7 @@ class Adafruit_I2C(object):
             # Force I2C1 (512MB Pi's)
             self.bus = smbus.SMBus(1)
 
-        elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
+        elif ROBOT_HARDWARE in [DeviceHardwareBrand.RASPBERRY_PI, DeviceHardwareBrand.RASPBERRY_PI_64]:
             self.bus = smbus.SMBus(busnum if busnum >= 0 else Adafruit_I2C.getPiI2CBusNumber())
 
         else:
@@ -59,10 +59,10 @@ class Adafruit_I2C(object):
     def reverseByteOrder(self, data):
         """Reverses the byte order of an int (16-bit) or long (32-bit) value"""
         # Courtesy Vishal Sapre
-        byteCount = len(hex(data)[2:].replace('L', '')[::2])
+        byteCount = len(hex(data)[2:].replace("L", "")[::2])
         val = 0
         for i in range(byteCount):
-            val = (val << 8) | (data & 0xff)
+            val = (val << 8) | (data & 0xFF)
             data >>= 8
         return val
 
@@ -83,8 +83,7 @@ class Adafruit_I2C(object):
         try:
             self.bus.write_word_data(self.address, reg, value)
             if self.debug:
-                print(("I2C: Wrote 0x%02X to register pair 0x%02X,0x%02X" %
-                       (value, reg, reg + 1)))
+                print(("I2C: Wrote 0x%02X to register pair 0x%02X,0x%02X" % (value, reg, reg + 1)))
         except IOError:
             return self.errMsg()
 
@@ -112,8 +111,7 @@ class Adafruit_I2C(object):
         try:
             results = self.bus.read_i2c_block_data(self.address, reg, length)
             if self.debug:
-                print(("I2C: Device 0x%02X returned the following from reg 0x%02X" %
-                       (self.address, reg)))
+                print(("I2C: Device 0x%02X returned the following from reg 0x%02X" % (self.address, reg)))
                 print(results)
             return results
         except IOError:
@@ -124,8 +122,12 @@ class Adafruit_I2C(object):
         try:
             result = self.bus.read_byte_data(self.address, reg)
             if self.debug:
-                print(("I2C: Device 0x%02X returned 0x%02X from reg 0x%02X" %
-                       (self.address, result & 0xFF, reg)))
+                print(
+                    (
+                        "I2C: Device 0x%02X returned 0x%02X from reg 0x%02X"
+                        % (self.address, result & 0xFF, reg)
+                    )
+                )
             return result
         except IOError:
             return self.errMsg()
@@ -134,10 +136,15 @@ class Adafruit_I2C(object):
         """Reads a signed byte from the I2C device"""
         try:
             result = self.bus.read_byte_data(self.address, reg)
-            if result > 127: result -= 256
+            if result > 127:
+                result -= 256
             if self.debug:
-                print(("I2C: Device 0x%02X returned 0x%02X from reg 0x%02X" %
-                       (self.address, result & 0xFF, reg)))
+                print(
+                    (
+                        "I2C: Device 0x%02X returned 0x%02X from reg 0x%02X"
+                        % (self.address, result & 0xFF, reg)
+                    )
+                )
             return result
         except IOError:
             return self.errMsg()
@@ -151,8 +158,12 @@ class Adafruit_I2C(object):
             if not little_endian:
                 result = ((result << 8) & 0xFF00) + (result >> 8)
             if self.debug:
-                print(("I2C: Device 0x%02X returned 0x%04X from reg 0x%02X" % (
-                    self.address, result & 0xFFFF, reg)))
+                print(
+                    (
+                        "I2C: Device 0x%02X returned 0x%04X from reg 0x%02X"
+                        % (self.address, result & 0xFFFF, reg)
+                    )
+                )
             return result
         except IOError:
             return self.errMsg()

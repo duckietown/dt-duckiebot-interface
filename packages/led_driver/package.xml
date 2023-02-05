@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package>
-  <name>led_emitter</name>
+  <name>led_driver</name>
   <version>1.0.0</version>
-  <description>TODO: description for `led_emitter` package.</description>
+  <description>TODO: description for `led_driver` package.</description>
 
   <maintainer email='acensi@idsc.mavt.ethz.ch'>Andrea Censi</maintainer>
 

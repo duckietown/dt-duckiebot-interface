@@ -9,46 +9,42 @@ from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 from PIL import Image, ImageOps
 
 from display_renderer.text import monospace_screen
-from display_renderer import \
-    REGION_HEADER, \
-    REGION_BODY, \
-    DisplayROI, \
-    TextFragmentRenderer, \
-    AbsDisplayFragmentRenderer, \
-    Z_SYSTEM, \
-    ALL_PAGES, \
-    PAGE_HOME
+from display_renderer import (
+    REGION_HEADER,
+    REGION_BODY,
+    DisplayROI,
+    TextFragmentRenderer,
+    AbsDisplayFragmentRenderer,
+    Z_SYSTEM,
+    ALL_PAGES,
+    PAGE_HOME,
+)
 
 from duckietown.dtros import DTROS, NodeType, TopicType
 from duckietown.utils.image.pil import pil_to_np
 
 
 class HealthDisplayRendererNode(DTROS):
-
     def __init__(self):
         super(HealthDisplayRendererNode, self).__init__(
-            node_name='health_renderer_node',
-            node_type=NodeType.VISUALIZATION
+            node_name="health_renderer_node", node_type=NodeType.VISUALIZATION
         )
         # get parameters
-        self._veh = rospy.get_param('~veh')
-        self._assets_dir = rospy.get_param('~assets_dir')
-        self._frequency = rospy.get_param('~frequency')
+        self._veh = rospy.get_param("~veh")
+        self._assets_dir = rospy.get_param("~assets_dir")
+        self._frequency = rospy.get_param("~frequency")
         # create publisher
         self._pub = rospy.Publisher(
             "~fragments",
             DisplayFragmentMsg,
             queue_size=1,
             dt_topic_type=TopicType.VISUALIZATION,
-            dt_help="Fragments to display on the display"
+            dt_help="Fragments to display on the display",
         )
         # create renderers
         self._battery_indicator = BatteryIndicatorFragmentRenderer(self._assets_dir)
         self._usage_renderer = UsageStatsFragmentRenderer()
-        self._renderers = [
-            self._battery_indicator,
-            self._usage_renderer
-        ]
+        self._renderers = [self._battery_indicator, self._usage_renderer]
         # create loop
         self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / self._frequency), self._beat)
 
@@ -64,16 +60,16 @@ class HealthDisplayRendererNode(DTROS):
         except BaseException:
             return
         self._usage_renderer.set(
-            ctmp=health_data['temperature'],
-            pcpu=health_data['cpu']['percentage'],
-            pmem=health_data['memory']['percentage'],
-            pdsk=health_data['disk']['percentage'],
+            ctmp=health_data["temperature"],
+            pcpu=health_data["cpu"]["percentage"],
+            pmem=health_data["memory"]["percentage"],
+            pdsk=health_data["disk"]["percentage"],
         )
         self._battery_indicator.update(
-            present=health_data['battery']['present'],
+            present=health_data["battery"]["present"],
             # TODO: The device-health API now provides the field "charging:bool"
-            charging=health_data['battery']['input_voltage'] > 3.0,
-            percentage=health_data['battery']['percentage']
+            charging=health_data["battery"]["input_voltage"] > 3.0,
+            percentage=health_data["battery"]["percentage"],
         )
 
     def _publish(self):
@@ -82,37 +78,36 @@ class HealthDisplayRendererNode(DTROS):
 
 
 class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
-
     def __init__(self, assets_dir: str):
         super(BatteryIndicatorFragmentRenderer, self).__init__(
-            '__battery_indicator__',
+            "__battery_indicator__",
             page=ALL_PAGES,
             region=REGION_HEADER,
             roi=DisplayROI(90, 0, 38, 16),
-            z=Z_SYSTEM
+            z=Z_SYSTEM,
         )
         self._assets_dir = assets_dir
         self._percentage = 0
         self._charging = False
         self._present = False
         # load assets
-        _asset_path = lambda a: os.path.join(self._assets_dir, 'icons', f'{a}.png')
+        _asset_path = lambda a: os.path.join(self._assets_dir, "icons", f"{a}.png")
         self._assets = {
             asset: pil_to_np(ImageOps.grayscale(Image.open(_asset_path(asset))))
             for asset in [
-                'battery_not_found',
-                'battery_charging',
-                'battery_0',
-                'battery_1',
-                'battery_2',
-                'battery_3',
-                'battery_4',
-                'battery_5',
-                'battery_6',
-                'battery_7',
-                'battery_8',
-                'battery_9',
-                'battery_10',
+                "battery_not_found",
+                "battery_charging",
+                "battery_0",
+                "battery_1",
+                "battery_2",
+                "battery_3",
+                "battery_4",
+                "battery_5",
+                "battery_6",
+                "battery_7",
+                "battery_8",
+                "battery_9",
+                "battery_10",
             ]
         }
 
@@ -134,21 +129,21 @@ class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
             # draw text
             vshift_px = 2
             text_h, text_w = 14, self._roi.w - ico_w - ico_space
-            text_buf = monospace_screen((text_h, text_w), text, scale='fill')
-            self._buffer[vshift_px:vshift_px + text_h, ico_w + ico_space:] = text_buf
+            text_buf = monospace_screen((text_h, text_w), text, scale="fill")
+            self._buffer[vshift_px : vshift_px + text_h, ico_w + ico_space :] = text_buf
 
         # battery not found
         if not self._present:
-            _indicator('battery_not_found', 'NoBT')
+            _indicator("battery_not_found", "NoBT")
             return
         # battery charging
         if self._charging:
-            _icon = 'battery_charging'
+            _icon = "battery_charging"
         else:
-            dec = '%d' % (self._percentage / 10)
-            _icon = f'battery_{dec}'
+            dec = "%d" % (self._percentage / 10)
+            _icon = f"battery_{dec}"
         # battery discharging
-        _indicator(_icon, '%d%%' % self._percentage)
+        _indicator(_icon, "%d%%" % self._percentage)
 
 
 class UsageStatsFragmentRenderer(TextFragmentRenderer):
@@ -162,29 +157,39 @@ DISK |{pdsk_bar}| {pdsk}
 
     def __init__(self):
         super(UsageStatsFragmentRenderer, self).__init__(
-            '__usage_stats__',
+            "__usage_stats__",
             page=PAGE_HOME,
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
-            scale='fill'
+            scale="fill",
         )
         self._min_ctmp = 20
-        self._max_ctmp = 100
+        self._max_ctmp = 60
 
-    def set(self, ctmp: Union[str, int, float], pcpu: Union[str, int], pmem: Union[str, int],
-            pdsk: Union[str, int]):
-        ptmp = int(100 * (max(0, ctmp - self._min_ctmp) / (self._max_ctmp - self._min_ctmp))) \
-            if isinstance(ctmp, (int, float)) else 0
-        text = self.CANVAS.format(**{
-            'ctmp': self._fmt(ctmp, 'C'),
-            'pcpu': self._fmt(pcpu, '%'),
-            'pmem': self._fmt(pmem, '%'),
-            'pdsk': self._fmt(pdsk, '%'),
-            'ctmp_bar': self._bar(ptmp),
-            'pcpu_bar': self._bar(pcpu),
-            'pmem_bar': self._bar(pmem),
-            'pdsk_bar': self._bar(pdsk)
-        })
+    def set(
+        self,
+        ctmp: Union[str, int, float],
+        pcpu: Union[str, int],
+        pmem: Union[str, int],
+        pdsk: Union[str, int],
+    ):
+        ptmp = (
+            int(100 * (max(0, ctmp - self._min_ctmp) / (self._max_ctmp - self._min_ctmp)))
+            if isinstance(ctmp, (int, float))
+            else 0
+        )
+        text = self.CANVAS.format(
+            **{
+                "ctmp": self._fmt(ctmp, "C"),
+                "pcpu": self._fmt(pcpu, "%"),
+                "pmem": self._fmt(pmem, "%"),
+                "pdsk": self._fmt(pdsk, "%"),
+                "ctmp_bar": self._bar(ptmp),
+                "pcpu_bar": self._bar(pcpu),
+                "pmem_bar": self._bar(pmem),
+                "pdsk_bar": self._bar(pdsk),
+            }
+        )
         self.update(text)
 
     @staticmethod
@@ -202,6 +207,6 @@ DISK |{pdsk_bar}| {pdsk}
         return "|" * full + " " * (cls.BAR_LEN - full)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     node = HealthDisplayRendererNode()
     rospy.spin()

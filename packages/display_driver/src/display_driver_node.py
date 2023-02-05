@@ -39,20 +39,17 @@ class DisplayNode(DTROS):
         DisplayFragmentMsg.REGION_FULL: REGION_FULL,
         DisplayFragmentMsg.REGION_HEADER: REGION_HEADER,
         DisplayFragmentMsg.REGION_BODY: REGION_BODY,
-        DisplayFragmentMsg.REGION_FOOTER: REGION_FOOTER
+        DisplayFragmentMsg.REGION_FOOTER: REGION_FOOTER,
     }
     _MAX_FREQUENCY_HZ = 5
 
     def __init__(self):
-        super(DisplayNode, self).__init__(
-            node_name='display_driver_node',
-            node_type=NodeType.DRIVER
-        )
+        super(DisplayNode, self).__init__(node_name="display_driver_node", node_type=NodeType.DRIVER)
         # get parameters
-        self._veh = rospy.get_param('~veh')
-        self._i2c_bus = rospy.get_param('~bus', 1)
-        self._i2c_address = rospy.get_param('~address', 0x3C)
-        self._frequency = rospy.get_param('~frequency', 1)
+        self._veh = rospy.get_param("~veh")
+        self._i2c_bus = rospy.get_param("~bus", 1)
+        self._i2c_address = rospy.get_param("~address", 0x3C)
+        self._frequency = rospy.get_param("~frequency", 1)
         # create a display handler
         serial = i2c(port=self._i2c_bus, address=self._i2c_address)
         self._display = ssd1306(serial)
@@ -60,13 +57,13 @@ class DisplayNode(DTROS):
         self._page = PAGE_HOME
         self._pages = {PAGE_HOME}
         # create buffers
-        self._fragments = {
-            k: dict() for k in self._REGIONS
-        }
-        self._buffer = np.zeros((
-            self._REGIONS[DisplayFragmentMsg.REGION_FULL].height,
-            self._REGIONS[DisplayFragmentMsg.REGION_FULL].width),
-            dtype=np.uint8
+        self._fragments = {k: dict() for k in self._REGIONS}
+        self._buffer = np.zeros(
+            (
+                self._REGIONS[DisplayFragmentMsg.REGION_FULL].height,
+                self._REGIONS[DisplayFragmentMsg.REGION_FULL].width,
+            ),
+            dtype=np.uint8,
         )
         self._fragments_lock = Semaphore(1)
         self._device_lock = Semaphore(1)
@@ -76,16 +73,12 @@ class DisplayNode(DTROS):
             DisplayFragmentMsg,
             self._fragment_cb,
             queue_size=10,
-            buf_size='4M',
+            buf_size="4M",
             dt_topic_type=TopicType.DRIVER,
-            dt_help="Data to display on the display"
+            dt_help="Data to display on the display",
         )
         self._button_sub = rospy.Subscriber(
-            "~button",
-            ButtonEventMsg,
-            self._button_event_cb,
-            queue_size=1,
-            dt_help="Button event"
+            "~button", ButtonEventMsg, self._button_event_cb, queue_size=1, dt_help="Button event"
         )
         # create internal renderers
         self._pager_renderer = PagerFragmentRenderer()
@@ -149,8 +142,7 @@ class DisplayNode(DTROS):
         # list fragment for rendering
         with self._fragments_lock:
             self._fragments[msg.region][msg.id] = DisplayFragment(
-                data=img, roi=roi, page=msg.page, z=msg.z,
-                _ttl=msg.ttl, _time=msg.header.stamp.to_sec()
+                data=img, roi=roi, page=msg.page, z=msg.z, _ttl=msg.ttl, _time=msg.header.stamp.to_sec()
             )
         # force refresh if this fragment is on the current page
         if msg.page == self._page:
@@ -172,9 +164,11 @@ class DisplayNode(DTROS):
                 for fragment_id in copy.copy(set(fragments.keys())):
                     fragment = fragments[fragment_id]
                     if fragment.ttl() <= 0:
-                        self.logdebug(f"Fragment `{fragment_id}` on page `{fragment.page}`, "
-                                      f"region `{region}` w/ TTL `{fragment.given_ttl}` "
-                                      f"expired, remove!")
+                        self.logdebug(
+                            f"Fragment `{fragment_id}` on page `{fragment.page}`, "
+                            f"region `{region}` w/ TTL `{fragment.given_ttl}` "
+                            f"expired, remove!"
+                        )
                         del self._fragments[region][fragment_id]
                     if fragment.page != ALL_PAGES:
                         self._pages.add(fragment.page)
@@ -185,19 +179,16 @@ class DisplayNode(DTROS):
             # filter fragments by page
             data = {
                 region: [
-                    fragment for fragment in fragments.values()
-                    if fragment.page in [ALL_PAGES, self._page]
-                ] for region, fragments in self._fragments.items()
+                    fragment for fragment in fragments.values() if fragment.page in [ALL_PAGES, self._page]
+                ]
+                for region, fragments in self._fragments.items()
             }
         # add pager fragment
         self._pager_renderer.update(self._pages, self._page)
         if self._pager_renderer.page in [ALL_PAGES, self._page]:
             data[self._pager_renderer.region.id].append(self._pager_renderer.as_fragment())
         # sort fragments by z-index
-        data = {
-            region: sorted(fragments, key=lambda f: f.z)
-            for region, fragments in data.items()
-        }
+        data = {region: sorted(fragments, key=lambda f: f.z) for region, fragments in data.items()}
         # clear buffer
         self._buffer.fill(0)
         # render fragments
@@ -211,11 +202,11 @@ class DisplayNode(DTROS):
                 fx += region.x
                 fy += region.y
                 # update buffer
-                self._buffer[fy:fy + fh, fx:fx + fw] = fragment.data
+                self._buffer[fy : fy + fh, fx : fx + fw] = fragment.data
         # convert buffer to 1-byte pixel
-        buf = Image.fromarray(self._buffer, mode='L')
+        buf = Image.fromarray(self._buffer, mode="L")
         # convert 1-byte pixel to 1-bit pixel
-        buf = buf.convert(mode='1')
+        buf = buf.convert(mode="1")
         # display buffer
         with self._device_lock:
             try:
@@ -230,7 +221,7 @@ class DisplayNode(DTROS):
         # clear buffer
         self._buffer.fill(0)
         # render nothing
-        buf = Image.fromarray(self._buffer, mode='1')
+        buf = Image.fromarray(self._buffer, mode="1")
         self.loginfo("Clearing display...")
         with self._device_lock:
             try:
@@ -242,33 +233,36 @@ class DisplayNode(DTROS):
 class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
 
     SPACING_PX = 7
-    UNSELECTED_PAGE_ICON = np.array([
-        [0,       0,      0,      0,      0],
-        [0,       0,      0,      0,      0],
-        [0,       0,      0,      0,      0],
-        [0,     255,    255,    255,      0],
-    ])
-    SELECTED_PAGE_ICON = np.array([
-        [0,       0,      0,      0,      0],
-        [255,   255,    255,    255,    255],
-        [255,   255,    255,    255,    255],
-        [255,   255,    255,    255,    255]
-    ])
+    UNSELECTED_PAGE_ICON = np.array(
+        [
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0],
+            [0, 255, 255, 255, 0],
+        ]
+    )
+    SELECTED_PAGE_ICON = np.array(
+        [[0, 0, 0, 0, 0], [255, 255, 255, 255, 255], [255, 255, 255, 255, 255], [255, 255, 255, 255, 255]]
+    )
 
     def __init__(self):
         super(PagerFragmentRenderer, self).__init__(
-            'pager',
+            "pager",
             page=ALL_PAGES,
             region=REGION_FOOTER,
-            roi=DisplayROI(0, 0, REGION_FOOTER.width, REGION_FOOTER.height)
+            roi=DisplayROI(0, 0, REGION_FOOTER.width, REGION_FOOTER.height),
         )
         self._pages = {0}
         self._selected = 0
 
     def as_fragment(self):
         return DisplayFragment(
-            data=self.buffer, roi=self.roi, page=self._page, z=self._z,
-            _ttl=self._ttl, _time=rospy.Time.now().to_sec()
+            data=self.buffer,
+            roi=self.roi,
+            page=self._page,
+            z=self._z,
+            _ttl=self._ttl,
+            _time=rospy.Time.now().to_sec(),
         )
 
     def update(self, pages: Iterable[int], page: int):
@@ -286,10 +280,10 @@ class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
         offset = int(np.floor((cw - expected_w) * 0.5))
         for page in sorted(self._pages):
             icon = self.SELECTED_PAGE_ICON if page == self._selected else self.UNSELECTED_PAGE_ICON
-            self._buffer[:, offset:offset + sw] = icon
+            self._buffer[:, offset : offset + sw] = icon
             offset += sw + self.SPACING_PX
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     node = DisplayNode()
     rospy.spin()

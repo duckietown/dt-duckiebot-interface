@@ -3,12 +3,13 @@
 from enum import IntEnum
 
 from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+
 ROBOT_HARDWARE = get_device_hardware_brand()
 
 if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
     import Jetson.GPIO as GPIO
 
-elif ROBOT_HARDWARE == DeviceHardwareBrand.RASPBERRY_PI:
+elif ROBOT_HARDWARE in [DeviceHardwareBrand.RASPBERRY_PI, DeviceHardwareBrand.RASPBERRY_PI_64]:
     import RPi.GPIO as GPIO
 
 else:
@@ -35,10 +36,10 @@ class WheelEncoderDriver:
     def __init__(self, gpio_pin, callback):
         # valid gpio_pin
         if not 1 <= gpio_pin <= 40:
-            raise ValueError('The pin number must be within the range [1, 40].')
+            raise ValueError("The pin number must be within the range [1, 40].")
         # validate callback
         if not callable(callback):
-            raise ValueError('The callback object must be a callable object')
+            raise ValueError("The callback object must be a callable object")
         # configure GPIO pin
         self._gpio_pin = gpio_pin
         GPIO.setmode(GPIO.BCM)

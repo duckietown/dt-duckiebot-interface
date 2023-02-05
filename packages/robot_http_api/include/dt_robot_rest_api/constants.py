@@ -6,5 +6,5 @@ HTTP_PORTS = {
     RobotType.WATCHTOWER: 8091,
     RobotType.TRAFFIC_LIGHT: 8092,
     RobotType.DUCKIETOWN: 8093,
-    RobotType.DUCKIEDRONE: 8094
+    RobotType.DUCKIEDRONE: 8094,
 }

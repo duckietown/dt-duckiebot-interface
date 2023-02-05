@@ -55,32 +55,30 @@ class AbsCameraNode(ABC, DTROS):
     def __init__(self):
         # Initialize the DTROS parent class
         super(AbsCameraNode, self).__init__(
-            node_name='camera',
+            node_name="camera",
             node_type=NodeType.DRIVER,
-            help="Reads a stream of images from a camera and publishes the frames over ROS"
+            help="Reads a stream of images from a camera and publishes the frames over ROS",
         )
         # Add the node parameters to the parameters dictionary and load their default values
         self._res_w = DTParam(
-            '~res_w',
+            "~res_w",
             param_type=ParamType.INT,
-            help="Horizontal resolution (width) of the produced image frames."
+            help="Horizontal resolution (width) of the produced image frames.",
         )
         self._res_h = DTParam(
-            '~res_h',
+            "~res_h",
             param_type=ParamType.INT,
-            help="Vertical resolution (height) of the produced image frames."
+            help="Vertical resolution (height) of the produced image frames.",
         )
         self._framerate = DTParam(
-            '~framerate',
-            param_type=ParamType.INT,
-            help="Framerate at which images frames are produced"
+            "~framerate", param_type=ParamType.INT, help="Framerate at which images frames are produced"
         )
         self._exposure_mode = DTParam(
-            '~exposure_mode',
+            "~exposure_mode",
             param_type=ParamType.STRING,
             help="Exposure mode of the camera. Supported values are listed on "
-                 "https://picamera.readthedocs.io/en/release-1.13/"
-                 "api_camera.html#picamera.PiCamera.exposure_mode"
+            "https://picamera.readthedocs.io/en/release-1.13/"
+            "api_camera.html#picamera.PiCamera.exposure_mode",
         )
 
         # define parameters
@@ -90,14 +88,14 @@ class AbsCameraNode(ABC, DTROS):
         self._exposure_mode.register_update_callback(self.parameters_updated)
 
         # intrinsic calibration
-        self.cali_file_folder = '/data/config/calibrations/camera_intrinsic/'
-        self.frame_id = rospy.get_namespace().rstrip('/') + '/camera_optical_frame'
+        self.cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
+        self.frame_id = rospy.get_namespace().rstrip("/") + "/camera_optical_frame"
         self.cali_file = self.cali_file_folder + rospy.get_namespace().strip("/") + ".yaml"
 
         # locate calibration yaml file or use the default otherwise
         if not os.path.isfile(self.cali_file):
             self.logwarn("Calibration not found: %s.\n Using default instead." % self.cali_file)
-            self.cali_file = (self.cali_file_folder + "default.yaml")
+            self.cali_file = self.cali_file_folder + "default.yaml"
 
         # shutdown if no calibration file not found
         if not os.path.isfile(self.cali_file):
@@ -122,22 +120,23 @@ class AbsCameraNode(ABC, DTROS):
             CompressedImage,
             queue_size=1,
             dt_topic_type=TopicType.DRIVER,
-            dt_help="The stream of JPEG compressed images from the camera"
+            dt_help="The stream of JPEG compressed images from the camera",
         )
         self.pub_camera_info = rospy.Publisher(
             "~camera_info",
             CameraInfo,
             queue_size=1,
             dt_topic_type=TopicType.DRIVER,
-            dt_help="The stream of camera calibration information, the message content is fixed"
+            dt_help="The stream of camera calibration information, the message content is fixed",
         )
 
         # Setup service (for camera_calibration)
         self.srv_set_camera_info = rospy.Service(
-            "~set_camera_info",
-            SetCameraInfo,
-            self.srv_set_camera_info_cb
+            "~set_camera_info", SetCameraInfo, self.srv_set_camera_info_cb
         )
+
+        # monitor
+        self._last_image_published_time = 0
         # ---
         self.log("[AbsCameraNode]: Initialized.")
 
@@ -161,6 +160,7 @@ class AbsCameraNode(ABC, DTROS):
         self.pub_img.publish(image_msg)
         # publish camera info
         self.pub_camera_info.publish(self.current_camera_info)
+        self._last_image_published_time = time.time()
         # ---
         if not self._has_published:
             self.log("Published the first image.")
@@ -173,41 +173,46 @@ class AbsCameraNode(ABC, DTROS):
         self.log("Start capturing.")
         # ---
         try:
-            self.setup()
+            try:
+                self.setup()
+            except RuntimeError as e:
+                rospy.signal_shutdown(str(e))
+                return
             # run camera thread
-            self._worker = Thread(target=self.run)
+            self._worker = Thread(target=self.run, daemon=True)
             self._worker.start()
         except StopIteration:
             self.log("Exception thrown.")
 
-    def stop(self):
-        self.loginfo('Stopping camera...')
+    def stop(self, force: bool = False):
+        self.loginfo("Stopping camera...")
         self._is_stopped = True
-        # wait for the camera thread to finish
-        if self._worker is not None:
-            self._worker.join()
-            time.sleep(1)
+        if not force:
+            # wait for the camera thread to finish
+            if self._worker is not None:
+                self._worker.join()
+                time.sleep(1)
         self._worker = None
         # release resources
-        self.release()
+        self.release(force=force)
         time.sleep(1)
         self._is_stopped = False
-        self.loginfo('Camera stopped.')
+        self.loginfo("Camera stopped.")
 
     @abstractmethod
     def setup(self):
-        raise NotImplementedError('Child classes should implement this method.')
+        raise NotImplementedError("Child classes should implement this method.")
 
     @abstractmethod
-    def release(self):
-        raise NotImplementedError('Child classes should implement this method.')
+    def release(self, force: bool = False):
+        raise NotImplementedError("Child classes should implement this method.")
 
     @abstractmethod
     def run(self):
-        raise NotImplementedError('Child classes should implement this method.')
+        raise NotImplementedError("Child classes should implement this method.")
 
     def on_shutdown(self):
-        self.stop()
+        self.stop(force=True)
 
     def srv_set_camera_info_cb(self, req):
         self.log("[srv_set_camera_info_cb] Callback!")
@@ -220,50 +225,34 @@ class AbsCameraNode(ABC, DTROS):
     def save_camera_info(self, camera_info_msg, filename):
         """Saves intrinsic calibration to file.
 
-            Args:
-                camera_info_msg (:obj:`CameraInfo`): Camera Info containg calibration
-                filename (:obj:`str`): filename where to save calibration
+        Args:
+            camera_info_msg (:obj:`CameraInfo`): Camera Info containg calibration
+            filename (:obj:`str`): filename where to save calibration
         """
         # Convert camera_info_msg and save to a yaml file
         self.log("[save_camera_info] filename: %s" % filename)
 
         # Converted from camera_info_manager.py
         calib = {
-            'image_width': camera_info_msg.width,
-            'image_height': camera_info_msg.height,
-            'camera_name': rospy.get_name().lstrip("/").split('/')[0],
-            'distortion_model': camera_info_msg.distortion_model,
-            'distortion_coefficients': {
-                'data': camera_info_msg.D,
-                'rows': 1,
-                'cols': 5
-            },
-            'camera_matrix': {
-                'data': camera_info_msg.K,
-                'rows': 3,
-                'cols': 3
-            },
-            'rectification_matrix': {
-                'data': camera_info_msg.R,
-                'rows': 3,
-                'cols': 3
-            },
-            'projection_matrix': {
-                'data': camera_info_msg.P,
-                'rows': 3,
-                'cols': 4
-            }
+            "image_width": camera_info_msg.width,
+            "image_height": camera_info_msg.height,
+            "camera_name": rospy.get_name().lstrip("/").split("/")[0],
+            "distortion_model": camera_info_msg.distortion_model,
+            "distortion_coefficients": {"data": camera_info_msg.D, "rows": 1, "cols": 5},
+            "camera_matrix": {"data": camera_info_msg.K, "rows": 3, "cols": 3},
+            "rectification_matrix": {"data": camera_info_msg.R, "rows": 3, "cols": 3},
+            "projection_matrix": {"data": camera_info_msg.P, "rows": 3, "cols": 4},
         }
         self.log("[save_camera_info] calib %s" % calib)
         try:
-            f = open(filename, 'w')
+            f = open(filename, "w")
             yaml.safe_dump(calib, f)
             return True
         except IOError:
             return False
 
     def update_camera_params(self):
-        """ Update the camera parameters based on the current resolution.
+        """Update the camera parameters based on the current resolution.
 
         The camera matrix, rectification matrix, and projection matrix depend on
         the resolution of the image.
@@ -307,14 +296,14 @@ class AbsCameraNode(ABC, DTROS):
             :obj:`CameraInfo`: a CameraInfo message object
 
         """
-        with open(filename, 'r') as stream:
+        with open(filename, "r") as stream:
             calib_data = yaml.safe_load(stream)
         cam_info = CameraInfo()
-        cam_info.width = calib_data['image_width']
-        cam_info.height = calib_data['image_height']
-        cam_info.K = calib_data['camera_matrix']['data']
-        cam_info.D = calib_data['distortion_coefficients']['data']
-        cam_info.R = calib_data['rectification_matrix']['data']
-        cam_info.P = calib_data['projection_matrix']['data']
-        cam_info.distortion_model = calib_data['distortion_model']
+        cam_info.width = calib_data["image_width"]
+        cam_info.height = calib_data["image_height"]
+        cam_info.K = calib_data["camera_matrix"]["data"]
+        cam_info.D = calib_data["distortion_coefficients"]["data"]
+        cam_info.R = calib_data["rectification_matrix"]["data"]
+        cam_info.P = calib_data["projection_matrix"]["data"]
+        cam_info.distortion_model = calib_data["distortion_model"]
         return cam_info

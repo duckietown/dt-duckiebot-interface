@@ -10,14 +10,13 @@ MotorDirection = hat_driver.MotorDirection
 
 
 class DaguWheelsDriver:
-    """Class handling communication with motors.
+    """Class handling communication with motors."""
 
-    """
     LEFT_MOTOR_MIN_PWM = 60  #: Minimum speed for left motor
     LEFT_MOTOR_MAX_PWM = 255  #: Maximum speed for left motor
     RIGHT_MOTOR_MIN_PWM = 60  #: Minimum speed for right motor
     RIGHT_MOTOR_MAX_PWM = 255  #: Maximum speed for right motor
-    SPEED_TOLERANCE = 1.e-2  #: Speed tolerance level
+    SPEED_TOLERANCE = 1.0e-2  #: Speed tolerance level
 
     def __init__(self):
         rcfg = get_robot_configuration()
@@ -50,10 +49,10 @@ class DaguWheelsDriver:
     def _pwm_value(self, v, min_pwm, max_pwm):
         """Transforms the requested speed into an int8 number.
 
-            Args:
-                v (:obj:`float`): requested speed, should be between -1 and 1.
-                min_pwm (:obj:`int8`): minimum speed as int8
-                max_pwm (:obj:`int8`): maximum speed as int8
+        Args:
+            v (:obj:`float`): requested speed, should be between -1 and 1.
+            min_pwm (:obj:`int8`): minimum speed as int8
+            max_pwm (:obj:`int8`): maximum speed as int8
         """
         pwm = 0
         if fabs(v) > self.SPEED_TOLERANCE:
@@ -63,9 +62,9 @@ class DaguWheelsDriver:
     def _pwm_update(self):
         """Sends commands to the microcontroller.
 
-            Updates the current PWM signals (left and right) according to the
-            linear velocities of the motors. The requested speed gets
-            tresholded.
+        Updates the current PWM signals (left and right) according to the
+        linear velocities of the motors. The requested speed gets
+        tresholded.
         """
         vl = self.leftSpeed
         vr = self.rightSpeed
@@ -95,7 +94,7 @@ class DaguWheelsDriver:
     def __del__(self):
         """Destructor method.
 
-            Releases the motors and deletes tho object.
+        Releases the motors and deletes tho object.
         """
         self.leftMotor.set(MotorDirection.RELEASE)
         self.rightMotor.set(MotorDirection.RELEASE)

@@ -10,32 +10,29 @@ from duckietown.dtros import DTROS, TopicType, NodeType
 class WheelsDriverNode(DTROS):
     """Node handling the motor velocities communication.
 
-        Subscribes to the requested wheels commands (linear velocities, i.e. velocity for the left
-        and the right wheels) and to an emergency stop flag.
-        When the emergency flag `~emergency_stop` is set to `False` it actuates the wheel driver
-        with the velocities received from `~wheels_cmd`. Publishes the execution of the commands
-        to `~wheels_cmd_executed`.
+    Subscribes to the requested wheels commands (linear velocities, i.e. velocity for the left
+    and the right wheels) and to an emergency stop flag.
+    When the emergency flag `~emergency_stop` is set to `False` it actuates the wheel driver
+    with the velocities received from `~wheels_cmd`. Publishes the execution of the commands
+    to `~wheels_cmd_executed`.
 
-        The emergency flag is `False` by default.
+    The emergency flag is `False` by default.
 
-        Subscribers:
-           ~wheels_cmd (:obj:`WheelsCmdStamped`): The requested wheel command
-           ~emergency_stop (:obj:`BoolStamped`): Emergency stop. Can stop the actual execution of
-               the wheel commands by the motors if set to `True`. Set to `False` for nominal
-               operations.
-        Publishers:
-           ~wheels_cmd_executed (:obj:`WheelsCmdStamped`): Publishes the actual commands executed,
-               i.e. when the emergency flag is `False` it publishes the requested command, and
-               when it is `True`: zero values for both motors.
+    Subscribers:
+       ~wheels_cmd (:obj:`WheelsCmdStamped`): The requested wheel command
+       ~emergency_stop (:obj:`BoolStamped`): Emergency stop. Can stop the actual execution of
+           the wheel commands by the motors if set to `True`. Set to `False` for nominal
+           operations.
+    Publishers:
+       ~wheels_cmd_executed (:obj:`WheelsCmdStamped`): Publishes the actual commands executed,
+           i.e. when the emergency flag is `False` it publishes the requested command, and
+           when it is `True`: zero values for both motors.
 
     """
 
     def __init__(self, node_name):
         # Initialize the DTROS parent class
-        super(WheelsDriverNode, self).__init__(
-            node_name=node_name,
-            node_type=NodeType.DRIVER
-        )
+        super(WheelsDriverNode, self).__init__(node_name=node_name, node_type=NodeType.DRIVER)
 
         self.estop = False
 
@@ -47,25 +44,12 @@ class WheelsDriverNode(DTROS):
 
         # Publisher for wheels command wih execution time
         self.pub_wheels_cmd = rospy.Publisher(
-            "~wheels_cmd_executed",
-            WheelsCmdStamped,
-            queue_size=1,
-            dt_topic_type=TopicType.DRIVER
+            "~wheels_cmd_executed", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.DRIVER
         )
 
         # Subscribers
-        self.sub_topic = rospy.Subscriber(
-            "~wheels_cmd",
-            WheelsCmdStamped,
-            self.wheels_cmd_cb,
-            queue_size=1
-        )
-        self.sub_e_stop = rospy.Subscriber(
-            "~emergency_stop",
-            BoolStamped,
-            self.estop_cb,
-            queue_size=1
-        )
+        self.sub_topic = rospy.Subscriber("~wheels_cmd", WheelsCmdStamped, self.wheels_cmd_cb, queue_size=1)
+        self.sub_e_stop = rospy.Subscriber("~emergency_stop", BoolStamped, self.estop_cb, queue_size=1)
 
         self.log("Initialized.")
 
@@ -118,8 +102,8 @@ class WheelsDriverNode(DTROS):
         self.driver.set_wheels_speed(left=0.0, right=0.0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Initialize the node with rospy
-    node = WheelsDriverNode(node_name='wheels_driver_node')
+    node = WheelsDriverNode(node_name="wheels_driver_node")
     # Keep it spinning to keep the node alive
     rospy.spin()

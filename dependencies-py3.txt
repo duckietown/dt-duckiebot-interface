@@ -1,13 +1,11 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
+# NOTE: only place non-Duckietown libraries here; pin versions only if necessary
 
 # Jetson packages
 Jetson.GPIO
 
 # RPi packages
 RPi.GPIO
-
-# VL53L0X ToF sensor driver
-dt-vl53l0x
 
 # dependencies for the OLED display
 luma.oled
