@@ -9,7 +9,7 @@ _ROBOT_CONFIGURATION_TO_HAT = {
     RobotConfiguration.DB20: HATv2,
     RobotConfiguration.DB21M: HATv3,
     RobotConfiguration.DB21J: HATv3,
-    RobotConfiguration.DB21R: HATv3,
+    RobotConfiguration.DBR4: HATv3,
 }
 _DEFAULT_HAT = HATv1
 
