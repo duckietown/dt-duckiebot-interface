@@ -3,8 +3,62 @@
 import rospy
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
+from std_srvs.srv import Trigger, TriggerResponse
 
 from duckietown.dtros import DTROS, TopicType, NodeType
+
+from abc import ABC, abstractmethod
+from typing import Optional, Dict
+
+
+class HWTest(ABC):
+    @abstractmethod
+    def test_id(self) -> str:
+        """Short name, used to report start and end of test"""
+        pass
+
+    @abstractmethod
+    def test_desc(self) -> str:
+        """Test description and key params"""
+        pass
+
+    @abstractmethod
+    def run_test(self) -> Optional[bool]:
+        """return True or False if the result could be determined within the test"""
+        pass
+
+
+class HWTestMotor(HWTest):
+    def __init__(self, driver, is_left: bool = True) -> None:
+        super().__init__()
+        self.vel = 0.5
+        self.dura_secs = 5
+        self._motor_driver = driver
+        self._is_left = is_left
+
+    def test_id(self) -> str:
+        return f"Motor move ({'left' if self._is_left else 'right'})"
+
+    def test_desc(self) -> str:
+        return (
+            f"The {'left' if self._is_left else 'right'} motor should start spinning."
+            "\n"
+            f"In about {self.dura_secs} seconds, it should stop moving."
+        )
+
+    def test_params(self) -> str:
+        return f"[{self.test_id()}] vel = {self.vel}, dura_secs = {self.dura_secs}"
+
+    def run_test(self) -> Optional[bool]:
+        start_ts = rospy.Time.now()
+        end_ts = start_ts + rospy.Duration(self.dura_secs)
+        if self._is_left:
+            self._motor_driver.set_wheels_speed(left=self.vel, right=0.0)
+        else:
+            self._motor_driver.set_wheels_speed(left=0.0, right=self.vel)
+        while rospy.Time.now() < end_ts:
+            rospy.sleep(1.0)
+        self._motor_driver.set_wheels_speed(left=0.0, right=0.0)
 
 
 class WheelsDriverNode(DTROS):
@@ -51,7 +105,42 @@ class WheelsDriverNode(DTROS):
         self.sub_topic = rospy.Subscriber("~wheels_cmd", WheelsCmdStamped, self.wheels_cmd_cb, queue_size=1)
         self.sub_e_stop = rospy.Subscriber("~emergency_stop", BoolStamped, self.estop_cb, queue_size=1)
 
+        # list of tests
+        # (extra arg: is the target the left wheel)
+        self._desc_tst1_srv = rospy.Service('~tests/move_left/desc', Trigger, lambda _: self._tst_desc(True))
+        self._tst1_srv = rospy.Service('~tests/move_left/run', Trigger, lambda _: self._tst(True))
+        self._desc_tst2_srv = rospy.Service('~tests/move_right/desc', Trigger, lambda _: self._tst_desc(False))
+        self._tst2_srv = rospy.Service('~tests/move_right/run', Trigger, lambda _: self._tst(False))
+
         self.log("Initialized.")
+
+    def _tst_desc(self, is_left):
+        test = HWTestMotor(self.driver, is_left=is_left)
+        return TriggerResponse(
+            success=True,
+            message=test.test_desc(),
+        )
+
+    def _tst(self, is_left):
+        logs = []
+        success = True
+        try:
+            test = HWTestMotor(self.driver, is_left=is_left)
+            self.log(f"[{test.test_id()}] Started")
+            self.log(test.test_params())
+            logs.append(f"[{test.test_id()}] Started")
+            logs.append(test.test_params())
+            test.run_test()
+            self.log(f"[{test.test_id()}] Finished")
+            logs.append(f"[{test.test_id()}] Finished")
+        except Exception as e:
+            logs.append(f"Exception occured. Details: {e}")
+            success = False
+
+        return TriggerResponse(
+            success=success,
+            message="\n".join(logs),
+        )
 
     def wheels_cmd_cb(self, msg):
         """
