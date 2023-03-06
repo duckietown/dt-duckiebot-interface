@@ -21,12 +21,10 @@ class IMUNode(DTROS):
         adafruit_mpu6050._MPU6050_DEVICE_ID = 0x71  # Overwrite Adafruit default device ID being wrong
         self._veh = rospy.get_param('~veh')
         polling_hz = rospy.get_param("~polling_hz")
-        self._sensor_name = rospy.get_param("~sensor_name")
         self._temp_offset = rospy.get_param("~temp_offset")
         self._gyro_offset = rospy.get_param("~ang_vel_offset")
         self._accel_offset = rospy.get_param("~accel_offset")
         self.loginfo("===============IMU Node Init Val===============")
-        self.loginfo(f"IMU unit: {self._sensor_name}")
         self.loginfo(f"Op Rate: {polling_hz}")
         self.loginfo(f"ADDR: {self._imu_device_id}")
         self.loginfo("Acceleration Offset: X:%.2f, Y: %.2f, Z: %.2f m/s^2" % tuple(self._accel_offset))
@@ -66,7 +64,7 @@ class IMUNode(DTROS):
             # Do it together so that the timestamp is honored
 
             # Populate Message
-            msg.header.frame_id = temp_msg.header.frame_id = f"{self._veh}/imu/{self._sensor_name}"
+            msg.header.frame_id = temp_msg.header.frame_id = f"{self._veh}/imu"
 
             # Orientation
             msg.orientation.x = msg.orientation.y = msg.orientation.z = msg.orientation.w = 0  # We do not have this data
@@ -92,7 +90,7 @@ class IMUNode(DTROS):
             pass
         return
 
-    def zero_sensor(self,req):
+    def zero_sensor(self, req):
         acc_data = self._imu.acceleration
         gyro_data = self._imu.gyro
         temp_data = self._imu.temperature
