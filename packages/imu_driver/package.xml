@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <package>
-    <name>imu</name>
+    <name>imu_driver</name>
     <version>1.0.0</version>
     <description>An interface to the IMU sensor</description>
 

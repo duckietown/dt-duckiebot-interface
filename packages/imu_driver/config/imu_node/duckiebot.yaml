@@ -1,5 +1,4 @@
-i2c_bus: 1
-i2c_address: 0x68
+imu_device_id: "0x71"
 polling_hz: 30
-ang_vel_offset: [0, 0, 0]
-accel_offset: [0, 0, 0]
+ang_vel_offset: [ 0, 0, 0 ]
+accel_offset: [ 0, 0, 0 ]

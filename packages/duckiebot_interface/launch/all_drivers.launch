@@ -119,8 +119,8 @@
     </group>
 
     <!-- IMU sensor: -->
-    <group if="$(eval arg('robot_configuration') == 'DB21M')">
-        <include file="$(find imu)/launch/imu_node.launch">
+    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J'])">
+        <include file="$(find imu_driver)/launch/imu_node.launch">
             <arg name="veh" value="$(arg veh)"/>
         </include>
     </group>

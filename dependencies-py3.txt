@@ -9,3 +9,6 @@ RPi.GPIO
 
 # dependencies for the OLED display
 luma.oled
+
+# dependencies for the IMU sensor
+adafruit-circuitpython-mpu6050
