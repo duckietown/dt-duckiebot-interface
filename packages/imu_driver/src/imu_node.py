@@ -56,7 +56,7 @@ class IMUNode(DTROS):
             self.logdebug("Gyro X:%.2f, Y: %.2f, Z: %.2f degrees/s" % gyro_data)
             self.logdebug("Temperature: %.2f C" % temp_data)
             # Populate Message
-            msg.header.frame_id = "/imu"  # TODO
+            msg.header.frame_id = f"{self._veh}/imu/bottom_center"  # TODO
             # Orientation
             msg.orientation.x = msg.orientation.y = msg.orientation.z = msg.orientation.w = 0  # We do not have this data
             # If you have no estimate for one of the data elements
