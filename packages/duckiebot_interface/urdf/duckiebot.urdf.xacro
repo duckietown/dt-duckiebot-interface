@@ -230,7 +230,7 @@
 
         </xacro:if>
 
-        <xacro:if value="${model in ['DB21M', 'DB21J', 'DB21R']}" >
+        <xacro:if value="${model in ['DB21M', 'DB21J', 'DBR4']}" >
 
             <!-- START: Duckiebot: DB21X -->
 
