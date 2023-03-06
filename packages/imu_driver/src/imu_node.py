@@ -58,7 +58,7 @@ class IMUNode(DTROS):
             # Populate Message
             msg.header.frame_id = "/imu"  # TODO
             # Orientation
-            msg.Quaternion.x = msg.Quaternion.y = msg.Quaternion.z = msg.Quaternion.w = 0  # We do not have this data
+            msg.orientation.x = msg.orientation.y = msg.orientation.z = msg.orientation.w = 0  # We do not have this data
             # If you have no estimate for one of the data elements
             # set element 0 of the associated covariance matrix to -1
             msg.orientation_covariance = [0.0 for _ in range(len(msg.orientation_covariance))]
