@@ -1,0 +1,9 @@
+# Sensor Configuration
+imu_device_id: "0x71"
+polling_hz: 30
+sensor_name: bottom_center
+
+# Calibrations
+ang_vel_offset: [ 0, 0, 0 ]
+accel_offset: [ 0, 0, 0 ]
+temp_offset: 0
