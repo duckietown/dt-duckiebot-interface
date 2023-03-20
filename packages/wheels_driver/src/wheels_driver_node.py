@@ -18,12 +18,37 @@ class HWTest(ABC):
         pass
 
     @abstractmethod
-    def test_desc(self) -> str:
-        """Test description and key params"""
+    def test_desc_preparation(self) -> str:
+        """Preparation before running. E.g. put the DB upside down"""
+        pass
+
+    def test_desc_running(self) -> str:
+        """Actual steps to run the test"""
+        # default: just click the "Run test" button
+        return "Run the test"
+
+    @abstractmethod
+    def test_desc_expectation(self) -> str:
+        """Expected outcome"""
         pass
 
     @abstractmethod
-    def run_test(self) -> Optional[bool]:
+    def test_desc_log_gather(self) -> str:
+        """How to gather logs before reporting"""
+        pass
+
+    def test_desc(self) -> str:
+        """Test description and key params"""
+        # TODO: use JSON and keys to separate sections
+        return "\n\n".join([
+            self.test_desc_preparation(),
+            self.test_desc_expectation(),
+            self.test_desc_running(),
+            self.test_desc_log_gather(),
+        ])
+
+    @abstractmethod
+    def run_test(self) -> Optional[bool]:  # TODO: decide whether auto grade or not
         """return True or False if the result could be determined within the test"""
         pass
 
@@ -39,11 +64,20 @@ class HWTestMotor(HWTest):
     def test_id(self) -> str:
         return f"Motor move ({'left' if self._is_left else 'right'})"
 
-    def test_desc(self) -> str:
+    def test_desc_preparation(self) -> str:
+        return "Put your Duckiebot upside down."
+
+    def test_desc_expectation(self) -> str:
         return (
-            f"The {'left' if self._is_left else 'right'} motor should start spinning."
-            "\n"
+            f"The {'left' if self._is_left else 'right'} motor should start spinning.\n"
             f"In about {self.dura_secs} seconds, it should stop moving."
+        )
+    
+    def test_desc_log_gather(self) -> str:
+        return (
+            "On your laptop, run the following command to save the logs.\n"
+            "Replace the `[path/to/save]' to the directory path where you would like to save the logs.\n"
+            "`docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt'"
         )
 
     def test_params(self) -> str:
