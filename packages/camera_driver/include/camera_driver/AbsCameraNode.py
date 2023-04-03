@@ -1,3 +1,4 @@
+import base64
 import os
 import time
 import yaml
@@ -10,6 +11,7 @@ from abc import ABC, abstractmethod
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
+from std_srvs.srv import Trigger, TriggerResponse
 
 from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
 
@@ -108,6 +110,8 @@ class AbsCameraNode(ABC, DTROS):
         self.update_camera_params()
         self.log("Using calibration file: %s" % self.cali_file)
 
+        self._tst1_srv = rospy.Service('~tests/camera/run', Trigger, self._tst)
+
         # create cv bridge
         self._bridge = CvBridge()
 
@@ -139,6 +143,22 @@ class AbsCameraNode(ABC, DTROS):
         self._last_image_published_time = 0
         # ---
         self.log("[AbsCameraNode]: Initialized.")
+
+    def _tst(self, req):
+        rospy.loginfo("Service called. Getting message from the topic...")
+    
+        # Subscribe to the topic and get one message
+        try:
+            msg = rospy.wait_for_message('/autobot33/camera_node/image/compressed', CompressedImage, timeout=5.0)
+            base64_encoded_msg = base64.b64encode(msg.data).decode('utf-8')
+            response = base64_encoded_msg
+            success = True
+        except rospy.ROSException as e:
+            response = "Failed to get message: {}".format(e)
+            success = False
+
+        # Return the service response
+        return TriggerResponse(success=success, message=response)
 
     @property
     def is_stopped(self):
