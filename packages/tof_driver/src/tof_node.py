@@ -1,26 +1,25 @@
 #!/usr/bin/env python3
 
-import rospy
 import dataclasses
+import time
+from typing import Optional
+
 import numpy as np
-
-from sensor_msgs.msg import Range
-from std_msgs.msg import Header
-from duckietown_msgs.msg import DisplayFragment
-
-from dt_vl53l0x import VL53L0X, Vl53l0xAccuracyMode
-
+import rospy
+import yaml
 from display_renderer import (
-    TextFragmentRenderer,
     DisplayROI,
     PAGE_TOF,
-    REGION_HEADER,
     REGION_BODY,
     MonoImageFragmentRenderer,
 )
 from display_renderer.text import monospace_screen
 from dt_class_utils import DTReminder
+from dt_vl53l0x import VL53L0X, Vl53l0xAccuracyMode
 from duckietown.dtros import DTROS, NodeType, TopicType
+from duckietown_msgs.msg import DisplayFragment
+from sensor_msgs.msg import Range
+from std_msgs.msg import Header
 
 
 @dataclasses.dataclass
@@ -49,16 +48,18 @@ class ToFNode(DTROS):
         super(ToFNode, self).__init__(node_name="tof_node", node_type=NodeType.DRIVER)
         # get parameters
         self._veh = rospy.get_param("~veh")
-        self._i2c_bus = rospy.get_param("~bus")
-        self._i2c_address = rospy.get_param("~address", 0x29)
+        self._i2c_connectors = rospy.get_param("~connectors", {})
         self._sensor_name = rospy.get_param("~sensor_name")
         self._frequency = int(max(1, rospy.get_param("~frequency", 10)))
         self._mode = rospy.get_param("~mode", "BETTER")
         self._display_fragment_frequency = rospy.get_param("~display_fragment_frequency", 4)
         self._accuracy = ToFAccuracy.from_string(self._mode)
         # create a VL53L0X sensor handler
-        self._sensor = VL53L0X(i2c_bus=self._i2c_bus, i2c_address=self._i2c_address)
-        self._sensor.open()
+        self._sensor: Optional[VL53L0X] = self._find_sensor()
+        if not self._sensor:
+            conns: str = yaml.safe_dump(self._i2c_connectors, indent=2, sort_keys=True)
+            self.logerr(f"No VL53L0X device found. These connectors were tested:\n{conns}\n")
+            exit(1)
         # create publisher
         self._pub = rospy.Publisher(
             "~range",
@@ -76,8 +77,7 @@ class ToFNode(DTROS):
         )
         # create screen renderer
         self._renderer = ToFSensorFragmentRenderer(self._sensor_name, self._accuracy)
-        # start ranging
-        self._sensor.start_ranging(self._accuracy.mode)
+        # check frequency
         max_frequency = min(self._frequency, int(1.0 / self._accuracy.timing_budget))
         if self._frequency > max_frequency:
             self.logwarn(
@@ -90,6 +90,25 @@ class ToFNode(DTROS):
         # create timers
         self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / max_frequency), self._timer_cb)
         self._fragment_reminder = DTReminder(frequency=self._display_fragment_frequency)
+
+    def _find_sensor(self) -> Optional[VL53L0X]:
+        for connector in self._i2c_connectors:
+            conn: str = "[bus:{bus}](0x{address:02X})".format(**connector)
+            self.loginfo(f"Trying to open device on connector {conn}")
+            sensor = VL53L0X(i2c_bus=connector["bus"], i2c_address=connector["address"])
+            try:
+                sensor.open()
+            except FileNotFoundError:
+                # i2c BUS not found
+                self.logwarn(f"No devices found on connector {conn}, the bus does NOT exist")
+                continue
+            sensor.start_ranging(self._accuracy.mode)
+            time.sleep(1)
+            if sensor.get_distance() < 0:
+                self.logwarn(f"No devices found on connector {conn}, but the bus exists")
+                continue
+            self.loginfo(f"Device found on connector {conn}")
+            return sensor
 
     def _timer_cb(self, _):
         # detect range
@@ -143,7 +162,7 @@ class ToFSensorFragmentRenderer(MonoImageFragmentRenderer):
             (self.roi.h - self._title_h, self.roi.w), pretty_measurement, scale="hfill", align="center"
         )
         self.data[: self._title_h, :] = self._title
-        self.data[self._title_h :, :] = reading
+        self.data[self._title_h:, :] = reading
 
 
 if __name__ == "__main__":
