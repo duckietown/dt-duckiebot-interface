@@ -88,7 +88,8 @@ class IMUNode(DTROS):
             msg.orientation_covariance[0] = -1
             # Angular Velocity
             msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z = tuple(
-                math.pi / 180.0 * (gyro_data[i] - self._gyro_offset[i]) for i in range(len(gyro_data)))
+                gyro_data[i] - self._gyro_offset[i] for i in range(len(gyro_data))
+            )
             msg.angular_velocity_covariance = [0.0 for _ in range(len(msg.angular_velocity_covariance))]
             # Acceleration
             msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z = tuple(
