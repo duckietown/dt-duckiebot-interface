@@ -7,7 +7,6 @@ from dt_robot_utils import get_robot_type
 
 
 class RobotRestAPI(Flask):
-
     def __init__(self, debug=False):
         # create Flask app
         super(RobotRestAPI, self).__init__(__name__)
@@ -15,7 +14,7 @@ class RobotRestAPI(Flask):
         # apply CORS settings
         CORS(self)
         # configure logging
-        self._logger = logging.getLogger('werkzeug')
+        self._logger = logging.getLogger("werkzeug")
         self._logger.setLevel(logging.DEBUG if debug else logging.WARNING)
 
     def setup(self):
@@ -27,6 +26,7 @@ class RobotRestAPI(Flask):
             return
         # ---
         from .robot import blueprints, HTTP_PORT
+
         for blueprint in blueprints:
             self.register_blueprint(blueprint)
         self.http_port = HTTP_PORT
@@ -36,9 +36,10 @@ class RobotRestAPI(Flask):
         # ---
         if self.http_port is None:
             self._logger.error(
-                "No HTTP_PORT configured yet. "
-                "The current robot type might not be supported yet. Exiting.")
+                "No HTTP_PORT configured yet. " "The current robot type might not be supported yet. Exiting."
+            )
             return
-        self._logger.info(f'Running HTTP server for robot type `{get_robot_type().name}` '
-                          f'on TCP port {self.http_port}.')
+        self._logger.info(
+            f"Running HTTP server for robot type `{get_robot_type().name}` " f"on TCP port {self.http_port}."
+        )
         super(RobotRestAPI, self).run(*args, port=self.http_port, **kwargs)

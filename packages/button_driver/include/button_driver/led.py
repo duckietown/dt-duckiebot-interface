@@ -14,10 +14,9 @@ else:
 
 
 class ButtonLED:
-
     def __init__(self, gpio_pin: int):
         if not 1 <= gpio_pin <= 40:
-            raise ValueError('The pin number must be within the range [1, 40].')
+            raise ValueError("The pin number must be within the range [1, 40].")
         self._gpio_pin = gpio_pin
         self._is_shutdown = False
         # configure GPIO pin

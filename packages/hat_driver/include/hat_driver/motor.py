@@ -9,6 +9,7 @@ from .gpio import LOW as GPIO_LOW, HIGH as GPIO_HIGH
 from .pwm import LOW as PWM_LOW, HIGH as PWM_HIGH
 
 from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+
 ROBOT_HARDWARE = get_device_hardware_brand()
 
 if ROBOT_HARDWARE in [DeviceHardwareBrand.RASPBERRY_PI, DeviceHardwareBrand.RASPBERRY_PI_64]:
@@ -39,7 +40,6 @@ class MotorPins:
 
 
 class AbsMotorDirectionController(ABC):
-
     def __init__(self, in1_pin: int, in2_pin: int, *args, **kwargs):
         self._in1_pin = in1_pin
         self._in2_pin = in2_pin
@@ -61,7 +61,7 @@ class PWMMotorDirectionController(AbsMotorDirectionController):
     _DIRECTION_TO_SIGNALS = {
         MotorDirection.RELEASE: (LOW, HIGH),
         MotorDirection.FORWARD: (HIGH, LOW),
-        MotorDirection.BACKWARD: (LOW, HIGH)
+        MotorDirection.BACKWARD: (LOW, HIGH),
     }
     _PWM_VALUES = {
         LOW: (PWM_LOW, PWM_HIGH),
@@ -70,10 +70,11 @@ class PWMMotorDirectionController(AbsMotorDirectionController):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        if not isinstance(kwargs.get('pwm', None), PWM):
-            raise ValueError("You cannot instantiate `PWMMotorDirectionController` "
-                             "without passing a `PWM` object.")
-        self._pwm = kwargs['pwm']
+        if not isinstance(kwargs.get("pwm", None), PWM):
+            raise ValueError(
+                "You cannot instantiate `PWMMotorDirectionController` " "without passing a `PWM` object."
+            )
+        self._pwm = kwargs["pwm"]
 
     def setup(self):
         pass
@@ -89,12 +90,9 @@ class GPIOMotorDirectionController(AbsMotorDirectionController):
     _DIRECTION_TO_SIGNALS = {
         MotorDirection.RELEASE: (HIGH, HIGH),
         MotorDirection.FORWARD: (HIGH, LOW),
-        MotorDirection.BACKWARD: (LOW, HIGH)
+        MotorDirection.BACKWARD: (LOW, HIGH),
     }
-    _GPIO_VALUES = {
-        LOW: GPIO_LOW,
-        HIGH: GPIO_HIGH
-    }
+    _GPIO_VALUES = {LOW: GPIO_LOW, HIGH: GPIO_HIGH}
 
     def setup(self):
         GPIO.setmode(GPIO.BOARD)
@@ -115,8 +113,9 @@ class Motor:
         MotorDirectionControl.GPIO: GPIOMotorDirectionController,
     }
 
-    def __init__(self, name: str, pwm: PWM, in1_pin: int, in2_pin: int, pwm_pin: int,
-                 control: MotorDirectionControl):
+    def __init__(
+        self, name: str, pwm: PWM, in1_pin: int, in2_pin: int, pwm_pin: int, control: MotorDirectionControl
+    ):
         self._pwm = pwm
         self._name = name
         self._in1_pin = in1_pin
@@ -131,5 +130,7 @@ class Motor:
         self._pwm.setPWM(self._pwm_pin, 0, speed * self._K)
 
     def __str__(self):
-        return f"Motor[name={self._name}, in1={self._in1_pin}, in2={self._in2_pin}, " \
-               f"pwm={self._pwm_pin}, controller={self._controller}]"
+        return (
+            f"Motor[name={self._name}, in1={self._in1_pin}, in2={self._in2_pin}, "
+            f"pwm={self._pwm_pin}, controller={self._controller}]"
+        )

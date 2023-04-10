@@ -230,7 +230,7 @@
 
         </xacro:if>
 
-        <xacro:if value="${model in ['DB21M', 'DB21J', 'DB21R']}" >
+        <xacro:if value="${model in ['DB21M', 'DB21J', 'DBR4']}" >
 
             <!-- START: Duckiebot: DB21M, DB21J, DB21R -->
             <xacro:property name="plate_thickness" value="0.003" />
@@ -523,6 +523,22 @@
                 <parent link="${veh}/camera_frame" />
                 <child link="${veh}/camera_optical_frame" />
                 <origin xyz="0.017 0 0" rpy="-${0.5 * pi} 0 -${0.5 * pi}" />
+            </joint>
+
+            <!-- IMU -->
+            <link name="${veh}/imu"/>
+            <joint name="${veh}_bottom_plate_to_imu" type="fixed">
+                <parent link="${veh}/bottom_plate"/>
+                <child link="${veh}/imu"/>
+                <origin xyz="0 0 0" />
+            </joint>
+
+            <!-- TOF -->
+            <link name="${veh}/tof/front_center"/>
+            <joint name="${veh}_front_bumper_to_front_center_tof" type="fixed">
+                <parent link="${veh}/front_bumper"/>
+                <child link="${veh}/tof/front_center"/>
+                <origin xyz="0.022 0 -0.01"/>
             </joint>
 
             <!-- END: Duckiebot: DB21X -->

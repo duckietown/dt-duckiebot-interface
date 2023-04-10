@@ -22,7 +22,4 @@ else:
     HTTP_PORT = None
 
 
-__all__ = [
-    'blueprints',
-    'HTTP_PORT'
-]
+__all__ = ["blueprints", "HTTP_PORT"]

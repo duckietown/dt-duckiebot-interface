@@ -4,20 +4,20 @@ workflows:
   version: 2
   build:
     jobs:
-    - build-daffy-staging:
+    - build-ente-staging:
         context: pip-staging
         filters:
           branches:
-            only: /daffy-staging.*/
-    - build-daffy-prod:
+            only: /ente-staging.*/
+    - build-ente-prod:
         context: production
         filters:
           branches:
-            ignore: /daffy-staging.*/
+            ignore: /ente-staging.*/
 jobs:
-  build: &build
+  build_template: &build_template
     docker:
-    - image: ${DOCKER_REGISTRY}/duckietown/aido-submission-ci-test:daffy-amd64
+    - image: ${DOCKER_REGISTRY}/duckietown/aido-submission-ci-test:ente
       auth:
         username: $DOCKER_USERNAME
         password: $DOCKER_PASSWORD
@@ -27,6 +27,7 @@ jobs:
     - run:
         name: Install dts commands
         command: |
+          pip install -U duckietown-shell
           dts --debug --set-version "$DTS_VERSION" exit
     - run:
         name: config
@@ -51,19 +52,26 @@ jobs:
     - run:
         name: Pull the image
         command: |
-          dts devel pull --tag daffy
+          dts devel pull --tag ente
 
     - run:
         name: Build the docs
         command: |
-          dts devel docs build --tag daffy -f
+          dts devel docs build --tag ente -f
 
     - store_artifacts:
         path: html
         destination: html
-
+    - run:
+        name: Create a .tgz of  the folder `html` into html/package.tgz
+        command: |
+          # XXX: this a workaround for bugs in devel docs
+          rm -f html/package.tgz
+          tar -czf package.tgz -C html .
+          mv package.tgz html/package.tgz
+          tar tfz html/package.tgz
     - store_artifacts:
         path: html/package.tgz
         destination: out/package.tgz
-  build-daffy-prod: *build
-  build-daffy-staging: *build
+  build-ente-prod: *build_template
+  build-ente-staging: *build_template

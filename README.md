@@ -7,6 +7,7 @@ Status:
 Repository containing all the necessary drivers to start sensors and actuators.
 It should not contain any high-level functionality.
 
+
 ## How to launch manually
 
 ```$ docker -H <Hostname>.local run --name duckiebot-interface -v /data:/data --privileged --network=host -dit --restart unless-stopped -e ROBOT_TYPE=<ROBOT_TYPE> duckietown/duckiebot-interface:ente-arm64v8```

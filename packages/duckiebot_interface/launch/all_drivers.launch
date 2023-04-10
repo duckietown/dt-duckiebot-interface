@@ -38,9 +38,10 @@
         </group>
     </group>
 
-    <!-- LED Emitter: reads ROS messages and commands the LEDs -->
+    <!-- LED Driver: reads ROS messages and commands the LEDs -->
     <group if="$(eval arg('robot_type') in ['duckiebot', 'traffic_light'])">
-        <include file="$(find led_emitter)/launch/led_emitter_node.launch">
+        <remap from="led_driver_node/led_pattern" to="led_emitter_node/led_pattern"/>
+        <include file="$(find led_driver)/launch/led_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
             <arg name="robot_type" value="$(arg robot_type)"/>
         </include>
@@ -93,7 +94,7 @@
 
     <!-- Time-of-Flight sensor: -->
     <!-- - DB21x: 1x ToF sensor at the Front Center      -->
-    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
+    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J', 'DBR4'])">
         <remap from="front_center_tof_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find tof_driver)/launch/tof_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -111,7 +112,7 @@
     </group>
 
     <!-- OLED Display driver: -->
-    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
+    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DBR4'])">
         <remap from="display_driver_node/button" to="button_driver_node/event"/>
         <include file="$(find display_driver)/launch/display_driver_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -119,7 +120,7 @@
     </group>
 
     <!-- Display renderers: -->
-    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
+    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DBR4'])">
         <!-- health: renders health and usage info about the robot -->
         <include file="$(find display_renderers)/launch/health_renderer_node.launch">
             <arg name="veh" value="$(arg veh)"/>
@@ -131,9 +132,16 @@
     </group>
 
     <!-- Button driver -->
-    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DB21R'])">
+    <group if="$(eval arg('robot_hardware') != 'virtual' and arg('robot_configuration') in ['DB21M', 'DB21J', 'DBR4'])">
         <remap from="button_driver_node/fragments" to="display_driver_node/fragments"/>
         <include file="$(find button_driver)/launch/button_driver_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
+    </group>
+
+    <!-- IMU sensor: -->
+    <group if="$(eval arg('robot_configuration') in ['DB21M', 'DB21J'])">
+        <include file="$(find imu_driver)/launch/imu_node.launch">
             <arg name="veh" value="$(arg veh)"/>
         </include>
     </group>

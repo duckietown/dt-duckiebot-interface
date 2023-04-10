@@ -1,4 +1,5 @@
 from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+
 from .wheel_encoder_abs import WheelEncoderDriverAbs
 
 ROBOT_HARDWARE = get_device_hardware_brand()
@@ -30,7 +31,7 @@ class WheelEncoderDriver(WheelEncoderDriverAbs):
         super(WheelEncoderDriver, self).__init__(name, callback)
         # valid gpio_pin
         if not 1 <= gpio_pin <= 40:
-            raise ValueError('The pin number must be within the range [1, 40].')
+            raise ValueError("The pin number must be within the range [1, 40].")
         # configure GPIO pin
         self._gpio_pin = gpio_pin
         GPIO.setmode(GPIO.BCM)
