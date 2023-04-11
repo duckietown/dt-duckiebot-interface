@@ -18,6 +18,7 @@ ARG LAUNCHER=default
 FROM ${DOCKER_REGISTRY}/duckietown/${BASE_IMAGE}:${BASE_TAG} as base
 
 # recall all arguments
+ARG ARCH
 ARG DISTRO
 ARG REPO_NAME
 ARG DESCRIPTION
