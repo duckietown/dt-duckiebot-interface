@@ -5,7 +5,7 @@
 
     Describe `rgb_leb` here...
 
-    .. autoclass:: rgb_led.RGB_LED
+    .. autoclass:: rgb_led.RGBLED
 
 """
 

@@ -3,7 +3,7 @@ import time
 
 import rospy
 
-from rgb_led import RGB_LED
+from rgb_led import RGBLED
 from std_msgs.msg import String, ColorRGBA
 from duckietown_msgs.msg import LEDPattern
 from duckietown.dtros import DTROS, TopicType, NodeType
@@ -12,7 +12,7 @@ from duckietown.dtros import DTROS, TopicType, NodeType
 class LEDDriverNode(DTROS):
     """Node for controlling LEDs.
 
-    Calls the low-level functions of class :obj:`RGB_LED` that creates the PWM
+    Calls the low-level functions of class :obj:`RGBLED` that creates the PWM
     signal used to change the color of the LEDs. The desired behavior is specified by
     the LED index (Duckiebots and watchtowers have multiple of these) and a pattern.
     A pattern is a combination of colors and blinking frequency.
@@ -39,7 +39,7 @@ class LEDDriverNode(DTROS):
         # Initialize the DTROS parent class
         super(LEDDriverNode, self).__init__(node_name=node_name, node_type=NodeType.DRIVER)
 
-        self.led = RGB_LED()
+        self.led = RGBLED()
 
         start_color = [0, 0, 0]
         for i in range(5):
