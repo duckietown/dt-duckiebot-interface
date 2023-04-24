@@ -8,6 +8,136 @@ from duckietown.dtros import DTROS, NodeType, DTParam, ParamType
 from sensor_msgs.msg import Imu, Temperature
 from std_srvs.srv import Empty
 
+from abc import ABC, abstractmethod
+from typing import Optional, Dict
+from std_srvs.srv import Trigger, TriggerResponse
+
+
+class HWTest(ABC):
+    @abstractmethod
+    def test_id(self) -> str:
+        """Short name, used to report start and end of test"""
+        pass
+
+    @abstractmethod
+    def test_desc_preparation(self) -> str:
+        """Preparation before running. E.g. put the DB upside down"""
+        pass
+
+    def test_desc_running(self) -> str:
+        """Actual steps to run the test"""
+        # default: just click the "Run test" button
+        return "Run the test"
+
+    @abstractmethod
+    def test_desc_expectation(self) -> str:
+        """Expected outcome"""
+        pass
+
+    @abstractmethod
+    def test_desc_log_gather(self) -> str:
+        """How to gather logs before reporting"""
+        pass
+
+    def test_desc(self) -> str:
+        """Test description and key params"""
+        # TODO: use JSON and keys to separate sections
+        return "\n\n".join([
+            self.test_desc_preparation(),
+            self.test_desc_expectation(),
+            self.test_desc_running(),
+            self.test_desc_log_gather(),
+        ])
+
+    @abstractmethod
+    def run_test(self) -> Optional[bool]:  # TODO: decide whether auto grade or not
+        """return True or False if the result could be determined within the test"""
+        pass
+
+
+class HWTestIMU(HWTest):
+    def __init__(self) -> None:
+        super().__init__()
+        self._desc_tst_srv = rospy.Service('~tests/desc', Trigger, self._tst_desc)
+        self._tst_srv = rospy.Service('~tests/run', Trigger, self._tst)
+        # test settings
+        self.dura_secs = 3
+        self.abs_min_incline_d_accel = 5.0
+
+    def _tst_desc(self, _):
+        return TriggerResponse(
+            success=True,
+            message=self.test_desc(),
+        )
+
+    def _tst(self, _):
+        msg_start = None
+        msg_end = None
+
+        # Subscribe to the topic and get one message
+        try:
+            # initial measurement
+            msg_start = rospy.wait_for_message('~imu_data', Imu, timeout=1.0)
+            success = True
+        except rospy.ROSException as e:
+            success = False
+
+        rospy.sleep(self.dura_secs)
+
+        if success:
+            try:
+                # final measurement
+                msg_end = rospy.wait_for_message('~imu_data', Imu, timeout=1.0)
+                success = True
+            except rospy.ROSException as e:
+                success = False
+
+        if success:
+            dx = msg_start.linear_acceleration.x - msg_end.linear_acceleration.x
+            response = "No inclination along x axis detected."
+            if abs(dx) > self.abs_min_incline_d_accel:
+                if dx < 0:
+                    response = "Inclined to the left (<-)"
+                else:
+                    response = "Inclined to the right (->)"
+        else:
+            response = "Failed to take IMU measurements"
+
+        # Return the service response
+        return TriggerResponse(success=success, message=response)
+
+    def test_id(self) -> str:
+        return f"IMU"
+
+    def test_desc_preparation(self) -> str:
+        return "Put your Duckiebot in normal orientation, on a surface (e.g. desk) which allows tilting it."
+
+    def test_desc_running(self) -> str:
+        return (
+            "Put your hand near the Duckiebot\n"
+            "Once the test starts, you should tilt the robot left/right, i.e. make the top display face your left/right. And the robot will be standing on the side of either left or right wheel.\n"
+            "Now, click the button below to run the test"
+        )
+
+    def test_desc_expectation(self) -> str:
+        return (
+            f"The experiment will finish in {self.dura_secs} seconds.\n"
+            "After finishing, the response string below should indicate, whether the robot is inclined to the left or the right.\n"
+            "You should run the test MULTIPLE times (left, standing still, right), to verify."
+        )
+    
+    def test_desc_log_gather(self) -> str:
+        return (
+            "On your laptop, run the following command to save the logs.\n"
+            "Replace the `[path/to/save]' to the directory path where you would like to save the logs.\n"
+            "`docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt'"
+        )
+
+    def test_params(self) -> str:
+        return f"[{self.test_id()}] dura_secs = {self.dura}, abs_min_incline_d_accel = {self.abs_min_incline_d_accel}"
+
+    def run_test(self) -> Optional[bool]:
+        pass
 
 # TODO: calibration and loading custom config
 
@@ -49,6 +179,8 @@ class IMUNode(DTROS):
         self.temp_pub = rospy.Publisher('~temp_data', Temperature, queue_size=10)
         rospy.Service("~initialize_imu", Empty, self.zero_sensor)
         self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / polling_hz), self.publish_data)
+
+        self.hw_test = HWTestIMU()
 
     def publish_data(self, event):
         # Message Blank
