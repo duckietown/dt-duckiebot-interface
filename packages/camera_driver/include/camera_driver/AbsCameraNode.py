@@ -149,7 +149,7 @@ class AbsCameraNode(ABC, DTROS):
     
         # Subscribe to the topic and get one message
         try:
-            msg = rospy.wait_for_message('/autobot33/camera_node/image/compressed', CompressedImage, timeout=5.0)
+            msg = rospy.wait_for_message('~image/compressed', CompressedImage, timeout=5.0)
             base64_encoded_msg = base64.b64encode(msg.data).decode('utf-8')
             response = base64_encoded_msg
             success = True
