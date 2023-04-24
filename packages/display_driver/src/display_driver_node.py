@@ -25,13 +25,124 @@ from display_renderer import (
     ALL_PAGES,
     PAGE_HOME,
     PAGE_SHUTDOWN,
+    PAGE_TEST_OLED_DISPLAY,
+    MonoImageFragmentRenderer,
     AbsDisplayFragmentRenderer,
     DisplayROI,
     DisplayFragment,
 )
+from display_renderer.text import monospace_screen
 
 from duckietown.utils.image.pil import np_to_pil, pil_to_np
 from duckietown.utils.image.ros import imgmsg_to_mono8
+
+from abc import ABC, abstractmethod
+from typing import Optional, Dict
+from std_srvs.srv import Trigger, TriggerResponse
+
+
+class HWTest(ABC):
+    @abstractmethod
+    def test_id(self) -> str:
+        """Short name, used to report start and end of test"""
+        pass
+
+    @abstractmethod
+    def test_desc_preparation(self) -> str:
+        """Preparation before running. E.g. put the DB upside down"""
+        pass
+
+    def test_desc_running(self) -> str:
+        """Actual steps to run the test"""
+        # default: just click the "Run test" button
+        return "Run the test"
+
+    @abstractmethod
+    def test_desc_expectation(self) -> str:
+        """Expected outcome"""
+        pass
+
+    @abstractmethod
+    def test_desc_log_gather(self) -> str:
+        """How to gather logs before reporting"""
+        pass
+
+    def test_desc(self) -> str:
+        """Test description and key params"""
+        # TODO: use JSON and keys to separate sections
+        return "\n\n".join([
+            self.test_desc_preparation(),
+            self.test_desc_expectation(),
+            self.test_desc_running(),
+            self.test_desc_log_gather(),
+        ])
+
+    @abstractmethod
+    def run_test(self) -> Optional[bool]:  # TODO: decide whether auto grade or not
+        """return True or False if the result could be determined within the test"""
+        pass
+
+
+class HWTestOledDisplay(HWTest):
+    def __init__(self, driver_node: "DisplayNode") -> None:
+        super().__init__()
+        self._driver_node = driver_node
+        # test settings
+        self.dura_secs = 5
+        self.disp_text = "OLED Display Test"
+
+    def test_id(self) -> str:
+        return f"OLED Display"
+
+    def test_desc_preparation(self) -> str:
+        return (
+            "Put your Duckiebot in normal orientation.\n"
+            "And make sure you can see the top OLED display."
+        )
+
+    def test_desc_expectation(self) -> str:
+        return (
+            f"The top display should show: {self.disp_text}.\n"
+            f"In about {self.dura_secs} seconds, the homepage should be shown."
+        )
+    
+    def test_desc_log_gather(self) -> str:
+        return (
+            "On your laptop, run the following command to save the logs.\n"
+            "Replace the `[path/to/save]' to the directory path where you would like to save the logs.\n"
+            "`docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt'"
+        )
+
+    def test_params(self) -> str:
+        return f"[{self.test_id()}] dura_secs = {self.dura_secs}, disp_text = '{self.disp_text}'"
+
+    def run_test(self) -> Optional[bool]:
+        start_ts = rospy.Time.now()
+        end_ts = start_ts + rospy.Duration(self.dura_secs)
+        # show test display
+        self._driver_node.show_tst_page(OLEDDisplayTestRenderer(
+            disp_text=self.disp_text,
+            dura_secs=self.dura_secs,
+        ).as_msg())
+        # run until specified time reached
+        while rospy.Time.now() < end_ts:
+            rospy.sleep(1.0)
+        # go back to homepage
+        self._driver_node.hide_tst_page()
+
+
+class OLEDDisplayTestRenderer(MonoImageFragmentRenderer):
+    def __init__(self, disp_text: str = "Testing the OLED Display", dura_secs: int = 3):
+        super(OLEDDisplayTestRenderer, self).__init__(
+            name=f"__oled_display_test__",
+            page=PAGE_TEST_OLED_DISPLAY,
+            region=REGION_BODY,
+            roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
+            ttl=dura_secs,  # on shutdown, just need one fixed screen
+        )
+
+        contents = monospace_screen((self.roi.h, self.roi.w), disp_text, scale="hfill", align="center")
+        self.data[:, :] = contents
 
 
 class DisplayNode(DTROS):
@@ -85,6 +196,54 @@ class DisplayNode(DTROS):
         # create rendering loop
         self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / self._frequency), self._render)
         self._reminder = DTReminder(frequency=self._MAX_FREQUENCY_HZ)
+
+        # hwtest
+        self._desc_tst_srv = rospy.Service('~tests/oled_display/desc', Trigger, self._tst_desc)
+        self._tst_srv = rospy.Service('~tests/oled_display/run', Trigger, self._tst)
+        self._tst_def = None
+        self._tst_page_id = None
+
+    def _tst_desc(self, _):
+        # this part is not in __init__ to make sure all initialization is completed
+        if self._tst_def is None:
+            self._tst_def = HWTestOledDisplay(self)
+        return TriggerResponse(
+            success=True,
+            message=self._tst_def.test_desc(),
+        )
+
+    def show_tst_page(self, tst_page_msg):
+        self._fragment_cb(tst_page_msg)
+        with self._fragments_lock:
+            self._page = PAGE_TEST_OLED_DISPLAY
+
+    def hide_tst_page(self):
+        with self._fragments_lock:
+            self._page = PAGE_HOME
+
+    def _tst(self, _):
+        if self._tst_def is None:
+            self._tst_def = HWTestOledDisplay(self)
+        logs = []
+        success = True
+
+        try:
+            test = self._tst_def
+            self.log(f"[{test.test_id()}] Started")
+            self.log(test.test_params())
+            logs.append(f"[{test.test_id()}] Started")
+            logs.append(test.test_params())
+            test.run_test()
+            self.log(f"[{test.test_id()}] Finished")
+            logs.append(f"[{test.test_id()}] Finished")
+        except Exception as e:
+            logs.append(f"Exception occured. Details: {e}")
+            success = False
+
+        return TriggerResponse(
+            success=success,
+            message="\n".join(logs),
+        )
 
     def _button_event_cb(self, msg: Any):
         if msg.event == ButtonEventMsg.EVENT_SINGLE_CLICK:
