@@ -1,0 +1,17 @@
+idle:
+  color: [
+    # white on the front
+    [1, 1, 1],
+    [1, 1, 1],
+    [1, 1, 1],
+    # red on the back
+    [1, 0, 0],
+    [1, 0, 0],
+  ]
+  intensity: [
+    0.1,
+    0.1,
+    0.1,
+    0.2,
+    0.2
+  ]
