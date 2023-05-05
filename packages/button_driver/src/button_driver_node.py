@@ -80,19 +80,22 @@ class HWTestButton(HWTest):
         super().__init__()
         self._driver = driver
         # test settings
-        self.led_blink_secs = 5
+        self.led_blink_secs = 3
         self.led_blink_hz = 1
+        # tmp var
+        self._button_relased = False
 
     def test_id(self) -> str:
         return f"Top button"
 
     def test_desc_preparation(self) -> str:
-        return "Put your Duckiebot in normal orientation, and make sure you can see the top button."
+        return "Put your Duckiebot in normal orientation, and make sure you can see and press the top button."
 
     def test_desc_expectation(self) -> str:
         return (
             f"The top button's LED should start blinking at {self.led_blink_hz} HZ.\n"
-            f"In about {self.led_blink_secs} seconds, it should stop blinking."
+            f"In about {self.led_blink_secs} seconds, it should stop blinking.\n"
+            "Now, as soon as you press and release the button, the test should stop."
         )
     
     def test_desc_log_gather(self) -> str:
@@ -105,8 +108,17 @@ class HWTestButton(HWTest):
     def test_params(self) -> str:
         return f"[{self.test_id()}] led_blink_secs = {self.led_blink_secs}, led_blink_hz = {self.led_blink_hz}"
 
+    def button_event_cb(self):
+        self._button_relased = True
+
     def run_test(self) -> Optional[bool]:
         self._driver.led.blink_led(secs_to_blink=self.led_blink_secs, blink_freq_hz=self.led_blink_hz)
+        self._driver.start_test(self.button_event_cb)
+        while not self._button_relased:
+            rospy.sleep(0.1)
+        # reset
+        self._button_relased = False
+
 
 
 class ButtonDriverNode(DTROS):
