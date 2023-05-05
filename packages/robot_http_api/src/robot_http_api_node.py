@@ -98,7 +98,7 @@ class HWTestWifi(HWTest):
         return TriggerResponse(success=success, message=response)
 
     def test_id(self) -> str:
-        return f"Wifi"
+        return f"USB Wifi Dongle"
 
     def test_desc_preparation(self) -> str:
         return "Make sure the USB Wifi dongle is plugged in to your Duckiebot, and it is blinking."
