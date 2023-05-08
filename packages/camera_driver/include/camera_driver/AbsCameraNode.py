@@ -11,9 +11,163 @@ from abc import ABC, abstractmethod
 from cv_bridge import CvBridge
 from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
-from std_srvs.srv import Trigger, TriggerResponse
 
 from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
+
+from abc import ABC, abstractmethod
+from typing import Optional, Dict, List
+from std_srvs.srv import Trigger, TriggerResponse
+from enum import Enum
+import json
+
+
+class HWTestJsonParamType(Enum):
+    STRING = 'string'
+    BASE64 = 'base64'
+    HTML = 'html'
+    OBJECT = 'object'
+
+
+class EnumJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Enum):
+            return obj.value
+        return super().default(obj)
+
+
+class HWTest(ABC):
+    @abstractmethod
+    def test_id(self) -> str:
+        """Short name, used to report start and end of test"""
+        pass
+
+    @abstractmethod
+    def test_desc_preparation(self) -> str:
+        """Preparation before running. E.g. put the DB upside down"""
+        pass
+
+    def test_desc_running(self) -> str:
+        """Actual steps to run the test"""
+        # default: just click the "Run test" button
+        return self.html_util_ul(["Click on the <strong>Run the test</strong> button below."])
+
+    @abstractmethod
+    def test_desc_expectation(self) -> str:
+        """Expected outcome"""
+        pass
+
+    @abstractmethod
+    def test_desc_log_gather(self) -> str:
+        """How to gather logs before reporting"""
+        pass
+
+    def test_desc(self) -> str:
+        """Test description and key params"""
+        return [
+            self.format_obj(
+                key="Preparation",
+                value_type=HWTestJsonParamType.HTML,
+                value=self.test_desc_preparation(),
+            ),
+            self.format_obj("Expected Outcomes", HWTestJsonParamType.HTML, self.test_desc_expectation()),
+            self.format_obj("How to run", HWTestJsonParamType.HTML, self.test_desc_running()),
+            self.format_obj("Logs Gathering (in case of errors)", HWTestJsonParamType.HTML, self.test_desc_log_gather()),
+        ]
+
+    @staticmethod
+    def format_obj(key: str, value_type: "HWTestJsonParamType", value: str):
+        return {
+            "key": key,
+            "type": value_type,
+            "value": value,
+        }
+
+    @staticmethod
+    def format_response(success: bool, lst_blocks):
+        ret_obj = {
+            "type": HWTestJsonParamType.OBJECT,
+            "parameters": []
+        }
+        for block in lst_blocks:
+            ret_obj["parameters"].append(block)
+
+        return TriggerResponse(
+            success=success,
+            message=json.dumps(ret_obj, cls=EnumJSONEncoder),
+        )
+
+    @staticmethod
+    def html_util_ul(lst_items: List[str]) -> str:
+        ret = ["<ul>"]
+        for item in lst_items:
+            ret.append("<li>" + item + "</li>")
+        ret.append("</ul>")
+        return "".join(ret)
+
+    def srv_cb_tst_desc(self, _):
+        return self.format_response(
+            success=True,
+            lst_blocks=self.test_desc(),
+        )
+
+class HWTestCamera(HWTest):
+    def __init__(self) -> None:
+        super().__init__()
+        self._desc_tst_srv = rospy.Service('~tests/camera/desc', Trigger, self.srv_cb_tst_desc)
+        self._tst_srv = rospy.Service('~tests/camera/run', Trigger, self._tst)
+        # test settings
+
+    def _tst(self, _):
+        rospy.loginfo(f"[{self.test_id()}] Test service called.")
+    
+        # Subscribe to the topic and get one message
+        try:
+            msg = rospy.wait_for_message('~image/compressed', CompressedImage, timeout=5.0)
+            base64_encoded_msg = base64.b64encode(msg.data).decode('utf-8')
+            response = base64_encoded_msg
+            response_type = HWTestJsonParamType.BASE64
+            success = True
+        except rospy.ROSException as e:
+            response = "Failed to get message: {}".format(e)
+            response_type = HWTestJsonParamType.STRING
+            success = False
+
+        # Return the service response
+        return self.format_response(
+            success=success,
+            lst_blocks=[
+                self.format_obj(
+                    key="Image",
+                    value_type=response_type,
+                    value=response,
+                ),
+            ]
+        )
+
+    def test_id(self) -> str:
+        return f"Camera"
+
+    def test_desc_preparation(self) -> str:
+        return self.html_util_ul([
+            "Point the camera to a place with no confidential data, as we will take a picture during the test.",
+            "The picture taken will not be stored anywhere.",
+        ])
+
+    def test_desc_expectation(self) -> str:
+        return self.html_util_ul([
+            "Run the test a few times, with slightly different Duckiebot headings.",
+            "The pictures taken should correspond to the Duckiebot's view change",
+        ])
+
+    def test_desc_log_gather(self) -> str:
+        return self.html_util_ul([
+            "On your laptop, run the following command to save the logs.",
+            "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
+            "<code>docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
+        ])
+
+    def test_params(self) -> str:
+        return f"[{self.test_id()}] N/A"
 
 
 class AbsCameraNode(ABC, DTROS):
@@ -110,7 +264,7 @@ class AbsCameraNode(ABC, DTROS):
         self.update_camera_params()
         self.log("Using calibration file: %s" % self.cali_file)
 
-        self._tst1_srv = rospy.Service('~tests/camera/run', Trigger, self._tst)
+        self._hw_test = HWTestCamera()
 
         # create cv bridge
         self._bridge = CvBridge()
@@ -143,22 +297,6 @@ class AbsCameraNode(ABC, DTROS):
         self._last_image_published_time = 0
         # ---
         self.log("[AbsCameraNode]: Initialized.")
-
-    def _tst(self, req):
-        rospy.loginfo("Service called. Getting message from the topic...")
-    
-        # Subscribe to the topic and get one message
-        try:
-            msg = rospy.wait_for_message('~image/compressed', CompressedImage, timeout=5.0)
-            base64_encoded_msg = base64.b64encode(msg.data).decode('utf-8')
-            response = base64_encoded_msg
-            success = True
-        except rospy.ROSException as e:
-            response = "Failed to get message: {}".format(e)
-            success = False
-
-        # Return the service response
-        return TriggerResponse(success=success, message=response)
 
     @property
     def is_stopped(self):
