@@ -21,6 +21,193 @@ from duckietown_msgs.msg import DisplayFragment
 from sensor_msgs.msg import Range
 from std_msgs.msg import Header
 
+from abc import ABC, abstractmethod
+from typing import Optional, Dict, List, Union
+from std_srvs.srv import Trigger, TriggerResponse
+from enum import Enum
+import json
+
+
+class HWTestJsonParamType(Enum):
+    STRING = 'string'
+    BASE64 = 'base64'
+    HTML = 'html'
+    OBJECT = 'object'
+    STREAM = 'stream'
+
+
+class EnumJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Enum):
+            return obj.value
+        return super().default(obj)
+
+
+class HWTest(ABC):
+    @abstractmethod
+    def test_id(self) -> str:
+        """Short name, used to report start and end of test"""
+        pass
+
+    @abstractmethod
+    def test_desc_preparation(self) -> str:
+        """Preparation before running. E.g. put the DB upside down"""
+        pass
+
+    def test_desc_running(self) -> str:
+        """Actual steps to run the test"""
+        # default: just click the "Run test" button
+        return self.html_util_ul(["Click on the <strong>Run the test</strong> button below."])
+
+    @abstractmethod
+    def test_desc_expectation(self) -> str:
+        """Expected outcome"""
+        pass
+
+    @abstractmethod
+    def test_desc_log_gather(self) -> str:
+        """How to gather logs before reporting"""
+        pass
+
+    def test_desc(self) -> str:
+        """Test description and key params"""
+        return [
+            self.format_obj(
+                key="Preparation",
+                value_type=HWTestJsonParamType.HTML,
+                value=self.test_desc_preparation(),
+            ),
+            self.format_obj("Expected Outcomes", HWTestJsonParamType.HTML, self.test_desc_expectation()),
+            self.format_obj("How to run", HWTestJsonParamType.HTML, self.test_desc_running()),
+            self.format_obj("Logs Gathering (in case of errors)", HWTestJsonParamType.HTML, self.test_desc_log_gather()),
+        ]
+
+    @staticmethod
+    def format_obj(key: str, value_type: "HWTestJsonParamType", value: str):
+        return {
+            "key": key,
+            "type": value_type,
+            "value": value,
+        }
+
+    @staticmethod
+    def format_response_stream(
+        success: bool,
+        test_topic_name: str,
+        test_topic_type: str,
+        lst_blocks,
+    ):
+        ret_obj = {
+            "type": HWTestJsonParamType.STREAM,
+            "parameters": []
+        }
+        for block in lst_blocks:
+            ret_obj["parameters"].append(block)
+
+        ret_obj["parameters"].append(HWTest.format_obj(
+            key="test_topic_name",
+            value_type="str",
+            value=test_topic_name,
+        ))
+
+        ret_obj["parameters"].append(HWTest.format_obj(
+            key="test_topic_type",
+            value_type="str",
+            value=test_topic_type,
+        ))
+
+        return TriggerResponse(
+            success=success,
+            message=json.dumps(ret_obj, cls=EnumJSONEncoder),
+        )
+
+    @staticmethod
+    def format_response_object(success: bool, lst_blocks):
+        ret_obj = {
+            "type": HWTestJsonParamType.OBJECT,
+            "parameters": []
+        }
+        for block in lst_blocks:
+            ret_obj["parameters"].append(block)
+
+        return TriggerResponse(
+            success=success,
+            message=json.dumps(ret_obj, cls=EnumJSONEncoder),
+        )
+
+    @staticmethod
+    def html_util_ul(lst_items: List[str]) -> str:
+        ret = ["<ul>"]
+        for item in lst_items:
+            ret.append("<li>" + item + "</li>")
+        ret.append("</ul>")
+        return "".join(ret)
+
+    def srv_cb_tst_desc(self, _):
+        return self.format_response_object(
+            success=True,
+            lst_blocks=self.test_desc(),
+        )
+
+
+class HWTestToF(HWTest):
+    def __init__(self, sensor_name: str, accuracy: "ToFAccuracy") -> None:
+        super().__init__()
+        self._desc_tst_srv = rospy.Service('~test/desc', Trigger, self.srv_cb_tst_desc)
+        self._tst_srv = rospy.Service('~test/run', Trigger, self._tst)
+        # test settings
+        # attr
+        self._sensor_name = sensor_name
+        self._accuracy = accuracy
+
+    def _tst(self, _):
+        rospy.loginfo(f"[{self.test_id()}] Test service called.")
+
+        instructions = self.html_util_ul([
+            f"Now move your hand in front of the <strong>{self._sensor_name}</strong> Time-of-Flight sensor at different distances.",
+            "Once your decide the test has passed/failed, you may mark the decision, and close this modal.",
+        ])
+
+        # Return the service response
+        return self.format_response_stream(
+            success=True,  # does not matter here
+            test_topic_name=f"{self._sensor_name}_tof_driver_node/range",
+            test_topic_type="sensor_msgs/Range",
+            lst_blocks=[
+                self.format_obj(
+                    key="Instructions",
+                    value_type=HWTestJsonParamType.HTML,
+                    value=instructions,
+                ),
+            ],
+        )
+
+    def test_id(self) -> str:
+        return f"Time-of-Flight ({self._sensor_name})"
+
+    def test_desc_preparation(self) -> str:
+        return self.html_util_ul([
+            "Put your Duckiebot in its normal orientation.",
+            "Place it near you, with its camera facing an empty space.",
+        ])
+
+    def test_desc_expectation(self) -> str:
+        return self.html_util_ul([
+            "Once your start the test, a <strong>Range:</strong> field will appear below.",
+            f"When you move your hand closer and farther to the {self._sensor_name} ToF, the range reading should change accordingly, i.e. moving closer leads to a smaller value, and farther with a greater value.",
+            f"The effective range of the sensor is <strong>from {self._accuracy.min_range}m to {self._accuracy.max_range}m</strong>. The data below should show (in red color) <em>Out of range</em>."
+        ])
+
+    def test_desc_log_gather(self) -> str:
+        return self.html_util_ul([
+            "On your laptop, run the following command to save the logs.",
+            "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
+            "<code>docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
+        ])
+
+    def test_params(self) -> str:
+        return f"[{self.test_id()}] N/A"
+
 
 @dataclasses.dataclass
 class ToFAccuracy:
@@ -75,6 +262,9 @@ class ToFNode(DTROS):
             dt_topic_type=TopicType.VISUALIZATION,
             dt_help="Fragments to display on the display",
         )
+        # hardware test
+        self._hw_test = HWTestToF(self._sensor_name, self._accuracy)
+
         # create screen renderer
         self._renderer = ToFSensorFragmentRenderer(self._sensor_name, self._accuracy)
         # check frequency
