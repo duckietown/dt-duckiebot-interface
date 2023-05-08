@@ -173,7 +173,7 @@ class HWTestBattery(HWTest):
         return (
             "On your laptop, run the following command to save the logs.\n"
             "Replace the `[path/to/save]' to the directory path where you would like to save the logs.\n"
-            "`docker -H [your_Duckiebot_hostname].local logs device-health > [path/to/save/]logs-db-iface.txt'\n"
+            "`docker -H [your_Duckiebot_hostname].local logs device-health > [path/to/save/]logs-db-device-health.txt'\n"
             "Also on your laptop, run the following commands and save the logs in the terminal to text files.\n"
             "`dts duckiebot battery info [your_Duckiebot_hostname]'\n"
             "`dts duckiebot battery check_firmware [your_Duckiebot_hostname]"
