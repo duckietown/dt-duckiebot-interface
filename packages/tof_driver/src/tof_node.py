@@ -32,6 +32,7 @@ class HWTestJsonParamType(Enum):
     STRING = 'string'
     BASE64 = 'base64'
     HTML = 'html'
+    TOPIC_INFO = 'topic_info'
     OBJECT = 'object'
     STREAM = 'stream'
 
@@ -106,13 +107,13 @@ class HWTest(ABC):
 
         ret_obj["parameters"].append(HWTest.format_obj(
             key="test_topic_name",
-            value_type="str",
+            value_type=HWTestJsonParamType.TOPIC_INFO,
             value=test_topic_name,
         ))
 
         ret_obj["parameters"].append(HWTest.format_obj(
             key="test_topic_type",
-            value_type="str",
+            value_type=HWTestJsonParamType.TOPIC_INFO,
             value=test_topic_type,
         ))
 
