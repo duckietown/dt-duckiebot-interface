@@ -130,7 +130,7 @@ class HWTestLED(HWTest):
             for i in self._led_ids:
                 self._driver.setRGB(i, (0, 0, 0))
         except Exception as e:
-            rospy.logerror(f"[{self.test_id()}] Experienced error: {e}")
+            rospy.logerr(f"[{self.test_id()}] Experienced error: {e}")
             success = False
 
         params = f"[{self.test_id()}] fade_in_secs = {self.fade_in_secs}, dura_secs = {self.dura_secs}, fade_out_secs = {self.fade_out_secs}"
