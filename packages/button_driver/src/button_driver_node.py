@@ -11,6 +11,7 @@ from duckietown_msgs.msg import (
 from duckietown.dtros import DTROS, NodeType, TopicType
 
 from button_driver import ButtonEvent, ButtonDriver
+from hardware_test_button import HWTestButton
 
 from dt_device_utils.device import shutdown_device
 
@@ -27,98 +28,6 @@ from display_renderer import (
     DisplayROI,
 )
 from display_renderer.text import monospace_screen
-
-from abc import ABC, abstractmethod
-from typing import Optional, Dict
-from std_srvs.srv import Trigger, TriggerResponse
-
-
-class HWTest(ABC):
-    @abstractmethod
-    def test_id(self) -> str:
-        """Short name, used to report start and end of test"""
-        pass
-
-    @abstractmethod
-    def test_desc_preparation(self) -> str:
-        """Preparation before running. E.g. put the DB upside down"""
-        pass
-
-    def test_desc_running(self) -> str:
-        """Actual steps to run the test"""
-        # default: just click the "Run test" button
-        return "Run the test"
-
-    @abstractmethod
-    def test_desc_expectation(self) -> str:
-        """Expected outcome"""
-        pass
-
-    @abstractmethod
-    def test_desc_log_gather(self) -> str:
-        """How to gather logs before reporting"""
-        pass
-
-    def test_desc(self) -> str:
-        """Test description and key params"""
-        # TODO: use JSON and keys to separate sections
-        return "\n\n".join([
-            self.test_desc_preparation(),
-            self.test_desc_expectation(),
-            self.test_desc_running(),
-            self.test_desc_log_gather(),
-        ])
-
-    @abstractmethod
-    def run_test(self) -> Optional[bool]:  # TODO: decide whether auto grade or not
-        """return True or False if the result could be determined within the test"""
-        pass
-
-
-class HWTestButton(HWTest):
-    def __init__(self, driver: ButtonDriver) -> None:
-        super().__init__()
-        self._driver = driver
-        # test settings
-        self.led_blink_secs = 3
-        self.led_blink_hz = 1
-        # tmp var
-        self._button_relased = False
-
-    def test_id(self) -> str:
-        return f"Top button"
-
-    def test_desc_preparation(self) -> str:
-        return "Put your Duckiebot in normal orientation, and make sure you can see and press the top button."
-
-    def test_desc_expectation(self) -> str:
-        return (
-            f"The top button's LED should start blinking at {self.led_blink_hz} HZ.\n"
-            f"In about {self.led_blink_secs} seconds, it should stop blinking.\n"
-            "Now, as soon as you press and release the button, the test should stop."
-        )
-    
-    def test_desc_log_gather(self) -> str:
-        return (
-            "On your laptop, run the following command to save the logs.\n"
-            "Replace the `[path/to/save]' to the directory path where you would like to save the logs.\n"
-            "`docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt'"
-        )
-
-    def test_params(self) -> str:
-        return f"[{self.test_id()}] led_blink_secs = {self.led_blink_secs}, led_blink_hz = {self.led_blink_hz}"
-
-    def button_event_cb(self):
-        self._button_relased = True
-
-    def run_test(self) -> Optional[bool]:
-        self._driver.led.blink_led(secs_to_blink=self.led_blink_secs, blink_freq_hz=self.led_blink_hz)
-        self._driver.start_test(self.button_event_cb)
-        while not self._button_relased:
-            rospy.sleep(0.1)
-        # reset
-        self._button_relased = False
-
 
 
 class ButtonDriverNode(DTROS):
@@ -151,43 +60,8 @@ class ButtonDriverNode(DTROS):
         # create event holder
         self._ongoing_event = None
 
-        # hwtest
-        self._desc_tst_srv = rospy.Service('~tests/top_button_led/desc', Trigger, self._tst_desc)
-        self._tst_srv = rospy.Service('~tests/top_button_led/run', Trigger, self._tst)
-        self._tst_def = None
-
-    def _tst_desc(self, _):
-        # this part is not in __init__ to make sure all initialization is completed
-        if self._tst_def is None:
-            self._tst_def = HWTestButton(self._button)
-        return TriggerResponse(
-            success=True,
-            message=self._tst_def.test_desc(),
-        )
-
-    def _tst(self, _):
-        if self._tst_def is None:
-            self._tst_def = HWTestButton(self._button)
-        logs = []
-        success = True
-
-        try:
-            test = self._tst_def
-            self.log(f"[{test.test_id()}] Started")
-            self.log(test.test_params())
-            logs.append(f"[{test.test_id()}] Started")
-            logs.append(test.test_params())
-            test.run_test()
-            self.log(f"[{test.test_id()}] Finished")
-            logs.append(f"[{test.test_id()}] Finished")
-        except Exception as e:
-            logs.append(f"Exception occured. Details: {e}")
-            success = False
-
-        return TriggerResponse(
-            success=success,
-            message="\n".join(logs),
-        )
+        # user hardware test
+        self._hw_test = HWTestButton(driver=self._button)
 
     def _event_cb(self, event: ButtonEvent):
         # create partial event
