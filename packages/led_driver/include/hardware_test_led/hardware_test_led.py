@@ -4,7 +4,7 @@ from typing import List, Tuple
 from std_srvs.srv import Trigger
 
 from rgb_led import RGB_LED
-from duckietown.dtros import DTROS, TopicType, NodeType, HWTest, HWTestJsonParamType
+from duckietown.dtros import HWTest, HWTestJsonParamType
 
 
 class HWTestLED(HWTest):
