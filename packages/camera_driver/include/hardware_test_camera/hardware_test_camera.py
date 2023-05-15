@@ -14,7 +14,7 @@ class HWTestCamera(HWTest):
         self._tst_srv = rospy.Service('~test/run', Trigger, self._tst)
 
     def test_id(self) -> str:
-        return f"Camera"
+        return "Camera"
 
     def test_desc_preparation(self) -> str:
         return self.html_util_ul([
