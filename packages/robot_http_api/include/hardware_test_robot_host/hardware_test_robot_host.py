@@ -5,7 +5,7 @@ import requests
 import rospy
 
 from std_srvs.srv import Trigger
-from duckietown.dtros import HWTest, HWTestJsonParamType
+from dt_duckiebot_hardware_tests import HWTest, HWTestJsonParamType
 
 
 class HWTestWifi(HWTest):

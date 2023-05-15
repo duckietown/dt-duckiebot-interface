@@ -3,7 +3,7 @@ import rospy
 
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import CompressedImage
-from duckietown.dtros import HWTest, HWTestJsonParamType
+from dt_duckiebot_hardware_tests import HWTest, HWTestJsonParamType
 
 
 class HWTestCamera(HWTest):

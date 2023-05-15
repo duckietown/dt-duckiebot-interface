@@ -5,7 +5,7 @@ from typing import Callable
 
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import CompressedImage
-from duckietown.dtros import HWTest, HWTestJsonParamType
+from dt_duckiebot_hardware_tests import HWTest, HWTestJsonParamType
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 
 from display_renderer import (
