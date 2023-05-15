@@ -38,16 +38,16 @@ class HWTestCamera(HWTest):
     def _tst(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
         success = True
+        response = ""
+        response_type = HWTestJsonParamType.BASE64
     
         # Subscribe to the topic and get one message
         try:
             msg = rospy.wait_for_message('~image/compressed', CompressedImage, timeout=5.0)
             base64_encoded_msg = base64.b64encode(msg.data).decode('utf-8')
             response = base64_encoded_msg
-            response_type = HWTestJsonParamType.BASE64
         except rospy.ROSException as e:
-            response = "Failed to get message: {}".format(e)
-            response_type = HWTestJsonParamType.STRING
+            rospy.logerr(f"[{self.test_id()}] Experienced error: {e}")
             success = False
 
         # Return the service response

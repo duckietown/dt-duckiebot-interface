@@ -99,7 +99,7 @@ class HWTestOledDisplay(HWTest):
             success=success,
             lst_blocks=[
                 self.format_obj(
-                    key="Parameters",
+                    key="Test parameters",
                     value_type=response_type,
                     value=response,
                 ),
