@@ -15,7 +15,7 @@ class HardwareTestWheelEncoder(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                "Put your Duckiebot upside-down, where you can reach and turn the wheels by hand.",
+                "Put your Duckiebot upside down, where you can reach and turn the wheels by hand.",
             ]
         )
 
@@ -23,7 +23,8 @@ class HardwareTestWheelEncoder(HardwareTest):
         return self.html_util_ul(
             [
                 "Once your start the test, a <strong>Tick value</strong> field will appear below.",
-                "When you turn the wheel, if the tick value below changes according to your movements and rate, the test is passed.",
+                "When you turn the wheel, if the value changes according to your movement rate, the test is passed.",
+                "(The change of directions would not be reflected.)",
             ]
         )
 

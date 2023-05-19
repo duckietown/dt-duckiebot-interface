@@ -32,7 +32,7 @@ class HardwareTestWifi(HardwareTest):
             [
                 "On your laptop, run the following command to save the logs.",
                 "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
-                "<code>ssh duckie@[your_Duckiebot_hostname].local ifconfig > [path/to/save/]logs-network-ifconfig.txt</code>",
+                "<code>ssh duckie@[ROBOT_NAME].local ifconfig > [path/to/save/]logs-network-ifconfig.txt</code>",
                 "(You might need to provide the password to your Duckiebot when prompted.)",
             ]
         )
@@ -89,8 +89,8 @@ class HardwareTestBattery(HardwareTest):
             [
                 "The battery firmware version should be at least <code>2.0.2</code>.",
                 "The PCB version should be at least <code>16</code>.",
-                "Within 2 seconds of (un)plugging the charging cable, the result should reflect whether the Duckiebot is being charged.",
-                "Only mark the Success when the version examinations pass, and the charging state is indicated accurately.",
+                "The test result should reflect the accurate charging status, within 2 seconds of a change.",
+                "Only mark the Success when the version examinations pass, and the charging states are indicated correctly.",
             ]
         )
 
@@ -99,7 +99,7 @@ class HardwareTestBattery(HardwareTest):
             [
                 "Run the test for multiple times, with and without the Duckiebot being charged.",
                 "Check the results against the Expected Outcomes each time.",
-                "Please click the <strong>Run the Test</strong> button below to run tests.",
+                "Please click the <strong>Run the Test</strong> button below to run the tests.",
             ]
         )
 
@@ -108,10 +108,10 @@ class HardwareTestBattery(HardwareTest):
             [
                 "On your laptop, run the following command to save the logs.",
                 "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
-                "<code>docker -H [your_Duckiebot_hostname].local logs device-health > [path/to/save/]logs-db-device-health.txt</code>",
+                "<code>docker -H [ROBOT_NAME].local logs device-health > [path/to/save/]logs-db-device-health.txt</code>",
                 "Also on your laptop, run the following commands and save the logs in the terminal to text files.",
-                "<code>dts duckiebot battery info [your_Duckiebot_hostname]</code>",
-                "<code>dts duckiebot battery check_firmware [your_Duckiebot_hostname]</code>",
+                "<code>dts duckiebot battery info [ROBOT_NAME]</code>",
+                "<code>dts duckiebot battery check_firmware [ROBOT_NAME]</code>",
             ]
         )
 

@@ -13,7 +13,7 @@ class HardwareTestIMU(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                "Put your Duckiebot in the ordinary orientation, on a surface (e.g. desk).",
+                "Put your Duckiebot in its normal orientation, on a surface (e.g. desk).",
                 "Make sure you can reach and grab the robot when the test starts.",
             ]
         )
@@ -22,17 +22,18 @@ class HardwareTestIMU(HardwareTest):
         return self.html_util_ul(
             [
                 "Hold your Duckiebot up a little bit off the surface.",
-                "In the next screen, your objective is to keep a ball on the plane by rotating the robot.",
-                "Now, click on the <strong>Run the test</strong> button below to start the test.",
+                "Click on the <strong>Run the test</strong> button below to start the test.",
             ]
         )
 
     def test_description_expectation(self) -> str:
         return self.html_util_ul(
             [
-                "Once the test starts, you will see a flat plane reflecting your Duckiebot's orientation.",
+                "Once the test starts, a modal would pop up with a game.",
+                "You will see a flat plane reflecting your Duckiebot's orientation.",
+                "Your objective is to keep a ball on the plane by rotating your robot.",
+                "The test is considered successful, if you're able to control the plane naturally by moving your Duckiebot.",
                 "If the plane does not move like your Duckiebot, there is a problem.",
-                "The test is considered successful, if you're able to control the plane naturally with moving your Duckiebot.",
             ]
         )
 
@@ -41,7 +42,7 @@ class HardwareTestIMU(HardwareTest):
             [
                 "On your laptop, run the following command to save the logs.",
                 "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
-                "<code>docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
+                "<code>docker -H [ROBOT_NAME].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
                 "Also, right click in the web browser and choose the `Inspect' option.",
                 "Then, navigate to the `Console' tab and copy any error messages.",
             ]

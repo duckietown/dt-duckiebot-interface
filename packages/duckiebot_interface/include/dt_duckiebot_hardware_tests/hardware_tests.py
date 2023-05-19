@@ -74,7 +74,7 @@ class HardwareTest(ABC):
 
     @abstractmethod
     def test_description_preparation(self) -> str:
-        """Preparation before running. E.g. put the DB upside down"""
+        """Preparation before running. E.g. put the Duckiebot upside down"""
         pass
 
     def test_description_running(self) -> str:
@@ -95,7 +95,7 @@ class HardwareTest(ABC):
             [
                 "On your laptop, run the following command to save the logs.",
                 "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
-                "<code>docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
+                "<code>docker -H [ROBOT_NAME].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
             ]
         )
 

@@ -37,7 +37,7 @@ class HardwareTestLED(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                f"Put your Duckiebot in ordinary orientation, where you can see the {self._info_str} LEDs.",
+                f"Put your Duckiebot in its normal orientation, where you can see the {self._info_str} LEDs.",
             ]
         )
 
@@ -45,8 +45,8 @@ class HardwareTestLED(HardwareTest):
         return self.html_util_ul(
             [
                 "The Duckiebot LEDs should start shining.",
-                "The LEDs should show smoothly: RED -> GREEN -> BLUE -> RED.",
-                f"In about {self.fade_in_secs + self.dura_secs + self.fade_out_secs} seconds, it should be off.",
+                "The LEDs should show a smooth transition of these colors: RED -> GREEN -> BLUE -> RED.",
+                f"In about {self.fade_in_secs + self.dura_secs + self.fade_out_secs} seconds, they should be off.",
             ]
         )
 

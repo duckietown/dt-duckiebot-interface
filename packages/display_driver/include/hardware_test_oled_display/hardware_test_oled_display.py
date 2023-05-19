@@ -52,7 +52,7 @@ class HardwareTestOledDisplay(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                "Put your Duckiebot in normal orientation.",
+                "Put your Duckiebot in its normal orientation.",
                 "And make sure you can see the top OLED display.",
             ]
         )
@@ -60,7 +60,7 @@ class HardwareTestOledDisplay(HardwareTest):
     def test_description_expectation(self) -> str:
         return self.html_util_ul(
             [
-                f"The top display should show: <strong>{self.disp_text}</strong>.",
+                f"Once the test is started, the top display should show: <strong>{self.disp_text}</strong>.",
                 f"In about <strong>{self.dura_secs}</strong> seconds, the test page should disappear, and the homepage should be shown again.",
             ]
         )

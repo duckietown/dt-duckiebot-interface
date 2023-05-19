@@ -8,10 +8,9 @@ from tof_accuracy import ToFAccuracy
 class HardwareTestToF(HardwareTest):
     def __init__(self, sensor_name: str, accuracy: ToFAccuracy) -> None:
         super().__init__()
-        # test settings
-
         # attr
-        self._sensor_name = sensor_name  # e.g. front_center
+        self._sensor_name = sensor_name  # e.g. "front_center"
+        self._sensor_name_human = " ".join(sensor_name.split("_"))  # e.g. "front center"
         self._accuracy = accuracy
 
     def test_id(self) -> str:
@@ -29,7 +28,7 @@ class HardwareTestToF(HardwareTest):
         return self.html_util_ul(
             [
                 "Once your start the test, a <strong>Range:</strong> field will appear below.",
-                f"When you move your hand closer and farther to the {self._sensor_name} ToF, the range reading should change accordingly, i.e. moving closer leads to a smaller value, and farther with a greater value.",
+                f"When you move your hand closer and farther to the <strong>{self._sensor_name_human}</strong> ToF, the range reading should change accordingly, i.e. moving closer leads to a smaller value, and farther with a greater value.",
                 f"The effective range of the sensor is <strong>from {self._accuracy.min_range}m to {self._accuracy.max_range}m</strong>. The data below should show (in red color) <em>Out of range</em>.",
             ]
         )
@@ -39,7 +38,7 @@ class HardwareTestToF(HardwareTest):
 
         instructions = self.html_util_ul(
             [
-                f"Now move your hand in front of the <strong>{self._sensor_name}</strong> Time-of-Flight sensor at different distances.",
+                f"Now move your hand in front of the <strong>{self._sensor_name_human}</strong> Time-of-Flight sensor at different distances.",
                 "Once your decide the test has passed/failed, you may mark the decision, and close this modal.",
             ]
         )

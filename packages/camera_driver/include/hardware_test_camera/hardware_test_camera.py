@@ -12,11 +12,11 @@ class HardwareTestCamera(HardwareTest):
 
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
-            ["Put the Duckiebot within your reach, as you need to move it."]
+            ["Place the Duckiebot within your reach, as you will need to move it during the test."]
         )
 
     def test_description_expectation(self) -> str:
-        return self.html_util_ul(["A live camera stream will be shown below."])
+        return self.html_util_ul(["A live camera stream should be shown below."])
 
     def cb_run_test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
