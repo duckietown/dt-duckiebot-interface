@@ -15,42 +15,58 @@ Here're the steps to write a new test:
 """
 
 import json
+import rospy
 
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
 
-from std_srvs.srv import TriggerResponse
+from std_srvs.srv import Trigger, TriggerResponse
 
 
 class HardwareTestJsonParamType(Enum):
     """Type constants, so receiving side knows how to parse/use the values"""
 
     # basic string
-    STRING = 'string'
+    STRING = "string"
     # base64 encode image
-    BASE64 = 'base64'
+    BASE64 = "base64"
     # a html block (as a string)
-    HTML = 'html'
+    HTML = "html"
     # ROS Topic related info, i.e. name and type. for the "stream" option below
-    TOPIC_INFO = 'topic_info'
+    TOPIC_INFO = "topic_info"
 
     # --- Highest level response types ---
     # results of a completed test
-    OBJECT = 'object'
+    OBJECT = "object"
     # instructions to connect to a live stream from a topic
-    STREAM = 'stream'
+    STREAM = "stream"
 
 
 class EnumJSONEncoder(json.JSONEncoder):
     """Used to encode the HardwareTestJsonParamType(Enum)"""
+
     def default(self, obj):
         if isinstance(obj, Enum):
             return obj.value
         return super().default(obj)
-    
+
 
 class HardwareTest(ABC):
+    def __init__(self, service_identifier: str = "test"):
+        """Base class for User Hardware Tests
+
+        Args:
+            service_identifier (str, optional): The resulting test services are [node_prefix]/[identifier]/[description|run]. Defaults to "test".
+        """
+        # test services
+        self.description_srv = rospy.Service(
+            f"~{service_identifier}/description", Trigger, self.cb_description
+        )
+        self.test_srv = rospy.Service(
+            f"~{service_identifier}/run", Trigger, self.cb_run_test
+        )
+
     @abstractmethod
     def test_id(self) -> str:
         """Short name, used to report start and end of test"""
@@ -64,17 +80,24 @@ class HardwareTest(ABC):
     def test_description_running(self) -> str:
         """Actual steps to run the test"""
         # default: just click the "Run test" button
-        return self.html_util_ul(["Click on the <strong>Run the test</strong> button below."])
+        return self.html_util_ul(
+            ["Click on the <strong>Run the test</strong> button below."]
+        )
 
     @abstractmethod
     def test_description_expectation(self) -> str:
         """Expected outcome(s) and/or how to determine if a test was successful"""
         pass
 
-    @abstractmethod
     def test_description_log_gather(self) -> str:
         """How to gather logs before reporting"""
-        pass
+        return self.html_util_ul(
+            [
+                "On your laptop, run the following command to save the logs.",
+                "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
+                "<code>docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
+            ]
+        )
 
     def test_description(self) -> str:
         """Test descriptions"""
@@ -84,17 +107,34 @@ class HardwareTest(ABC):
                 value_type=HardwareTestJsonParamType.HTML,
                 value=self.test_description_preparation(),
             ),
-            self.format_obj("Expected Outcomes", HardwareTestJsonParamType.HTML, self.test_description_expectation()),
-            self.format_obj("How to run", HardwareTestJsonParamType.HTML, self.test_description_running()),
-            self.format_obj("Logs Gathering (in case of errors)", HardwareTestJsonParamType.HTML, self.test_description_log_gather()),
+            self.format_obj(
+                "Expected Outcomes",
+                HardwareTestJsonParamType.HTML,
+                self.test_description_expectation(),
+            ),
+            self.format_obj(
+                "How to run",
+                HardwareTestJsonParamType.HTML,
+                self.test_description_running(),
+            ),
+            self.format_obj(
+                "Logs Gathering (in case of errors)",
+                HardwareTestJsonParamType.HTML,
+                self.test_description_log_gather(),
+            ),
         ]
-    
+
     def cb_description(self, _):
         """The test description service response"""
         return self.format_response_object(
             success=True,
             lst_blocks=self.test_description(),
         )
+
+    @abstractmethod
+    def cb_run_test(self, _):
+        """Actually running the test"""
+        pass
 
     @staticmethod
     def format_obj(key: str, value_type: "HardwareTestJsonParamType", value: str):
@@ -111,24 +151,25 @@ class HardwareTest(ABC):
         test_topic_type: str,
         lst_blocks,
     ):
-        ret_obj = {
-            "type": HardwareTestJsonParamType.STREAM,
-            "parameters": []
-        }
+        ret_obj = {"type": HardwareTestJsonParamType.STREAM, "parameters": []}
         for block in lst_blocks:
             ret_obj["parameters"].append(block)
 
-        ret_obj["parameters"].append(HardwareTest.format_obj(
-            key="test_topic_name",
-            value_type=HardwareTestJsonParamType.TOPIC_INFO,
-            value=test_topic_name,
-        ))
+        ret_obj["parameters"].append(
+            HardwareTest.format_obj(
+                key="test_topic_name",
+                value_type=HardwareTestJsonParamType.TOPIC_INFO,
+                value=test_topic_name,
+            )
+        )
 
-        ret_obj["parameters"].append(HardwareTest.format_obj(
-            key="test_topic_type",
-            value_type=HardwareTestJsonParamType.TOPIC_INFO,
-            value=test_topic_type,
-        ))
+        ret_obj["parameters"].append(
+            HardwareTest.format_obj(
+                key="test_topic_type",
+                value_type=HardwareTestJsonParamType.TOPIC_INFO,
+                value=test_topic_type,
+            )
+        )
 
         return TriggerResponse(
             success=success,
@@ -137,10 +178,7 @@ class HardwareTest(ABC):
 
     @staticmethod
     def format_response_object(success: bool, lst_blocks):
-        ret_obj = {
-            "type": HardwareTestJsonParamType.OBJECT,
-            "parameters": []
-        }
+        ret_obj = {"type": HardwareTestJsonParamType.OBJECT, "parameters": []}
         for block in lst_blocks:
             ret_obj["parameters"].append(block)
 

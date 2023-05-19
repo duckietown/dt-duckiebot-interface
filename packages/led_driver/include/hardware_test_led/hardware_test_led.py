@@ -1,60 +1,54 @@
 import rospy
 
 from typing import List, Tuple
-from std_srvs.srv import Trigger
 
 from rgb_led import RGB_LED
 from dt_duckiebot_hardware_tests import HardwareTest, HardwareTestJsonParamType
 
 
 class HardwareTestLED(HardwareTest):
-    def __init__(self,
-                 driver: RGB_LED,
-                 front_leds: bool = True,
-                 fade_in_secs: int = 2,
-                 dura_secs: int = 10,
-                 fade_out_secs: int = 2,
-                 ) -> None:
-        super().__init__()
+    def __init__(
+        self,
+        driver: RGB_LED,
+        front_leds: bool = True,
+        fade_in_secs: int = 2,
+        dura_secs: int = 10,
+        fade_out_secs: int = 2,
+    ) -> None:
+        # front or back LEDs
+        self._info_str = "front" if front_leds else "back"
+        super().__init__(service_identifier=f"tests/{self._info_str}")
 
         # attr
         self._driver = driver
         self._testing_front_leds = front_leds  # if false, testing back LEDs
-        self._info_str = "front" if front_leds else "back"
         # tested on DB21J: front - [0, 2]; back - [3, 4]
         self._led_ids = [0, 1, 2] if front_leds else [3, 4]
 
         # test settings
-        self.fade_in_secs = 2
-        self.dura_secs = 10
-        self.fade_out_secs = 2
+        self.fade_in_secs = fade_in_secs
+        self.dura_secs = dura_secs
+        self.fade_out_secs = fade_out_secs
         self._color_sequence = None  # lazy init. If test is run, generate this
-
-        # test services
-        self._description_srv = rospy.Service(f"~test/{self._info_str}/description", Trigger, self.cb_description)
-        self._test_srv = rospy.Service(f"~test/{self._info_str}/run", Trigger, self._test)
 
     def test_id(self) -> str:
         return f"LED ({self._info_str})"
 
     def test_description_preparation(self) -> str:
-        return self.html_util_ul([
-            f"Put your Duckiebot in ordinary orientation, where you can see the {self._info_str} LEDs.",
-        ])
+        return self.html_util_ul(
+            [
+                f"Put your Duckiebot in ordinary orientation, where you can see the {self._info_str} LEDs.",
+            ]
+        )
 
     def test_description_expectation(self) -> str:
-        return self.html_util_ul([
-            "The Duckiebot LEDs should start shining.",
-            "The LEDs should show smoothly: RED -> GREEN -> BLUE -> RED.",
-            f"In about {self.fade_in_secs + self.dura_secs + self.fade_out_secs} seconds, it should be off.",
-        ])
-    
-    def test_description_log_gather(self) -> str:
-        return self.html_util_ul([
-            "On your laptop, run the following command to save the logs.",
-            "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
-            "<code>docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
-        ])
+        return self.html_util_ul(
+            [
+                "The Duckiebot LEDs should start shining.",
+                "The LEDs should show smoothly: RED -> GREEN -> BLUE -> RED.",
+                f"In about {self.fade_in_secs + self.dura_secs + self.fade_out_secs} seconds, it should be off.",
+            ]
+        )
 
     def _generate_colors(self, gap: int = 16) -> List[Tuple[float, float, float]]:
         """Generate a smooth transition of colors: Red -> Green -> Blue -> Red"""
@@ -84,10 +78,13 @@ class HardwareTestLED(HardwareTest):
             if b % gap == 0:
                 samples.append((255, 0, b))
 
-        normalized_samples = [(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0) for r, g, b in samples]
+        normalized_samples = [
+            (float(r) / 255.0, float(g) / 255.0, float(b) / 255.0)
+            for r, g, b in samples
+        ]
         return normalized_samples
-        
-    def _test(self, _):
+
+    def cb_run_test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
         success = True
 

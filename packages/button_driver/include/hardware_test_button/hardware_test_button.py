@@ -1,17 +1,16 @@
 import rospy
 
-from std_srvs.srv import Trigger
-
 from button_driver import ButtonDriver
 from dt_duckiebot_hardware_tests import HardwareTest, HardwareTestJsonParamType
 
 
 class HardwareTestButton(HardwareTest):
-    def __init__(self,
-                 driver: ButtonDriver,
-                 led_blink_secs: int = 2,
-                 led_blink_hz: int = 1,
-                 ) -> None:
+    def __init__(
+        self,
+        driver: ButtonDriver,
+        led_blink_secs: int = 3,
+        led_blink_hz: int = 1,
+    ) -> None:
         super().__init__()
 
         # attr
@@ -22,36 +21,29 @@ class HardwareTestButton(HardwareTest):
         self.led_blink_secs = led_blink_secs
         self.led_blink_hz = led_blink_hz
 
-        # test services
-        self._description_srv = rospy.Service(f"~test/description", Trigger, self.cb_description)
-        self._test_srv = rospy.Service(f"~test/run", Trigger, self._test)
-
     def test_id(self) -> str:
         return "Top button"
 
     def test_description_preparation(self) -> str:
-        return self.html_util_ul([
-            "Put your Duckiebot in the ordinary orientation, and make sure you can see and press the top button."
-        ])
+        return self.html_util_ul(
+            [
+                "Put your Duckiebot in the ordinary orientation, and make sure you can see and press the top button."
+            ]
+        )
 
     def test_description_expectation(self) -> str:
-        return self.html_util_ul([
-            f"The top button's LED should start blinking at {self.led_blink_hz} HZ.",
-            f"In about {self.led_blink_secs} seconds, it should stop blinking.",
-            "After the LED stops blinking, as soon as you press and release the button, the test should finish.",
-        ])
-    
-    def test_description_log_gather(self) -> str:
-        return self.html_util_ul([
-            "On your laptop, run the following command to save the logs.",
-            "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
-            "<code>docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
-        ])
+        return self.html_util_ul(
+            [
+                f"The top button's LED should start blinking at {self.led_blink_hz} HZ.",
+                f"In about {self.led_blink_secs} seconds, it should stop blinking.",
+                "After the LED stops blinking, as soon as you press and release the button, the test should finish.",
+            ]
+        )
 
     def button_event_cb(self):
         self._button_released = True
-        
-    def _test(self, _):
+
+    def cb_run_test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
         success = True
 

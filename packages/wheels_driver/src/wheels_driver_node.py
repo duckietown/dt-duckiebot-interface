@@ -3,7 +3,6 @@
 import rospy
 from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
-from std_srvs.srv import Trigger, TriggerResponse
 
 from duckietown.dtros import DTROS, TopicType, NodeType
 from hardware_test_wheels import HardwareTestMotor, HardwareTestMotorSide
