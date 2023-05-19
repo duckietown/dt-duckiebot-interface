@@ -21,7 +21,7 @@ from sensor_msgs.msg import Range
 from std_msgs.msg import Header
 
 from tof_accuracy import ToFAccuracy
-from hardware_test_tof import HWTestToF
+from hardware_test_tof import HardwareTestToF
 
 
 class ToFNode(DTROS):
@@ -56,8 +56,8 @@ class ToFNode(DTROS):
             dt_topic_type=TopicType.VISUALIZATION,
             dt_help="Fragments to display on the display",
         )
-        # hardware test
-        self._hw_test = HWTestToF(self._sensor_name, self._accuracy)
+        # user hardware test
+        self._hardware_test = HardwareTestToF(self._sensor_name, self._accuracy)
 
         # create screen renderer
         self._renderer = ToFSensorFragmentRenderer(self._sensor_name, self._accuracy)

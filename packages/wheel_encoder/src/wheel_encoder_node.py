@@ -15,7 +15,7 @@ from duckietown_msgs.msg import WheelEncoderStamped, WheelsCmdStamped
 from wheel_encoder import WheelEncoderDriver, WheelDirection
 from duckietown.dtros import DTROS, TopicType, NodeType, DTParam, ParamType
 
-from hardware_test_wheel_encoder import HWTestWheelEncoder
+from hardware_test_wheel_encoder import HardwareTestWheelEncoder
 
 
 class WheelEncoderNode(DTROS):
@@ -110,7 +110,7 @@ class WheelEncoderNode(DTROS):
         # setup the driver
         self._driver = WheelEncoderDriver(self._gpio_pin, self._encoder_tick_cb)
         # user hardware test
-        self._hw_test = HWTestWheelEncoder(wheel_side=self._name)
+        self._hardware_test = HardwareTestWheelEncoder(wheel_side=self._name)
 
     def _wheels_cmd_executed_cb(self, msg):
         if self._configuration == "left":

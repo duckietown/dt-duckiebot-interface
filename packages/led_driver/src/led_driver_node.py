@@ -7,7 +7,7 @@ from rgb_led import RGB_LED
 from std_msgs.msg import String, ColorRGBA
 from duckietown_msgs.msg import LEDPattern
 from duckietown.dtros import DTROS, TopicType, NodeType
-from hardware_test_led import HWTestLED
+from hardware_test_led import HardwareTestLED
 
 
 class LEDDriverNode(DTROS):
@@ -48,8 +48,9 @@ class LEDDriverNode(DTROS):
 
         self.sub_topic = rospy.Subscriber("~led_pattern", LEDPattern, self.led_cb, queue_size=1)
 
-        self.hw_test_front = HWTestLED(self.led, front_leds=True)
-        self.hw_test_back = HWTestLED(self.led, front_leds=False)
+        # user hardware tests
+        self._hardware_test_front = HardwareTestLED(self.led, front_leds=True)
+        self._hardware_test_back = HardwareTestLED(self.led, front_leds=False)
         self.log("Initialized.")
 
     def led_cb(self, msg):

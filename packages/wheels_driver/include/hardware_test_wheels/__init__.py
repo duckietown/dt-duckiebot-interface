@@ -1,1 +1,1 @@
-from .hardware_test_motor import HWTestMotor, HWTestMotorSide
+from .hardware_test_motor import HardwareTestMotor, HardwareTestMotorSide

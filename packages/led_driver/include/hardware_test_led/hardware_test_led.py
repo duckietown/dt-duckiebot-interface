@@ -4,10 +4,10 @@ from typing import List, Tuple
 from std_srvs.srv import Trigger
 
 from rgb_led import RGB_LED
-from dt_duckiebot_hardware_tests import HWTest, HWTestJsonParamType
+from dt_duckiebot_hardware_tests import HardwareTest, HardwareTestJsonParamType
 
 
-class HWTestLED(HWTest):
+class HardwareTestLED(HardwareTest):
     def __init__(self,
                  driver: RGB_LED,
                  front_leds: bool = True,
@@ -31,25 +31,25 @@ class HWTestLED(HWTest):
         self._color_sequence = None  # lazy init. If test is run, generate this
 
         # test services
-        self._desc_tst_srv = rospy.Service(f"~test/{self._info_str}/desc", Trigger, self.srv_cb_tst_desc)
-        self._tst_srv = rospy.Service(f"~test/{self._info_str}/run", Trigger, self._tst)
+        self._description_srv = rospy.Service(f"~test/{self._info_str}/description", Trigger, self.cb_description)
+        self._test_srv = rospy.Service(f"~test/{self._info_str}/run", Trigger, self._test)
 
     def test_id(self) -> str:
         return f"LED ({self._info_str})"
 
-    def test_desc_preparation(self) -> str:
+    def test_description_preparation(self) -> str:
         return self.html_util_ul([
             f"Put your Duckiebot in ordinary orientation, where you can see the {self._info_str} LEDs.",
         ])
 
-    def test_desc_expectation(self) -> str:
+    def test_description_expectation(self) -> str:
         return self.html_util_ul([
             "The Duckiebot LEDs should start shining.",
             "The LEDs should show smoothly: RED -> GREEN -> BLUE -> RED.",
             f"In about {self.fade_in_secs + self.dura_secs + self.fade_out_secs} seconds, it should be off.",
         ])
     
-    def test_desc_log_gather(self) -> str:
+    def test_description_log_gather(self) -> str:
         return self.html_util_ul([
             "On your laptop, run the following command to save the logs.",
             "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
@@ -87,7 +87,7 @@ class HWTestLED(HWTest):
         normalized_samples = [(float(r) / 255.0, float(g) / 255.0, float(b) / 255.0) for r, g, b in samples]
         return normalized_samples
         
-    def _tst(self, _):
+    def _test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
         success = True
 
@@ -140,7 +140,7 @@ class HWTestLED(HWTest):
             lst_blocks=[
                 self.format_obj(
                     key="Test parameters",
-                    value_type=HWTestJsonParamType.STRING,
+                    value_type=HardwareTestJsonParamType.STRING,
                     value=params,
                 ),
             ],

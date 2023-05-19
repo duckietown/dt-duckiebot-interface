@@ -12,7 +12,7 @@ import requests
 import subprocess
 import re
 
-from hardware_test_robot_host import HWTestWifi, HWTestBattery
+from hardware_test_robot_host import HardwareTestWifi, HardwareTestBattery
 
 
 class RobotRestAPInode(DTROS):
@@ -21,8 +21,9 @@ class RobotRestAPInode(DTROS):
             node_name="robot_http_api_node", node_type=NodeType.INFRASTRUCTURE, dt_ghost=True
         )
 
-        self.hw_test_battery = HWTestBattery()
-        self.hw_test_wifi = HWTestWifi()
+        # user hardware tests
+        self._hardware_test_battery = HardwareTestBattery()
+        self._hardware_test_wifi = HardwareTestWifi()
 
 
 def signal_handler(sig, frame):

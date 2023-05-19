@@ -5,30 +5,30 @@ import requests
 import rospy
 
 from std_srvs.srv import Trigger
-from dt_duckiebot_hardware_tests import HWTest, HWTestJsonParamType
+from dt_duckiebot_hardware_tests import HardwareTest, HardwareTestJsonParamType
 
 
-class HWTestWifi(HWTest):
+class HardwareTestWifi(HardwareTest):
     def __init__(self) -> None:
         super().__init__()
         # test services
-        self._desc_tst_srv = rospy.Service(f"~tests/wifi/desc", Trigger, self.srv_cb_tst_desc)
-        self._tst_srv = rospy.Service(f"~tests/wifi/run", Trigger, self._tst)
+        self._description_srv = rospy.Service(f"~tests/wifi/description", Trigger, self.cb_description)
+        self._test_srv = rospy.Service(f"~tests/wifi/run", Trigger, self._test)
 
     def test_id(self) -> str:
         return "USB Wifi Dongle"
 
-    def test_desc_preparation(self) -> str:
+    def test_description_preparation(self) -> str:
         return self.html_util_ul([
             "Make sure the USB Wifi dongle is plugged in to your Duckiebot, and it is blinking.",
         ])
 
-    def test_desc_expectation(self) -> str:
+    def test_description_expectation(self) -> str:
         return self.html_util_ul([
             "The IP address of the <code>wlan0</code> network interface should be displayed below.",
         ])
     
-    def test_desc_log_gather(self) -> str:
+    def test_description_log_gather(self) -> str:
         return self.html_util_ul([
             "On your laptop, run the following command to save the logs.",
             "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
@@ -36,7 +36,7 @@ class HWTestWifi(HWTest):
             "(You might need to provide the password to your Duckiebot when prompted.)",
         ])
 
-    def _tst(self, _):
+    def _test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
         success = True
         response = ""
@@ -64,29 +64,29 @@ class HWTestWifi(HWTest):
             lst_blocks=[
                 self.format_obj(
                     key="Getting IP of wlan0:",
-                    value_type=HWTestJsonParamType.STRING,
+                    value_type=HardwareTestJsonParamType.STRING,
                     value=response,
                 ),
             ],
         )
 
 
-class HWTestBattery(HWTest):
+class HardwareTestBattery(HardwareTest):
     def __init__(self) -> None:
         super().__init__()
         # test services
-        self._desc_tst_srv = rospy.Service(f"~tests/battery/desc", Trigger, self.srv_cb_tst_desc)
-        self._tst_srv = rospy.Service(f"~tests/battery/run", Trigger, self._tst)
+        self._description_srv = rospy.Service(f"~tests/battery/description", Trigger, self.cb_description)
+        self._test_srv = rospy.Service(f"~tests/battery/run", Trigger, self._test)
 
     def test_id(self) -> str:
         return "Battery"
 
-    def test_desc_preparation(self) -> str:
+    def test_description_preparation(self) -> str:
         return self.html_util_ul([
             "Place your Duckiebot near the charging cable."
         ])
 
-    def test_desc_expectation(self) -> str:
+    def test_description_expectation(self) -> str:
         return self.html_util_ul([
             "The battery firmware version should be at least <code>2.0.2</code>.",
             "The PCB version should be at least <code>16</code>.",
@@ -95,14 +95,14 @@ class HWTestBattery(HWTest):
         ])
     
 
-    def test_desc_running(self) -> str:
+    def test_description_running(self) -> str:
         return self.html_util_ul([
             "Run the test for multiple times, with and without the Duckiebot being charged.",
             "Check the results against the Expected Outcomes each time.",
             "Please click the <strong>Run the Test</strong> button below to run tests.",
         ])
 
-    def test_desc_log_gather(self) -> str:
+    def test_description_log_gather(self) -> str:
         return self.html_util_ul([
             "On your laptop, run the following command to save the logs.",
             "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
@@ -112,7 +112,7 @@ class HWTestBattery(HWTest):
             "<code>dts duckiebot battery check_firmware [your_Duckiebot_hostname]</code>",
         ])
 
-    def _tst(self, _):
+    def _test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
         success = True
         response = ""
@@ -140,7 +140,7 @@ class HWTestBattery(HWTest):
             lst_blocks=[
                 self.format_obj(
                     key="Battery status",
-                    value_type=HWTestJsonParamType.HTML,
+                    value_type=HardwareTestJsonParamType.HTML,
                     value=response,
                 ),
             ],

@@ -1,1 +1,1 @@
-from .hardware_test_camera import HWTestCamera
+from .hardware_test_camera import HardwareTestCamera

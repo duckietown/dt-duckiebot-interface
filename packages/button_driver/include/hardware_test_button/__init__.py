@@ -1,1 +1,1 @@
-from .hardware_test_button import HWTestButton
+from .hardware_test_button import HardwareTestButton

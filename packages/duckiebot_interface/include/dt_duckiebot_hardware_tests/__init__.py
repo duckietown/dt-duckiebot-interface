@@ -1,1 +1,1 @@
-from .hardware_tests import HWTest, HWTestJsonParamType
+from .hardware_tests import HardwareTest, HardwareTestJsonParamType

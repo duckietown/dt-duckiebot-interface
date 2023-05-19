@@ -34,7 +34,7 @@ from display_renderer import (
 from duckietown.utils.image.pil import np_to_pil, pil_to_np
 from duckietown.utils.image.ros import imgmsg_to_mono8
 
-from hardware_test_oled_display import HWTestOledDisplay
+from hardware_test_oled_display import HardwareTestOledDisplay
 
 
 class DisplayNode(DTROS):
@@ -90,20 +90,20 @@ class DisplayNode(DTROS):
         self._reminder = DTReminder(frequency=self._MAX_FREQUENCY_HZ)
 
         # user hardware test
-        self._hw_test = HWTestOledDisplay(
-            fn_show_test_display=self.show_tst_page,
-            fn_remove_test_display=self.hide_tst_page,
+        self._hardware_test = HardwareTestOledDisplay(
+            fn_show_test_display=self.show_test_page,
+            fn_remove_test_display=self.hide_test_page,
         )
 
-    def show_tst_page(self, tst_page_msg):
+    def show_test_page(self, test_page_msg):
         """
         Used in the user hardware test: show the test display and change to it
         """
-        self._fragment_cb(tst_page_msg)
+        self._fragment_cb(test_page_msg)
         with self._fragments_lock:
             self._page = PAGE_TEST_OLED_DISPLAY
 
-    def hide_tst_page(self):
+    def hide_test_page(self):
         """
         Used in the user hardware test: remove the test display; go to homepage
         """

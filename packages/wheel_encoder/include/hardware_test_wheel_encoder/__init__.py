@@ -1,1 +1,1 @@
-from .hardware_test_wheel_encoder import HWTestWheelEncoder
+from .hardware_test_wheel_encoder import HardwareTestWheelEncoder

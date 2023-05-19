@@ -8,7 +8,7 @@ from duckietown.dtros import DTROS, NodeType, DTParam, ParamType
 from sensor_msgs.msg import Imu, Temperature
 from std_srvs.srv import Empty
 
-from hardware_test_imu import HWTestIMU
+from hardware_test_imu import HardwareTestIMU
 
 # TODO: calibration and loading custom config
 
@@ -52,7 +52,7 @@ class IMUNode(DTROS):
         self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / polling_hz), self.publish_data)
 
         # user hardware test
-        self._hw_test = HWTestIMU()
+        self._hardware_test = HardwareTestIMU()
 
     def publish_data(self, event):
         # Message Blank

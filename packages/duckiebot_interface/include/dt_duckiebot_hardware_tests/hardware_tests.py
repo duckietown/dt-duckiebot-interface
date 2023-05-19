@@ -23,7 +23,7 @@ from typing import List
 from std_srvs.srv import TriggerResponse
 
 
-class HWTestJsonParamType(Enum):
+class HardwareTestJsonParamType(Enum):
     """Type constants, so receiving side knows how to parse/use the values"""
 
     # basic string
@@ -43,61 +43,61 @@ class HWTestJsonParamType(Enum):
 
 
 class EnumJSONEncoder(json.JSONEncoder):
-    """Used to encode the HWTestJsonParamType(Enum)"""
+    """Used to encode the HardwareTestJsonParamType(Enum)"""
     def default(self, obj):
         if isinstance(obj, Enum):
             return obj.value
         return super().default(obj)
     
 
-class HWTest(ABC):
+class HardwareTest(ABC):
     @abstractmethod
     def test_id(self) -> str:
         """Short name, used to report start and end of test"""
         pass
 
     @abstractmethod
-    def test_desc_preparation(self) -> str:
+    def test_description_preparation(self) -> str:
         """Preparation before running. E.g. put the DB upside down"""
         pass
 
-    def test_desc_running(self) -> str:
+    def test_description_running(self) -> str:
         """Actual steps to run the test"""
         # default: just click the "Run test" button
         return self.html_util_ul(["Click on the <strong>Run the test</strong> button below."])
 
     @abstractmethod
-    def test_desc_expectation(self) -> str:
+    def test_description_expectation(self) -> str:
         """Expected outcome(s) and/or how to determine if a test was successful"""
         pass
 
     @abstractmethod
-    def test_desc_log_gather(self) -> str:
+    def test_description_log_gather(self) -> str:
         """How to gather logs before reporting"""
         pass
 
-    def test_desc(self) -> str:
+    def test_description(self) -> str:
         """Test descriptions"""
         return [
             self.format_obj(
                 key="Preparation",
-                value_type=HWTestJsonParamType.HTML,
-                value=self.test_desc_preparation(),
+                value_type=HardwareTestJsonParamType.HTML,
+                value=self.test_description_preparation(),
             ),
-            self.format_obj("Expected Outcomes", HWTestJsonParamType.HTML, self.test_desc_expectation()),
-            self.format_obj("How to run", HWTestJsonParamType.HTML, self.test_desc_running()),
-            self.format_obj("Logs Gathering (in case of errors)", HWTestJsonParamType.HTML, self.test_desc_log_gather()),
+            self.format_obj("Expected Outcomes", HardwareTestJsonParamType.HTML, self.test_description_expectation()),
+            self.format_obj("How to run", HardwareTestJsonParamType.HTML, self.test_description_running()),
+            self.format_obj("Logs Gathering (in case of errors)", HardwareTestJsonParamType.HTML, self.test_description_log_gather()),
         ]
     
-    def srv_cb_tst_desc(self, _):
+    def cb_description(self, _):
         """The test description service response"""
         return self.format_response_object(
             success=True,
-            lst_blocks=self.test_desc(),
+            lst_blocks=self.test_description(),
         )
 
     @staticmethod
-    def format_obj(key: str, value_type: "HWTestJsonParamType", value: str):
+    def format_obj(key: str, value_type: "HardwareTestJsonParamType", value: str):
         return {
             "key": key,
             "type": value_type,
@@ -112,21 +112,21 @@ class HWTest(ABC):
         lst_blocks,
     ):
         ret_obj = {
-            "type": HWTestJsonParamType.STREAM,
+            "type": HardwareTestJsonParamType.STREAM,
             "parameters": []
         }
         for block in lst_blocks:
             ret_obj["parameters"].append(block)
 
-        ret_obj["parameters"].append(HWTest.format_obj(
+        ret_obj["parameters"].append(HardwareTest.format_obj(
             key="test_topic_name",
-            value_type=HWTestJsonParamType.TOPIC_INFO,
+            value_type=HardwareTestJsonParamType.TOPIC_INFO,
             value=test_topic_name,
         ))
 
-        ret_obj["parameters"].append(HWTest.format_obj(
+        ret_obj["parameters"].append(HardwareTest.format_obj(
             key="test_topic_type",
-            value_type=HWTestJsonParamType.TOPIC_INFO,
+            value_type=HardwareTestJsonParamType.TOPIC_INFO,
             value=test_topic_type,
         ))
 
@@ -138,7 +138,7 @@ class HWTest(ABC):
     @staticmethod
     def format_response_object(success: bool, lst_blocks):
         ret_obj = {
-            "type": HWTestJsonParamType.OBJECT,
+            "type": HardwareTestJsonParamType.OBJECT,
             "parameters": []
         }
         for block in lst_blocks:

@@ -1,1 +1,1 @@
-from .hardware_test_tof import HWTestToF
+from .hardware_test_tof import HardwareTestToF

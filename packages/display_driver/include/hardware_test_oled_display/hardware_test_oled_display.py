@@ -5,7 +5,7 @@ from typing import Callable
 
 from std_srvs.srv import Trigger
 from sensor_msgs.msg import CompressedImage
-from dt_duckiebot_hardware_tests import HWTest, HWTestJsonParamType
+from dt_duckiebot_hardware_tests import HardwareTest, HardwareTestJsonParamType
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 
 from display_renderer import (
@@ -30,7 +30,7 @@ class OLEDDisplayTestRenderer(MonoImageFragmentRenderer):
         self.data[:, :] = contents
 
 
-class HWTestOledDisplay(HWTest):
+class HardwareTestOledDisplay(HardwareTest):
     def __init__(self,
                  fn_show_test_display: Callable[[DisplayFragmentMsg], None],
                  fn_remove_test_display: Callable[[], None],
@@ -45,35 +45,35 @@ class HWTestOledDisplay(HWTest):
         self._handle_start_test = fn_show_test_display
         self._handle_end_test = fn_remove_test_display
         # test services
-        self._desc_tst_srv = rospy.Service('~test/desc', Trigger, self.srv_cb_tst_desc)
-        self._tst_srv = rospy.Service('~test/run', Trigger, self._tst)
+        self._description_srv = rospy.Service('~test/description', Trigger, self.cb_description)
+        self._test_srv = rospy.Service('~test/run', Trigger, self._test)
 
     def test_id(self) -> str:
         return "OLED Display"
 
-    def test_desc_preparation(self) -> str:
+    def test_description_preparation(self) -> str:
         return self.html_util_ul([
             "Put your Duckiebot in normal orientation.",
             "And make sure you can see the top OLED display.",
         ])
 
-    def test_desc_expectation(self) -> str:
+    def test_description_expectation(self) -> str:
         return self.html_util_ul([
             f"The top display should show: <strong>{self.disp_text}</strong>.",
             f"In about <strong>{self.dura_secs}</strong> seconds, the test page should disappear, and the homepage should be shown again.",
         ])
 
-    def test_desc_log_gather(self) -> str:
+    def test_description_log_gather(self) -> str:
         return self.html_util_ul([
             "On your laptop, run the following command to save the logs.",
             "Replace the <code>[path/to/save]</code> to the directory path where you would like to save the logs.",
             "<code>docker -H [your_Duckiebot_hostname].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
         ])
 
-    def _tst(self, _):
+    def _test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
         success = True
-        response_type = HWTestJsonParamType.STRING
+        response_type = HardwareTestJsonParamType.STRING
     
         # Subscribe to the topic and get one message
         try:

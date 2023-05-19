@@ -1,1 +1,1 @@
-from .hardware_test_led import HWTestLED
+from .hardware_test_led import HardwareTestLED

@@ -1,1 +1,1 @@
-from .hardware_test_oled_display import HWTestOledDisplay
+from .hardware_test_oled_display import HardwareTestOledDisplay
