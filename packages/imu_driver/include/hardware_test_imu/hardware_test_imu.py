@@ -54,7 +54,7 @@ class HardwareTestIMU(HardwareTest):
         # Return the service response
         return self.format_response_stream(
             success=True,  # does not matter here
-            test_topic_name=f"imu_node/imu_data",
+            test_topic_name=f"imu_node/data",
             test_topic_type="sensor_msgs/Imu",
             lst_blocks=[
                 self.format_obj(
