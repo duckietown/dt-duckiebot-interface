@@ -2,11 +2,10 @@
 import time
 
 import rospy
-
-from rgb_led import RGB_LED
-from std_msgs.msg import String, ColorRGBA
+from duckietown.dtros import DTROS, NodeType
 from duckietown_msgs.msg import LEDPattern
-from duckietown.dtros import DTROS, TopicType, NodeType
+from rgb_led import RGB_LED
+
 from hardware_test_led import HardwareTestLED
 
 
@@ -39,26 +38,28 @@ class LEDDriverNode(DTROS):
     def __init__(self, node_name):
         # Initialize the DTROS parent class
         super(LEDDriverNode, self).__init__(node_name=node_name, node_type=NodeType.DRIVER)
-
+        # load params
+        self._idle = rospy.get_param("~idle")
+        # initialize LED library
         self.led = RGB_LED()
-
-        start_color = [0, 0, 0]
+        # turn OFF the LEDs
         for i in range(5):
-            self.led.setRGB(i, start_color)
-
+            self.led.set_RGB(i, self._idle["color"][i], self._idle["intensity"][i])
+        # subscribers
         self.sub_topic = rospy.Subscriber("~led_pattern", LEDPattern, self.led_cb, queue_size=1)
 
         # user hardware tests
         self._hardware_test_front = HardwareTestLED(self.led, front_leds=True)
         self._hardware_test_back = HardwareTestLED(self.led, front_leds=False)
+
+        # ---
         self.log("Initialized.")
 
     def led_cb(self, msg):
         """Switches the LEDs to the requested signal."""
-
         for i in range(5):
-            colors = [msg.rgb_vals[i].r, msg.rgb_vals[i].g, msg.rgb_vals[i].b]
-            self.led.setRGB(i, colors)
+            colors = (msg.rgb_vals[i].r, msg.rgb_vals[i].g, msg.rgb_vals[i].b)
+            self.led.set_RGB(i, colors, msg.rgb_vals[i].a)
 
     def on_shutdown(self):
         """Shutdown procedure.

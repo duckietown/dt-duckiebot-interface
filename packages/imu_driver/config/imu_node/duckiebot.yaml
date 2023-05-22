@@ -1,7 +1,14 @@
 # Sensor Configuration
-imu_device_id: "0x71"
 polling_hz: 30
 sensor_name: bottom_center
+connectors:
+    # MPU 6050
+    -   bus: 1
+        address: 0x68
+    # TODO: model 2
+    -   bus: 1
+        address: 0x71
+
 
 # Calibrations
 ang_vel_offset: [ 0, 0, 0 ]
