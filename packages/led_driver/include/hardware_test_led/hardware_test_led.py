@@ -95,6 +95,7 @@ class HardwareTestLED(HardwareTest):
         interval = self.dura_secs / float(len(self._color_sequence))
 
         try:
+            self._driver.start_hardware_test()
             # turn all on gradually
             n_itr = int(self.fade_in_secs / interval)
             fade_in_incr = int(255 / n_itr)
@@ -103,13 +104,13 @@ class HardwareTestLED(HardwareTest):
                 r0 += fade_in_incr
                 r0 = min(255, r0)
                 for i in self._led_ids:
-                    self._driver.setRGB(i, (r0 / 255.0, 0, 0))
+                    self._driver.setRGB(i, (r0 / 255.0, 0, 0), is_test_cmd=True)
                 rospy.sleep(interval)
 
             # run color sequence test
             for color in self._color_sequence:
                 for i in self._led_ids:
-                    self._driver.setRGB(i, color)
+                    self._driver.setRGB(i, color, is_test_cmd=True)
                 rospy.sleep(interval)
 
             # turn all off
@@ -120,15 +121,17 @@ class HardwareTestLED(HardwareTest):
                 r1 -= fade_out_decr
                 r1 = max(0, r1)
                 for i in self._led_ids:
-                    self._driver.setRGB(i, (r1 / 255.0, 0, 0))
+                    self._driver.setRGB(i, (r1 / 255.0, 0, 0), is_test_cmd=True)
                 rospy.sleep(interval)
 
             # make sure they are off
             for i in self._led_ids:
-                self._driver.setRGB(i, (0, 0, 0))
+                self._driver.setRGB(i, (0, 0, 0), is_test_cmd=True)
         except Exception as e:
             rospy.logerr(f"[{self.test_id()}] Experienced error: {e}")
             success = False
+        finally:
+            self._driver.finish_hardware_test()
 
         params = f"[{self.test_id()}] fade_in_secs = {self.fade_in_secs}, dura_secs = {self.dura_secs}, fade_out_secs = {self.fade_out_secs}"
 

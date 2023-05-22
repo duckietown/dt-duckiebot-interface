@@ -43,8 +43,16 @@ class RGB_LED(object):
         for i in range(15):
             # Sets fully off all the pins
             self.pwm.setPWM(i, 0, 4095)
+        # hardware testing flag
+        self._is_performing_test = False
 
-    def setLEDBrightness(self, led, offset, brightness):
+    def start_hardware_test(self):
+        self._is_performing_test = True
+    
+    def finish_hardware_test(self):
+        self._is_performing_test = False
+
+    def setLEDBrightness(self, led, offset, brightness, is_test_cmd: bool = False):
         """Sets value for brightness for one color on one LED.
 
         Calls the function pwm.setPWM to set the PWM signal according to
@@ -56,11 +64,13 @@ class RGB_LED(object):
             led (:obj:`int`): Index of specific LED (from the table above)
             offset (:obj:`int`): Offset for color
             brightness (:obj:`int8`): Intensity of brightness (between 0 and 255)
+            is_test_cmd (:obj:`bool`): whether this is a command issue by the hardware test
 
         """
-        self.pwm.setPWM(3 * led + offset, brightness << 4, 4095)
+        if self._is_performing_test and is_test_cmd or not self._is_performing_test:
+            self.pwm.setPWM(3 * led + offset, brightness << 4, 4095)
 
-    def setRGB(self, led, color):
+    def setRGB(self, led, color, is_test_cmd: bool = False):
         """Sets value for brightness for all channels of one LED
 
         Converts the input color brightness from [0,1] to [0,255] for all
@@ -71,11 +81,13 @@ class RGB_LED(object):
         Args:
             led (:obj:`int`): Index of specific LED (from the table above)
             color (:obj:`list` of :obj:`float`): Brightness for the three RGB channels, in interval [0,1]
+            is_test_cmd (:obj:`bool`): whether this is a command issue by the hardware test
         """
 
-        self.setLEDBrightness(led, self.OFFSET_RED, int(color[0] * 255))
-        self.setLEDBrightness(led, self.OFFSET_GREEN, int(color[1] * 255))
-        self.setLEDBrightness(led, self.OFFSET_BLUE, int(color[2] * 255))
+        if self._is_performing_test and is_test_cmd or not self._is_performing_test:
+            self.setLEDBrightness(led, self.OFFSET_RED, int(color[0] * 255), is_test_cmd)
+            self.setLEDBrightness(led, self.OFFSET_GREEN, int(color[1] * 255), is_test_cmd)
+            self.setLEDBrightness(led, self.OFFSET_BLUE, int(color[2] * 255), is_test_cmd)
 
     def __del__(self):
         """Destructur method.
