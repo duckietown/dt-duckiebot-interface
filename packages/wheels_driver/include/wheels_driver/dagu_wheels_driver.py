@@ -33,18 +33,28 @@ class DaguWheelsDriver:
         self.leftSpeed = 0.0
         self.rightSpeed = 0.0
         self._pwm_update()
+        # hardware testing flag
+        self._is_performing_test = False
+    
+    def start_hardware_test(self):
+        self._is_performing_test = True
+    
+    def finish_hardware_test(self):
+        self._is_performing_test = False
 
-    def set_wheels_speed(self, left: float, right: float):
+    def set_wheels_speed(self, left: float, right: float, is_test_cmd: bool = False):
         """Sets speed of motors.
 
         Args:
            left (:obj:`float`): speed for the left wheel, should be between -1 and 1
            right (:obj:`float`): speed for the right wheel, should be between -1 and 1
+           is_test_cmd (:obj:`bool`): whether this is a command issue by the hardware test
 
         """
-        self.leftSpeed = left
-        self.rightSpeed = right
-        self._pwm_update()
+        if self._is_performing_test and is_test_cmd or not self._is_performing_test:
+            self.leftSpeed = left
+            self.rightSpeed = right
+            self._pwm_update()
 
     def _pwm_value(self, v, min_pwm, max_pwm):
         """Transforms the requested speed into an int8 number.

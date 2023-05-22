@@ -49,18 +49,21 @@ class HardwareTestMotor(HardwareTest):
         success = True
 
         try:
+            self._driver.start_hardware_test()
             start_ts = rospy.Time.now()
             end_ts = start_ts + rospy.Duration(self.dura_secs)
             if self._side == HardwareTestMotorSide.LEFT:
-                self._driver.set_wheels_speed(left=self.vel, right=0.0)
+                self._driver.set_wheels_speed(left=self.vel, right=0.0, is_test_cmd=True)
             else:
-                self._driver.set_wheels_speed(left=0.0, right=self.vel)
+                self._driver.set_wheels_speed(left=0.0, right=self.vel, is_test_cmd=True)
             while rospy.Time.now() < end_ts:
                 rospy.sleep(1.0)
-            self._driver.set_wheels_speed(left=0.0, right=0.0)
+            self._driver.set_wheels_speed(left=0.0, right=0.0, is_test_cmd=True)
         except Exception as e:
             rospy.logerr(f"[{self.test_id()}] Experienced error: {e}")
             success = False
+        finally:
+            self._driver.finish_hardware_test()
 
         params = f"[{self.test_id()}] vel = {self.vel}, dura_secs = {self.dura_secs}"
 
