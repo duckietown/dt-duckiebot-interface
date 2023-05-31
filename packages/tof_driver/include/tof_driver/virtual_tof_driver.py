@@ -5,7 +5,7 @@ from typing import Optional
 from dt_duckiematrix_messages.TimeOfFlightRange import TimeOfFlightRange
 from dt_duckiematrix_protocols import Matrix
 from dt_duckiematrix_protocols.robot import RobotAbs
-from dt_duckiematrix_protocols.robot.features.sensors import Camera, TimeOfFlight
+from dt_duckiematrix_protocols.robot.features.sensors import TimeOfFlight
 from dt_duckiematrix_utils.ros import \
     on_duckiematrix_connection_request, \
     DuckiematrixLinkDescription
@@ -21,7 +21,7 @@ class VirtualToFDriver(ToFDriverAbs):
         self._range: Optional[float] = None
         # register connection setup function
         self._matrix: Optional[Matrix] = None
-        self._device: Optional[Camera] = None
+        self._device: Optional[TimeOfFlight] = None
         # register connection setup function
         print(f"[VirtualToF:{self._name}]: Waiting for connection request...")
         self._connection_request: Optional[DuckiematrixLinkDescription] = None
