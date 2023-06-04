@@ -46,10 +46,14 @@ class WheelsDriverNode(DTROS):
 
         # Initialize the executed commands message
         self.msg_wheels_cmd = WheelsCmdStamped()
+        self.msg_wheels_pwm = WheelsCmdStamped()
 
         # Publisher for wheels command wih execution time
         self.pub_wheels_cmd = rospy.Publisher(
             "~wheels_cmd_executed", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.DRIVER
+        )
+        self.pub_wheels_pwm = rospy.Publisher(
+            "~wheels_pwm_executed", WheelsCmdStamped, queue_size=1, dt_topic_type=TopicType.DRIVER
         )
 
         # Subscribers
@@ -68,6 +72,7 @@ class WheelsDriverNode(DTROS):
             Args:
                 msg (WheelsCmdStamped): velocity command
         """
+        now = rospy.get_rostime()
         if self.estop:
             vel_left = 0.0
             vel_right = 0.0
@@ -79,10 +84,15 @@ class WheelsDriverNode(DTROS):
         # Put the wheel commands in a message and publish
         self.msg_wheels_cmd.header = msg.header
         # Record the time the command was given to the wheels_driver
-        self.msg_wheels_cmd.header.stamp = rospy.get_rostime()
+        self.msg_wheels_cmd.header.stamp = now
         self.msg_wheels_cmd.vel_left = vel_left
         self.msg_wheels_cmd.vel_right = vel_right
         self.pub_wheels_cmd.publish(self.msg_wheels_cmd)
+        # publish the PWM commands sent to the board
+        self.msg_wheels_pwm.header.stamp = now
+        self.msg_wheels_pwm.vel_left = self.driver.leftPWM
+        self.msg_wheels_pwm.vel_right = self.driver.rightPWM
+        self.pub_wheels_pwm.publish(self.msg_wheels_pwm)
 
     def estop_cb(self, msg):
         """

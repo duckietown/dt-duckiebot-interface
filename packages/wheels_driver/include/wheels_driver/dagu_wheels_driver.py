@@ -32,6 +32,10 @@ class DaguWheelsDriver:
         # initialize state
         self.leftSpeed = 0.0
         self.rightSpeed = 0.0
+        # pwm state
+        self.leftPWM = 0.0
+        self.rightPWM = 0.0
+        # ---
         self._pwm_update()
 
     def set_wheels_speed(self, left: float, right: float):
@@ -87,6 +91,9 @@ class DaguWheelsDriver:
             rightMotorMode = MotorDirection.FORWARD
         elif vr < 0:
             rightMotorMode = MotorDirection.BACKWARD
+
+        self.leftPWM = pwml
+        self.rightPWM = pwmr
 
         self.leftMotor.set(leftMotorMode, pwml)
         self.rightMotor.set(rightMotorMode, pwmr)
