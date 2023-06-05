@@ -99,7 +99,7 @@ class HardwareTest(ABC):
             ]
         )
 
-    def test_description(self) -> str:
+    def test_description(self) -> List:
         """Test descriptions"""
         return [
             self.format_obj(
