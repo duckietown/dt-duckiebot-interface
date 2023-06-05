@@ -10,20 +10,19 @@ class HardwareTestLED(HardwareTest):
     def __init__(
         self,
         driver: RGB_LED,
-        front_leds: bool = True,
+        info_str: str,
+        led_ids: List[int],
         fade_in_secs: int = 2,
         dura_secs: int = 10,
         fade_out_secs: int = 2,
     ) -> None:
-        # front or back LEDs
-        self._info_str = "front" if front_leds else "back"
+        # describe this group of LEDs, e.g. "front" or "back"
+        self._info_str = info_str
         super().__init__(service_identifier=f"tests/{self._info_str}")
 
         # attr
         self._driver = driver
-        self._testing_front_leds = front_leds  # if false, testing back LEDs
-        # tested on DB21J: front - [0, 2]; back - [3, 4]
-        self._led_ids = [0, 1, 2] if front_leds else [3, 4]
+        self._led_ids = led_ids
 
         # test settings
         self.fade_in_secs = fade_in_secs
