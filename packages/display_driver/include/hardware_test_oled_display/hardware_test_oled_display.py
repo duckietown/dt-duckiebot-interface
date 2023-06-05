@@ -15,13 +15,13 @@ from display_renderer.text import monospace_screen
 
 
 class OLEDDisplayTestRenderer(MonoImageFragmentRenderer):
-    def __init__(self, disp_text: str, dura_secs: int):
+    def __init__(self, disp_text: str, duration: int):
         super(OLEDDisplayTestRenderer, self).__init__(
             name=f"__oled_display_test__",
             page=PAGE_TEST_OLED_DISPLAY,
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
-            ttl=dura_secs,  # on shutdown, just need one fixed screen
+            ttl=duration,  # on shutdown, just need one fixed screen
         )
 
         contents = monospace_screen(
@@ -35,12 +35,12 @@ class HardwareTestOledDisplay(HardwareTest):
         self,
         fn_show_test_display: Callable[[DisplayFragmentMsg], None],
         fn_remove_test_display: Callable[[], None],
-        dura_secs: int = 5,
+        duration: int = 5,
         disp_text: str = "OLED Display Test",
     ) -> None:
         super().__init__()
         # test settings
-        self.dura_secs = dura_secs
+        self.duration = duration
         self.disp_text = disp_text
         # attr
         self._handle_start_test = fn_show_test_display
@@ -61,7 +61,7 @@ class HardwareTestOledDisplay(HardwareTest):
         return self.html_util_ul(
             [
                 f"Once the test is started, the top display should show: <strong>{self.disp_text}</strong>.",
-                f"In about <strong>{self.dura_secs}</strong> seconds, the test page should disappear, and the homepage should be shown again.",
+                f"In about <strong>{self.duration}</strong> seconds, the test page should disappear, and the homepage should be shown again.",
             ]
         )
 
@@ -73,12 +73,12 @@ class HardwareTestOledDisplay(HardwareTest):
         # Subscribe to the topic and get one message
         try:
             start_ts = rospy.Time.now()
-            end_ts = start_ts + rospy.Duration(self.dura_secs)
+            end_ts = start_ts + rospy.Duration(self.duration)
             # show test display
             self._handle_start_test(
                 OLEDDisplayTestRenderer(
                     disp_text=self.disp_text,
-                    dura_secs=self.dura_secs,
+                    duration=self.duration,
                 ).as_msg()
             )
             # run until specified time reached
@@ -90,7 +90,7 @@ class HardwareTestOledDisplay(HardwareTest):
             rospy.logerr(f"Failed to run the test: {e}")
             success = False
 
-        response = f"[{self.test_id()}] dura_secs = {self.dura_secs}, disp_text = '{self.disp_text}'"
+        response = f"[{self.test_id()}] duration = {self.duration}s, disp_text = '{self.disp_text}'"
         # Return the service response
         return self.format_response_object(
             success=success,

@@ -16,7 +16,7 @@ class HardwareTestLED(HardwareTest):
         led_ids: List[int],
         idle_lighting: Dict[str, List],
         fade_in_secs: int = 1,
-        dura_secs: int = 6,
+        duration: int = 6,
         fade_out_secs: int = 1,
     ) -> None:
         # describe this group of LEDs, e.g. "front" or "back"
@@ -30,7 +30,7 @@ class HardwareTestLED(HardwareTest):
 
         # test settings
         self.fade_in_secs = fade_in_secs
-        self.dura_secs = dura_secs
+        self.duration = duration
         self.fade_out_secs = fade_out_secs
         self._color_sequence = None  # lazy init. If test is run, generate this
 
@@ -49,7 +49,7 @@ class HardwareTestLED(HardwareTest):
             [
                 "The Duckiebot LEDs should start shining.",
                 "The LEDs should show a smooth transition of these colors: RED -> YELLOW -> GREEN -> BLUE -> PURPLE -> RED.",
-                f"In about {self.fade_in_secs + self.dura_secs + self.fade_out_secs} seconds, they should be off.",
+                f"In about {self.fade_in_secs + self.duration + self.fade_out_secs} seconds, they should be off.",
             ]
         )
 
@@ -81,7 +81,7 @@ class HardwareTestLED(HardwareTest):
         if self._color_sequence is None:
             self._color_sequence = self._generate_colors()
 
-        interval = self.dura_secs / float(len(self._color_sequence))
+        interval = self.duration / float(len(self._color_sequence))
 
         try:
             self._driver.start_hardware_test()
@@ -111,7 +111,7 @@ class HardwareTestLED(HardwareTest):
         finally:
             self._driver.finish_hardware_test()
 
-        params = f"[{self.test_id()}] fade_in_secs = {self.fade_in_secs}, dura_secs = {self.dura_secs}, fade_out_secs = {self.fade_out_secs}"
+        params = f"[{self.test_id()}] fade_in_secs = {self.fade_in_secs}s, duration = {self.duration}s, fade_out_secs = {self.fade_out_secs}s"
 
         return self.format_response_object(
             success=success,

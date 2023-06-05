@@ -17,7 +17,7 @@ class HardwareTestMotor(HardwareTest):
         wheel_side: "HardwareTestMotorSide",
         motors_driver: DaguWheelsDriver,
         vel: float = 0.5,
-        dura_secs: int = 3,
+        duration: int = 3,
     ) -> None:
         self._info_str = "left" if wheel_side == HardwareTestMotorSide.LEFT else "right"
         super().__init__(service_identifier=f"tests/{self._info_str}")
@@ -28,7 +28,7 @@ class HardwareTestMotor(HardwareTest):
 
         # test settings
         self.vel = vel
-        self.dura_secs = dura_secs
+        self.duration = duration
 
     def test_id(self) -> str:
         return f"Motor ({self._info_str})"
@@ -40,7 +40,7 @@ class HardwareTestMotor(HardwareTest):
         return self.html_util_ul(
             [
                 f"The {self._info_str} motor should start spinning.",
-                f"In about {self.dura_secs} seconds, it should stop moving.",
+                f"In about {self.duration} seconds, it should stop moving.",
             ]
         )
 
@@ -51,7 +51,7 @@ class HardwareTestMotor(HardwareTest):
         try:
             self._driver.start_hardware_test()
             start_ts = rospy.Time.now()
-            end_ts = start_ts + rospy.Duration(self.dura_secs)
+            end_ts = start_ts + rospy.Duration(self.duration)
             if self._side == HardwareTestMotorSide.LEFT:
                 self._driver.set_wheels_speed(left=self.vel, right=0.0, is_test_cmd=True)
             else:
@@ -65,7 +65,7 @@ class HardwareTestMotor(HardwareTest):
         finally:
             self._driver.finish_hardware_test()
 
-        params = f"[{self.test_id()}] vel = {self.vel}, dura_secs = {self.dura_secs}"
+        params = f"[{self.test_id()}] vel = {self.vel}, duration = {self.duration}s"
 
         return self.format_response_object(
             success=success,
