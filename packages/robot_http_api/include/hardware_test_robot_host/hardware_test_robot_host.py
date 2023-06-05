@@ -1,14 +1,18 @@
 import re
 import subprocess
 import requests
+import netifaces as ni
 import rospy
 
 from dt_duckiebot_hardware_tests import HardwareTest, HardwareTestJsonParamType
 
 
 class HardwareTestWifi(HardwareTest):
-    def __init__(self) -> None:
+    def __init__(self, wifi_interface: str = "wlan0") -> None:
         super().__init__(service_identifier="tests/wifi")
+
+        # attr
+        self._interface = wifi_interface
 
     def test_id(self) -> str:
         return "USB Wifi Dongle"
@@ -37,27 +41,19 @@ class HardwareTestWifi(HardwareTest):
             ]
         )
 
+    def _get_ipv4_addr(self) -> str:
+        addrs = ni.ifaddresses(self._interface)
+        if ni.AF_INET in addrs:
+            return addrs[ni.AF_INET][0]["addr"]
+        return "None"
+
     def cb_run_test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
         success = True
         response = ""
 
         try:
-            result = subprocess.run(
-                ["ifconfig", "wlan0"], capture_output=True, text=True
-            )
-
-            if result.stderr == "":
-                # Define a regular expression pattern to match the IP address
-                ip_pattern = r"inet (\d+\.\d+\.\d+\.\d+)"
-                # Search the output using the regex pattern
-                match = re.search(ip_pattern, result.stdout)
-                # Extract the IP address from the match object, or set it to None if the interface is down
-                ip_address = match.group(1) if match and "UP" in result.stdout else None
-
-                response = ip_address
-            else:
-                response = result.stderr
+            response = self._get_ipv4_addr()
         except Exception as e:
             rospy.logerr(f"[{self.test_id()}] Experienced error: {e}")
             success = False
@@ -66,7 +62,7 @@ class HardwareTestWifi(HardwareTest):
             success=success,
             lst_blocks=[
                 self.format_obj(
-                    key="Getting IP of wlan0:",
+                    key=f"Getting the IP of {self._interface}:",
                     value_type=HardwareTestJsonParamType.STRING,
                     value=response,
                 ),
