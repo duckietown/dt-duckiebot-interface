@@ -11,8 +11,6 @@
         <node pkg="$(arg pkg_name)" name="$(arg node_name)" type="$(arg node_name).py"
               output="screen" required="$(arg required)">
             <param name="veh" value="$(arg veh)" />
-            <rosparam command="load"
-                      file="$(find display_renderers)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
         </node>
     </group>
 </launch>

@@ -24,50 +24,69 @@ class RobotInfoRendererNode(DTROS):
         )
         # get parameters
         self._veh = rospy.get_param("~veh")
-        self._frequency = rospy.get_param("~frequency")
         # create publisher
         self._pub = rospy.Publisher(
             "~fragments",
             DisplayFragmentMsg,
             queue_size=1,
+            latch=True,
             dt_topic_type=TopicType.VISUALIZATION,
             dt_help="Fragments to display on the display",
         )
         # create renderers
-        self._renderer = RobotInfoRenderer()
-        # create loop
-        self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / self._frequency), self._beat)
+        renderer = RobotInfoRenderer()
 
-    def _beat(self, _):
-        robot_info_str = self._fetch()
-        self._renderer.update(robot_info_str)
-        self._pub.publish(self._renderer.as_msg())
-
-    def _fetch(self) -> str:
+        # fetch info from Duckiebot health-API
         health_api_url = f"http://{self._veh}.local/health/"
-        # noinspection PyBroadException
-        try:
-            health_data = requests.get(health_api_url).json()
-        except BaseException:
-            return
+        # just need to get data from health API once
+        health_data = None
+        while not rospy.is_shutdown():
+            try:
+                health_data = requests.get(health_api_url).json()
+                break
+            except BaseException:
+                # wait for health API to become available
+                rospy.sleep(5)
+                continue
+        self.loginfo("Health API data fetch successful.")
 
-        sw_date = health_data["software"]["date"]
-        sw_version = health_data["software"]["version"]
-        firmware = f"{sw_date['day']}/{sw_date['month']}/{sw_date['year']} ({sw_version})"
-
-        return self._fmt({
+        # format texts for the display
+        text = self._fmt({
             "Name": self._veh,
             "Model": get_robot_configuration().name,
-            "FW": firmware,
+            "Firmware": f"v{health_data['software']['version']}",
         })
+        renderer.update(text)
+
+        # this information doesn't need to be updated, so publishing once and latching is enough
+        self._pub.publish(renderer.as_msg())
+        self.loginfo("Robot Info Page published.")
+
+        # keep node alive
+        rospy.spin()
+
+    def _shorten_str(self, input, max_length):
+        """If the input is longer than the allowed, it's trimmed and '...' is added"""
+
+        # at least there should be enough space for "..."
+        assert max_length >= 3, "Not enough space for displaying the information"
+
+        output = input
+        if len(input) > max_length:
+            output = input[:(max_length - 3)] + "..."
+        return output
 
     def _fmt(self, disp_data: Dict[str, str]) -> str:
-        # align keys to the left, align colons, and values to the right
-        max_key_length = max(len(key) for key in disp_data.keys())
-        max_value_length = max(len(str(value)) for value in disp_data.values())
+        # number of characters per line
+        # this is counted on the screen for reading comfort, parameterize only if really necessary
+        DISPLAY_CHAR_TOTAL = 21
+
         output = ""
-        for key, value in disp_data.items():
-            output += "{:<{}}: {:>{}}\n".format(key, max_key_length, str(value), max_value_length)
+        for key, value_raw in disp_data.items():
+            value = self._shorten_str(value_raw, DISPLAY_CHAR_TOTAL - len(key) - 1)
+            space_len = DISPLAY_CHAR_TOTAL - len(key) - len(value)
+            space = ' ' * space_len
+            output += f"{key}{space}{value}\n"
         return output
 
 
@@ -79,7 +98,7 @@ class RobotInfoRenderer(TextFragmentRenderer):
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
             scale="fill",
-            ttl=20,
+            ttl=-1,
         )
 
 
