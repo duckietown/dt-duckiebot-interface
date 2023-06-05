@@ -51,7 +51,7 @@ class VirtualRGBLED(object):
         on_duckiematrix_connection_request(self.on_connection_request)
     
     def on_connection_request(self, link: DuckiematrixLinkDescription):
-        self.log(f"[VirtualLEDs]: Received request to connect to Duckiematrix '{link.matrix}'.")
+        self.loginfo(f"[VirtualLEDs]: Received request to connect to Duckiematrix '{link.matrix}'.")
         # store new connection request
         self._connection_request = link
         # notify node of the new connection
@@ -66,10 +66,11 @@ class VirtualRGBLED(object):
         link = self._connection_request
         configuration = get_robot_configuration()
         # create connection to the matrix engine
-        self._matrix: Matrix = Matrix(link.uri)
+        self._matrix: Matrix = Matrix(link.uri,auto_commit=True)
         # create connection to the vehicle
-        self.robot: Lights = self._matrix.robots.create(configuration.name, link.entity)
-
+        self.robot = self._matrix.robots.create(configuration.name, link.entity)
+        print(f"VIRTUAL LED CONNECTING TO:{self.robot}")
+    
     def setLEDBrightness(self, led, offset, brightness):
         """Used in physical robot led driver
 
@@ -79,7 +80,7 @@ class VirtualRGBLED(object):
             brightness (:obj:`int8`): Intensity of brightness (between 0 and 255)
 
         """
-        raise NotImplementedError
+        raise NotImplementedError()
     
     def setRGB(self, led, color):
         """Sets value for brightness for all channels of one LED
@@ -104,7 +105,7 @@ class VirtualRGBLED(object):
 
             light.color.r = int(color[0] * 255)
             light.color.g = int(color[1] * 255)
-            light.color.r = int(color[2] * 255)
+            light.color.b = int(color[2] * 255)
 
     def __del__(self):
         """Destructor method.
