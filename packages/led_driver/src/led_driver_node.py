@@ -2,10 +2,11 @@
 import time
 
 import rospy
+from duckietown.dtros import DTROS, NodeType
 from duckietown_msgs.msg import LEDPattern
 from rgb_led import RGB_LED
 
-from duckietown.dtros import DTROS, NodeType
+from hardware_test_led import HardwareTestLED
 
 
 class LEDDriverNode(DTROS):
@@ -46,6 +47,11 @@ class LEDDriverNode(DTROS):
             self.led.set_RGB(i, self._idle["color"][i], self._idle["intensity"][i])
         # subscribers
         self.sub_topic = rospy.Subscriber("~led_pattern", LEDPattern, self.led_cb, queue_size=1)
+
+        # user hardware tests
+        self._hardware_test_front = HardwareTestLED(self.led, info_str="front", led_ids=[0, 1, 2], idle_lighting=self._idle)
+        self._hardware_test_back = HardwareTestLED(self.led, info_str="back", led_ids=[3, 4], idle_lighting=self._idle)
+
         # ---
         self.log("Initialized.")
 

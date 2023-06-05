@@ -19,3 +19,4 @@ PAGE_TOF = 2
 
 # pages created due to special event, and the page order doesn't matter much
 PAGE_SHUTDOWN = 90
+PAGE_TEST_OLED_DISPLAY = 99

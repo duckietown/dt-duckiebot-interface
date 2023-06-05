@@ -25,6 +25,7 @@ from display_renderer import (
     ALL_PAGES,
     PAGE_HOME,
     PAGE_SHUTDOWN,
+    PAGE_TEST_OLED_DISPLAY,
     AbsDisplayFragmentRenderer,
     DisplayROI,
     DisplayFragment,
@@ -32,6 +33,8 @@ from display_renderer import (
 
 from duckietown.utils.image.pil import np_to_pil, pil_to_np
 from duckietown.utils.image.ros import imgmsg_to_mono8
+
+from hardware_test_oled_display import HardwareTestOledDisplay
 
 
 class DisplayNode(DTROS):
@@ -86,7 +89,35 @@ class DisplayNode(DTROS):
         self._timer = rospy.Timer(rospy.Duration.from_sec(1.0 / self._frequency), self._render)
         self._reminder = DTReminder(frequency=self._MAX_FREQUENCY_HZ)
 
+        # user hardware test
+        self._hardware_test = HardwareTestOledDisplay(
+            fn_show_test_display=self.show_test_page,
+            fn_remove_test_display=self.hide_test_page,
+        )
+        self._is_performing_test = False
+
+    def show_test_page(self, test_page_msg):
+        """
+        Used in the user hardware test: show the test display and change to it
+        """
+        self._is_performing_test = True
+        self._fragment_cb(test_page_msg, is_test_cmd=True)
+        with self._fragments_lock:
+            self._page = PAGE_TEST_OLED_DISPLAY
+
+    def hide_test_page(self):
+        """
+        Used in the user hardware test: remove the test display; go to homepage
+        """
+        with self._fragments_lock:
+            self._page = PAGE_HOME
+        self._is_performing_test = False
+
     def _button_event_cb(self, msg: Any):
+        # when performing hardware test, prevent default handling
+        if self._is_performing_test:
+            return
+
         if msg.event == ButtonEventMsg.EVENT_SINGLE_CLICK:
             with self._fragments_lock:
                 pages = sorted(self._pages)
@@ -103,7 +134,11 @@ class DisplayNode(DTROS):
             with self._fragments_lock:
                 self._page = PAGE_SHUTDOWN
 
-    def _fragment_cb(self, msg: Any):
+    def _fragment_cb(self, msg: Any, is_test_cmd: bool = False):
+        # when performing hardware test, prevent default handling
+        if self._is_performing_test and not is_test_cmd:
+            return
+
         region = self._REGIONS[msg.region]
         # convert image to greyscale
         img = imgmsg_to_mono8(msg.data)

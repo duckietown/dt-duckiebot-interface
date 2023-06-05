@@ -13,3 +13,6 @@ luma.oled
 
 # dependencies for the IMU sensor
 adafruit-circuitpython-mpu6050
+
+# dependencies for the LED hardware test
+colorir

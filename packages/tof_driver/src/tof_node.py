@@ -4,7 +4,6 @@ import dataclasses
 import time
 from typing import Optional
 
-import numpy as np
 import rospy
 import yaml
 from display_renderer import (
@@ -15,32 +14,14 @@ from display_renderer import (
 )
 from display_renderer.text import monospace_screen
 from dt_class_utils import DTReminder
-from dt_vl53l0x import VL53L0X, Vl53l0xAccuracyMode
+from dt_vl53l0x import VL53L0X
 from duckietown.dtros import DTROS, NodeType, TopicType
 from duckietown_msgs.msg import DisplayFragment
 from sensor_msgs.msg import Range
 from std_msgs.msg import Header
 
-
-@dataclasses.dataclass
-class ToFAccuracy:
-    mode: Vl53l0xAccuracyMode
-    timing_budget: float
-    max_range: float
-    # the following are taken from the sensor's datasheet
-    min_range: float = 0.05
-    fov: float = np.deg2rad(25)
-
-    @staticmethod
-    def from_string(mode: str):
-        ms = 1 / 1000
-        return {
-            "GOOD": ToFAccuracy(Vl53l0xAccuracyMode.GOOD, 33 * ms, 1.2),
-            "BETTER": ToFAccuracy(Vl53l0xAccuracyMode.BETTER, 66 * ms, 1.2),
-            "BEST": ToFAccuracy(Vl53l0xAccuracyMode.BEST, 200 * ms, 1.2),
-            "LONG_RANGE": ToFAccuracy(Vl53l0xAccuracyMode.LONG_RANGE, 33 * ms, 2.0),
-            "HIGH_SPEED": ToFAccuracy(Vl53l0xAccuracyMode.HIGH_SPEED, 20 * ms, 1.2),
-        }[mode]
+from tof_accuracy import ToFAccuracy
+from hardware_test_tof import HardwareTestToF
 
 
 class ToFNode(DTROS):
@@ -75,6 +56,9 @@ class ToFNode(DTROS):
             dt_topic_type=TopicType.VISUALIZATION,
             dt_help="Fragments to display on the display",
         )
+        # user hardware test
+        self._hardware_test = HardwareTestToF(self._sensor_name, self._accuracy)
+
         # create screen renderer
         self._renderer = ToFSensorFragmentRenderer(self._sensor_name, self._accuracy)
         # check frequency
