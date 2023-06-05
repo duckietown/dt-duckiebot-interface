@@ -1,6 +1,5 @@
 import glob
 import os
-import socket
 import traceback
 from datetime import datetime
 
@@ -8,11 +7,12 @@ from flask import Blueprint, send_file
 from dt_robot_rest_api.utils import (
     response_ok, response_not_found, response_error,
 )
+from dt_device_utils import get_device_hostname
 
 
 logs_bp = Blueprint("logs", __name__)
 
-_ROBOT_HOSTNAME = socket.gethostname()
+_ROBOT_HOSTNAME = get_device_hostname()
 _ROS_LOGS_DIR = "/tmp/log/latest"
 
 
@@ -22,16 +22,14 @@ def search_ros_node_logs():
     try:
         file_pattern = os.path.join(_ROS_LOGS_DIR, f"{_ROBOT_HOSTNAME}-*.log")
         log_files = glob.glob(file_pattern)
-        # for log_f in log_files:
-        #     print("Matching log:", log_f)
 
         node_names = [os.path.basename(f_path).split('-')[1] for f_path in log_files]
         node_to_log = dict(zip(node_names, log_files))
 
         ret_data = {
-            "number_of_logs_found": len(log_files),
-            "dict_log_files": node_to_log,
-            "search_pattern": file_pattern
+            "count": len(log_files),
+            "logs": node_to_log,
+            "pattern": file_pattern
         }
 
         return response_ok(ret_data)
