@@ -3,15 +3,16 @@
 import rospy
 import requests
 from typing import Dict
+
+from dt_robot_utils import get_robot_configuration
 from duckietown_msgs.msg import DisplayFragment as DisplayFragmentMsg
 
 from display_renderer import (
-    MonoImageFragmentRenderer,
     PAGE_ROBOT_INFO,
     REGION_BODY,
     DisplayROI,
+    TextFragmentRenderer,
 )
-from display_renderer.text import monospace_screen
 
 from duckietown.dtros import DTROS, NodeType, TopicType
 
@@ -39,7 +40,7 @@ class RobotInfoRendererNode(DTROS):
 
     def _beat(self, _):
         robot_info_str = self._fetch()
-        self._renderer.set_contents(robot_info_str)
+        self._renderer.update(robot_info_str)
         self._pub.publish(self._renderer.as_msg())
 
     def _fetch(self) -> str:
@@ -54,24 +55,33 @@ class RobotInfoRendererNode(DTROS):
         sw_version = health_data["software"]["version"]
         firmware = f"{sw_date['day']}/{sw_date['month']}/{sw_date['year']} ({sw_version})"
 
-        return f"Name: {self._veh}\nModel: {health_data['hardware']['model']}\nFirmware:\n{firmware}"
+        return self._fmt({
+            "Name": self._veh,
+            "Model": get_robot_configuration().name,
+            "FW": firmware,
+        })
 
-class RobotInfoRenderer(MonoImageFragmentRenderer):
+    def _fmt(self, disp_data: Dict[str, str]) -> str:
+        # align keys to the left, align colons, and values to the right
+        max_key_length = max(len(key) for key in disp_data.keys())
+        max_value_length = max(len(str(value)) for value in disp_data.values())
+        output = ""
+        for key, value in disp_data.items():
+            output += "{:<{}}: {:>{}}\n".format(key, max_key_length, str(value), max_value_length)
+        return output
+
+
+class RobotInfoRenderer(TextFragmentRenderer):
     def __init__(self):
         super(RobotInfoRenderer, self).__init__(
             name=f"__robot_info__",
             page=PAGE_ROBOT_INFO,
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
+            scale="fill",
+            ttl=20,
         )
 
-        self.set_contents("")
-
-    def set_contents(self, disp_text: str):
-        contents = monospace_screen(
-            (self.roi.h, self.roi.w), disp_text, scale="fill", align="center"
-        )
-        self.data[:, :] = contents
 
 if __name__ == "__main__":
     node = RobotInfoRendererNode()
