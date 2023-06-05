@@ -16,7 +16,7 @@ _ROBOT_HOSTNAME = get_device_hostname()
 _ROS_LOGS_DIR = "/tmp/log/latest"
 
 
-@logs_bp.route("/logs/list")
+@logs_bp.route("/ros/logs/list")
 def search_ros_node_logs():
     """Returns a mapping between ros nodes and their log file paths"""
     try:
@@ -38,7 +38,7 @@ def search_ros_node_logs():
         return response_error()
 
 
-@logs_bp.route("/logs/download/<nodename>")
+@logs_bp.route("/ros/logs/download/<nodename>")
 def download_ros_node_logs(nodename):
     file_pattern = os.path.join(_ROS_LOGS_DIR, f"{_ROBOT_HOSTNAME}-{nodename}-*.log")
     log_files = glob.glob(file_pattern)

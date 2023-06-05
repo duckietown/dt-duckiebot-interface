@@ -17,7 +17,7 @@ from display_renderer.text import monospace_screen
 class OLEDDisplayTestRenderer(MonoImageFragmentRenderer):
     def __init__(self, disp_text: str, duration: int):
         super(OLEDDisplayTestRenderer, self).__init__(
-            name=f"__oled_display_test__",
+            name="__oled_display_test__",
             page=PAGE_TEST_OLED_DISPLAY,
             region=REGION_BODY,
             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
