@@ -10,7 +10,7 @@ class HardwareTestToF(HardwareTest):
         super().__init__()
         # attr
         self._sensor_name = sensor_name  # e.g. "front_center"
-        self._sensor_name_human = " ".join(sensor_name.split("_"))  # e.g. "front center"
+        self._sensor_name_human = sensor_name.replace("_", " ")  # e.g. "front center"
         self._accuracy = accuracy
 
     def test_id(self) -> str:
