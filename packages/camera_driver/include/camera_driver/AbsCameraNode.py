@@ -12,6 +12,7 @@ from sensor_msgs.msg import CompressedImage, CameraInfo
 from sensor_msgs.srv import SetCameraInfo, SetCameraInfoResponse
 
 from duckietown.dtros import DTROS, NodeType, TopicType, DTParam, ParamType
+from hardware_test_camera import HardwareTestCamera
 
 
 class AbsCameraNode(ABC, DTROS):
@@ -107,6 +108,9 @@ class AbsCameraNode(ABC, DTROS):
         self.current_camera_info = copy.deepcopy(self.original_camera_info)
         self.update_camera_params()
         self.log("Using calibration file: %s" % self.cali_file)
+
+        # user hardware test
+        self._hardware_test = HardwareTestCamera()
 
         # create cv bridge
         self._bridge = CvBridge()

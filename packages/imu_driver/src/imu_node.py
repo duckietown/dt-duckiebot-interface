@@ -11,8 +11,8 @@ from adafruit_mpu6050 import MPU6050
 from sensor_msgs.msg import Imu, Temperature
 from std_srvs.srv import Empty
 
+from hardware_test_imu import HardwareTestIMU
 from duckietown.dtros import DTROS, NodeType
-
 
 # TODO: calibration and loading custom config
 
@@ -51,6 +51,9 @@ class IMUNode(DTROS):
         self.temp_pub = rospy.Publisher('~temperature', Temperature, queue_size=10)
         rospy.Service("~initialize_imu", Empty, self.zero_sensor)
         self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / self._polling_hz), self.publish_data)
+        
+        # user hardware test
+        self._hardware_test = HardwareTestIMU()
 
     def _find_sensor(self) -> Optional[MPU6050]:
         for connector in self._i2c_connectors:

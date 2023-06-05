@@ -41,12 +41,10 @@ class ButtonLED:
         GPIO.output(self._gpio_pin, value)
 
     def confirm_shutdown(self):
-        # TODO: are these worth parameterizing?
-
         # top button LED blinks for 3 seconds
-        secs_to_blink = 3
-        blink_freq_hz = 2
+        self.blink_led(secs_to_blink=3, blink_freq_hz=2)
 
+    def blink_led(self, secs_to_blink: int, blink_freq_hz: int):
         # duration of an off-on or on-off transition
         transition_duration_sec = 1.0 / (2 * blink_freq_hz)
         for _ in range(secs_to_blink):
