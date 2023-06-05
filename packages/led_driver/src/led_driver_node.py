@@ -49,8 +49,8 @@ class LEDDriverNode(DTROS):
         self.sub_topic = rospy.Subscriber("~led_pattern", LEDPattern, self.led_cb, queue_size=1)
 
         # user hardware tests
-        self._hardware_test_front = HardwareTestLED(self.led, info_str="front", led_ids=[0, 1, 2])
-        self._hardware_test_back = HardwareTestLED(self.led, info_str="back", led_ids=[3, 4])
+        self._hardware_test_front = HardwareTestLED(self.led, info_str="front", led_ids=[0, 1, 2], idle_lighting=self._idle)
+        self._hardware_test_back = HardwareTestLED(self.led, info_str="back", led_ids=[3, 4], idle_lighting=self._idle)
 
         # ---
         self.log("Initialized.")

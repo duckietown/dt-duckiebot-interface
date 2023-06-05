@@ -1,6 +1,8 @@
 import rospy
+import numpy as np
 
-from typing import List, Tuple
+from typing import List, Tuple, Dict
+from colorir import HSV
 
 from rgb_led import RGB_LED
 from dt_duckiebot_hardware_tests import HardwareTest, HardwareTestJsonParamType
@@ -12,9 +14,10 @@ class HardwareTestLED(HardwareTest):
         driver: RGB_LED,
         info_str: str,
         led_ids: List[int],
-        fade_in_secs: int = 2,
-        dura_secs: int = 10,
-        fade_out_secs: int = 2,
+        idle_lighting: Dict[str, List],
+        fade_in_secs: int = 1,
+        dura_secs: int = 6,
+        fade_out_secs: int = 1,
     ) -> None:
         # describe this group of LEDs, e.g. "front" or "back"
         self._info_str = info_str
@@ -23,6 +26,7 @@ class HardwareTestLED(HardwareTest):
         # attr
         self._driver = driver
         self._led_ids = led_ids
+        self._idle_lighting = idle_lighting  # set to this after the test
 
         # test settings
         self.fade_in_secs = fade_in_secs
@@ -44,44 +48,30 @@ class HardwareTestLED(HardwareTest):
         return self.html_util_ul(
             [
                 "The Duckiebot LEDs should start shining.",
-                "The LEDs should show a smooth transition of these colors: RED -> GREEN -> BLUE -> RED.",
+                "The LEDs should show a smooth transition of these colors: RED -> PURPLE -> BLUE -> GREEN -> YELLOW -> RED.",
                 f"In about {self.fade_in_secs + self.dura_secs + self.fade_out_secs} seconds, they should be off.",
             ]
         )
 
-    def _generate_colors(self, gap: int = 16) -> List[Tuple[float, float, float]]:
-        """Generate a smooth transition of colors: Red -> Green -> Blue -> Red"""
-        samples = []
-        # (255, g+, 0)
-        for g in range(256):
-            if g % gap == 0:
-                samples.append((255, g, 0))
-        # (r-, 255, 0)
-        for r in reversed(range(256)):
-            if r % gap == 0:
-                samples.append((r, 255, 0))
-        # (0, 255, b+)
-        for b in range(256):
-            if b % gap == 0:
-                samples.append((0, 255, b))
-        # (0, g-, 255)
-        for g in reversed(range(256)):
-            if g % gap == 0:
-                samples.append((0, g, 255))
-        # (r+, 0, 255)
-        for r in range(256):
-            if r % gap == 0:
-                samples.append((r, 0, 255))
-        # (255, 0, b-)
-        for b in reversed(range(256)):
-            if b % gap == 0:
-                samples.append((255, 0, b))
+    def _generate_colors(self, step_size: int = 1) -> List[Tuple[float, float, float]]:
+        """Generate a smooth transition of colors"""
+        return [HSV(hue, 1.0, 1.0).rgb() for hue in range(0, 360, step_size)]
 
-        normalized_samples = [
-            (float(r) / 255.0, float(g) / 255.0, float(b) / 255.0)
-            for r, g, b in samples
-        ]
-        return normalized_samples
+    def _fade_mono(self, fade_in: bool, interval_secs: float, mono_hue: int = 0):
+        """fade IN or OUT in a mono color"""
+        # number of different colors to show
+        n_itr = int(self.fade_in_secs / interval_secs) if fade_in else int(self.fade_out_secs / interval_secs)
+
+        # increasing brightness
+        seq_v = np.arange(0.0, 1.0, float(1.0 / n_itr))
+        if not fade_in:
+            # or decreasing
+            seq_v = reversed(seq_v)
+
+        for v in seq_v:
+            for i in self._led_ids:
+                self._driver.set_RGB(i, HSV(mono_hue, 1.0, v).rgb(), is_test_cmd=True)
+            rospy.sleep(interval_secs)
 
     def cb_run_test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
@@ -96,15 +86,7 @@ class HardwareTestLED(HardwareTest):
         try:
             self._driver.start_hardware_test()
             # turn all on gradually
-            n_itr = int(self.fade_in_secs / interval)
-            fade_in_incr = int(255 / n_itr)
-            r0 = 0
-            for _ in range(n_itr):
-                r0 += fade_in_incr
-                r0 = min(255, r0)
-                for i in self._led_ids:
-                    self._driver.set_RGB(i, (r0 / 255.0, 0, 0), is_test_cmd=True)
-                rospy.sleep(interval)
+            self._fade_mono(fade_in=True, interval_secs=interval)
 
             # run color sequence test
             for color in self._color_sequence:
@@ -113,19 +95,16 @@ class HardwareTestLED(HardwareTest):
                 rospy.sleep(interval)
 
             # turn all off
-            n_itr = int(self.fade_out_secs / interval)
-            fade_out_decr = int(255 / n_itr)
-            r1 = 255
-            for _ in range(n_itr):
-                r1 -= fade_out_decr
-                r1 = max(0, r1)
-                for i in self._led_ids:
-                    self._driver.set_RGB(i, (r1 / 255.0, 0, 0), is_test_cmd=True)
-                rospy.sleep(interval)
+            self._fade_mono(fade_in=False, interval_secs=interval)
 
-            # make sure they are off
+            # make sure they are set to idle lighting
             for i in self._led_ids:
-                self._driver.set_RGB(i, (0, 0, 0), is_test_cmd=True)
+                self._driver.set_RGB(
+                    led=i,
+                    color=self._idle_lighting["color"][i],
+                    intensity=self._idle_lighting["intensity"][i],
+                    is_test_cmd=True,
+                )
         except Exception as e:
             rospy.logerr(f"[{self.test_id()}] Experienced error: {e}")
             success = False

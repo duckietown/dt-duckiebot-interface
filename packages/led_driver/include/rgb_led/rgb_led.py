@@ -84,7 +84,7 @@ class RGB_LED(object):
             is_test_cmd (:obj:`bool`): whether this is a command issue by the hardware test
         """
 
-        if self._is_performing_test and is_test_cmd or not self._is_performing_test:
+        if not self._is_performing_test or is_test_cmd:
             self._set_led_brightness(led, self.OFFSET_RED, int(color[0] * intensity * 255))
             self._set_led_brightness(led, self.OFFSET_GREEN, int(color[1] * intensity * 255))
             self._set_led_brightness(led, self.OFFSET_BLUE, int(color[2] * intensity * 255))
