@@ -14,5 +14,3 @@ luma.oled
 # dependencies for the IMU sensor
 adafruit-circuitpython-mpu6050
 
-# public protocols used to communicate with a duckiematrix engine
-dt-duckiematrix-protocols-ente>=0.1.6
