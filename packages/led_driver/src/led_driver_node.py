@@ -41,9 +41,9 @@ class LEDDriverNode(DTROS):
 
         self.led = RGBLED()
 
-        start_color = [0, 0, 0]
+        self.start_color = [0, 0, 0]
         for i in range(5):
-            self.led.setRGB(i, start_color)
+            self.led.setRGB(i, self.start_color)
 
         self.sub_topic = rospy.Subscriber("~led_pattern", LEDPattern, self.led_cb, queue_size=1)
 
@@ -63,6 +63,8 @@ class LEDDriverNode(DTROS):
         """
         # Turn off the lights when the node dies
         self.loginfo("Shutting down. Turning LEDs off.")
+        for i in range(5):
+            self.led.setRGB(i, self.start_color)
         time.sleep(1)
 
 
