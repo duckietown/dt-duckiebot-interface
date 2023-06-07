@@ -44,28 +44,33 @@ class VirtualCamera(AbsCameraNode):
             return
         # ---
         link = self._connection_request
+        configuration = get_robot_configuration()
         # prepare zmq pipeline
-        self.log(f"[VirtualCamera]: Connecting to Matrix Engine at '{link.uri}'.")
         self._matrix: Matrix = Matrix(link.uri)
-        self._device: Camera = self._matrix.robots.CameraEnabledRobot(link.entity).camera
+        self._device: Camera = self._matrix.robots.create(configuration.name, link.entity).camera
         # subscribe to camera topic
+        self._device.attach(self.process_frame)
         self._device.start()
-        self.log(f"[VirtualCamera]: Sensor started.")
 
     def run(self):
         """ Image capture procedure.
         """
         if self._device is None:
             # wait for connection request
-            self.loginfo("Waiting for connection request...")
+            self.loginfo('Waiting for connection request...')
             with self._new_connection_request:
                 self._new_connection_request.wait()
-                self.setup()
-                self.loginfo("[VirtualCamera]: Initialized.")
         # do this forever
-        while (not self.is_stopped) and (not self.is_shutdown):
-            msg = self._device.capture(block=True)
-            self.process_frame(msg)
+        while True:
+            # start device
+            self.setup()
+            self._device.start()
+            self.log("[VirtualCamera]: Initialized.")
+            with self._new_connection_request:
+                self._new_connection_request.wait()
+            # ---
+            self.loginfo('Camera worker stopped.')
+            self.release()
 
     def process_frame(self, msg: CameraFrame):
         if msg.frame is None:
