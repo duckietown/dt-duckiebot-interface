@@ -74,7 +74,7 @@ class VirtualRGBLED(object):
         self._matrix: Matrix = Matrix(link.uri,auto_commit=True)
         print(f"[{class_name}] connected to Matrix at {link.uri}")
         # create connection to the vehicle
-        robot: DifferentialDriveRobot = self._matrix.robots.create(configuration.name, link.entity)
+        robot: DifferentialDriveRobot = self._matrix.LightsEnabledRobot(configuration.name, link.entity)
         self._device : Lights = robot.lights
         print(f"[{class_name}] Connected to {link.entity}")
 
