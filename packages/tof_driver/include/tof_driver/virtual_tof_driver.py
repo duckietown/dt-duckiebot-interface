@@ -49,7 +49,7 @@ class VirtualToFDriver(ToFDriverAbs):
         # prepare zmq pipeline
         self._matrix: Matrix = Matrix(link.uri)
         robot = self._matrix.robots.create(configuration.name, link.entity)
-        self._device: TimeOfFlight = robot.time_of_flight("front_center")
+        self._device: TimeOfFlight = robot.time_of_flight(self._name)
         # subscribe to camera topic
         self._device.attach(self._process_range)
 

@@ -112,7 +112,7 @@ class ToFNode(DTROS):
                 conn: str = "[bus:{bus}](0x{address:02X})".format(**connector)
                 self.loginfo(f"Trying to open device on connector {conn}")
                 
-                sensor = ToFDriver(accuracy=self._accuracy,i2c_bus=connector["bus"], i2c_address=connector["address"],name="pluto")
+                sensor = ToFDriver(accuracy=self._accuracy,i2c_bus=connector["bus"], i2c_address=connector["address"],name=self._sensor_name)
                 sensor.setup()
                 
                 try:
@@ -128,7 +128,7 @@ class ToFNode(DTROS):
                 self.loginfo(f"Device found on connector {conn}")
                 return sensor
                 
-        sensor = ToFDriver(accuracy=self._accuracy,name="pluto")
+        sensor = ToFDriver(accuracy=self._accuracy,name=self._sensor_name)
         sensor.setup()
         sensor.start()
         return sensor
