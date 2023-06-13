@@ -14,5 +14,5 @@ if get_robot_hardware() != RobotHardware.VIRTUAL:
     # this breaks if imported when running on a virtual robot
     from .tof_driver import ToFDriver
 
-from .virtual_tof_driver import VirtualToFDriver
+from .virtual_tof_driver import VirtualToFDriver as ToFDriver
 
