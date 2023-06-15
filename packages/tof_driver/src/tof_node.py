@@ -5,6 +5,7 @@ import time
 from typing import Optional
 
 import numpy as np
+from tof_driver import ToFDriver
 import rospy
 import yaml
 from display_renderer import (
@@ -15,12 +16,12 @@ from display_renderer import (
 )
 from display_renderer.text import monospace_screen
 from dt_class_utils import DTReminder
-from dt_vl53l0x import VL53L0X, Vl53l0xAccuracyMode
+from dt_vl53l0x import Vl53l0xAccuracyMode
 from duckietown.dtros import DTROS, NodeType, TopicType
 from duckietown_msgs.msg import DisplayFragment
 from sensor_msgs.msg import Range
 from std_msgs.msg import Header
-
+from dt_robot_utils import get_robot_hardware, RobotHardware
 
 @dataclasses.dataclass
 class ToFAccuracy:
@@ -68,11 +69,11 @@ class ToFNode(DTROS):
         self._mode = rospy.get_param("~mode", "BETTER")
         self._display_fragment_frequency = rospy.get_param("~display_fragment_frequency", 4)
         self._accuracy = ToFAccuracy.from_string(self._mode)
-        # create a VL53L0X sensor handler
-        self._sensor: Optional[VL53L0X] = self._find_sensor()
+        # create a ToF sensor handler
+        self._sensor: Optional[ToFDriver] = self._find_sensor()
         if not self._sensor:
             conns: str = yaml.safe_dump(self._i2c_connectors, indent=2, sort_keys=True)
-            self.logerr(f"No VL53L0X device found. These connectors were tested:\n{conns}\n")
+            self.logerr(f"No ToF device found. These connectors were tested:\n{conns}\n")
             exit(1)
         # create publisher
         self._pub = rospy.Publisher(
@@ -105,24 +106,33 @@ class ToFNode(DTROS):
         self.timer = rospy.Timer(rospy.Duration.from_sec(1.0 / max_frequency), self._timer_cb)
         self._fragment_reminder = DTReminder(frequency=self._display_fragment_frequency)
 
-    def _find_sensor(self) -> Optional[VL53L0X]:
-        for connector in self._i2c_connectors:
-            conn: str = "[bus:{bus}](0x{address:02X})".format(**connector)
-            self.loginfo(f"Trying to open device on connector {conn}")
-            sensor = VL53L0X(i2c_bus=connector["bus"], i2c_address=connector["address"])
-            try:
-                sensor.open()
-            except FileNotFoundError:
-                # i2c BUS not found
-                self.logwarn(f"No devices found on connector {conn}, the bus does NOT exist")
-                continue
-            sensor.start_ranging(self._accuracy.mode)
-            time.sleep(1)
-            if sensor.get_distance() < 0:
-                self.logwarn(f"No devices found on connector {conn}, but the bus exists")
-                continue
-            self.loginfo(f"Device found on connector {conn}")
-            return sensor
+    def _find_sensor(self) -> Optional[ToFDriver]:
+        if get_robot_hardware() != RobotHardware.VIRTUAL:
+            for connector in self._i2c_connectors:
+                conn: str = "[bus:{bus}](0x{address:02X})".format(**connector)
+                self.loginfo(f"Trying to open device on connector {conn}")
+                
+                sensor = ToFDriver(accuracy=self._accuracy,i2c_bus=connector["bus"], i2c_address=connector["address"],name=self._sensor_name)
+                sensor.setup()
+                
+                try:
+                    sensor.start()
+                except FileNotFoundError:
+                    # i2c BUS not found
+                    self.logwarn(f"No devices found on connector {conn}, the bus does NOT exist")
+                    continue
+                time.sleep(1)
+                if sensor.get_distance() < 0:
+                    self.logwarn(f"No devices found on connector {conn}, but the bus exists")
+                    continue
+                self.loginfo(f"Device found on connector {conn}")
+                return sensor
+                
+        sensor = ToFDriver(accuracy=self._accuracy,name=self._sensor_name)
+        sensor.setup()
+        sensor.start()
+        return sensor
+
 
     def _timer_cb(self, _):
         # detect range
