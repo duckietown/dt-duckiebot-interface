@@ -15,7 +15,7 @@ dt-launchfile-init
 
 # launching app
 dt-exec roslaunch --wait \
-    led_driver led_driver_node.launch \
+    wheels_driver wheels_driver_node.launch \
     veh:="$VEHICLE_NAME"
 
 
