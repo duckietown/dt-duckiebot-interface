@@ -10,6 +10,8 @@ from typing import cast
 from camera_driver import AbsCameraNode
 from sensor_msgs.msg import CompressedImage
 
+from duckietown.dtros import DTParam, ParamType
+
 
 class RaspberryPi64Camera(AbsCameraNode):
     """
@@ -23,6 +25,10 @@ class RaspberryPi64Camera(AbsCameraNode):
         super(RaspberryPi64Camera, self).__init__()
         # prepare gstreamer pipeline
         self._device = None
+        # exposure
+        self._exposure = DTParam(
+            "~exposure", param_type=ParamType.INT, help="Camera exposure (v4l2)"
+        )
         # ---
         self.log("[RaspberryPi64Camera]: Initialized.")
 
@@ -79,12 +85,11 @@ class RaspberryPi64Camera(AbsCameraNode):
                 self._device.set(cv2.CAP_PROP_FPS, self._framerate.value)
                 self._device.set(cv2.CAP_PROP_CONVERT_RGB, False)
                 # Set auto exposure to false
-                # TODO: this should be for watchtowers only
                 if self._exposure_mode.value == "sports":
                     msg = "Setting exposure to 'sports' mode."
                     self.loginfo(msg)
                     self._device.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
-                    self._device.set(cv2.CAP_PROP_EXPOSURE, 40.0)
+                    self._device.set(cv2.CAP_PROP_EXPOSURE, self._exposure.value)
                 # try getting a sample image
                 retval, _ = self._device.read()
                 if not retval:
