@@ -1,17 +1,16 @@
 idle:
   color: [
-    # white on the front
+    # white on the front, red on the back
     [1, 1, 1],
-    [1, 1, 1],
-    [1, 1, 1],
-    # red on the back
     [1, 0, 0],
+    [0, 0, 0],
     [1, 0, 0],
+    [1, 1, 1],
   ]
   intensity: [
     0.1,
-    0.1,
-    0.1,
     0.2,
-    0.2
+    0.0,
+    0.2,
+    0.1
   ]

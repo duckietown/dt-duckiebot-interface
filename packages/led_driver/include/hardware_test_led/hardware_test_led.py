@@ -48,8 +48,10 @@ class HardwareTestLED(HardwareTest):
         return self.html_util_ul(
             [
                 "The Duckiebot LEDs should start shining.",
-                "The LEDs should show a smooth transition of these colors: RED -> YELLOW -> GREEN -> BLUE -> PURPLE -> RED.",
-                f"In about {self.fade_in_secs + self.duration + self.fade_out_secs} seconds, they should be off.",
+                "The LEDs should show a smooth transition of these colors: "
+                "RED -> YELLOW -> GREEN -> BLUE -> PURPLE -> RED.",
+                f"In about {self.fade_in_secs + self.duration + self.fade_out_secs} seconds, "
+                f"they should be off.",
             ]
         )
 

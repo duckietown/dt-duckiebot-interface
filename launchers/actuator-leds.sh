@@ -37,19 +37,20 @@ dt-exec roslaunch --wait \
 
 
 # set LED color and intensity
-INTENSITY=1.0
+INTENSITY=0.2
 OFF="{r: 0, g: 0, b: 0, a: 0}"
+WHITE="{r: 1, g: 1, b: 1, a: ${INTENSITY}}"
 RED="{r: 1, g: 0, b: 0, a: ${INTENSITY}}"
 GREEN="{r: 0, g: 1, b: 0, a: ${INTENSITY}}"
 BLUE="{r: 0, g: 0, b: 1, a: ${INTENSITY}}"
 
 read -r -d '' PATTERN << EOM
 {rgb_vals: [
-    ${BLUE},
+    ${WHITE},
+    ${RED},
     ${OFF},
+    ${GREEN},
     ${BLUE},
-    ${GREEN},
-    ${GREEN},
 ]}
 EOM
 

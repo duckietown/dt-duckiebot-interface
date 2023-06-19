@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-from typing import Tuple
+from typing import Tuple, List, Union
 
 from Adafruit_PWM_Servo_Driver import PWM
 
@@ -13,19 +13,19 @@ class RGB_LED(object):
 
     Each LED on a Duckiebot or a watchtower is indexed by a number:
 
-    +------------------+------------------------------------------+
-    | Index            | Position (rel. to direction of movement) |
-    +==================+==========================================+
-    | 0                | Front left                               |
-    +------------------+------------------------------------------+
-    | 1                | Rear left                                |
-    +------------------+------------------------------------------+
-    | 2                | Top / Front middle                       |
-    +------------------+------------------------------------------+
-    | 3                | Rear right                               |
-    +------------------+------------------------------------------+
-    | 4                | Front right                              |
-    +------------------+------------------------------------------+
+        +------------------+------------------+------------------------------------------+
+        | Vehicle light    | Physical LED #   | Position on vehicle                      |
+        +==================+==================+==========================================+
+        | 0                | 0                | Front left                               |
+        +------------------+------------------+------------------------------------------+
+        | 1                | 2                | Rear left                                |
+        +------------------+------------------+------------------------------------------+
+        | 2                | 4                | Top / Front middle                       |
+        +------------------+------------------+------------------------------------------+
+        | 3                | 3                | Rear right                               |
+        +------------------+------------------+------------------------------------------+
+        | 4                | 1                | Front right                              |
+        +------------------+------------------+------------------------------------------+
 
     Setting the color of a single LED is done by setting the brightness of the
     red, green, and blue channels to a value between 0 and 255. The communication
@@ -39,11 +39,17 @@ class RGB_LED(object):
     OFFSET_GREEN = 1  #: Offset address for the green color
     OFFSET_BLUE = 2  #: Offset address for the blue color
 
+    VEHICLE_TO_PHYSICAL_LED_MAPPING = {
+        0: 0,
+        1: 2,
+        2: 4,
+        3: 3,
+        4: 1,
+    }
+
     def __init__(self, debug=False):
         self.pwm = PWM(address=0x40, debug=debug)
-        for i in range(15):
-            # Sets fully off all the pins
-            self.pwm.setPWM(i, 0, 4095)
+        self.set_OFF()
         # hardware testing flag
         self._is_performing_test = False
 
@@ -67,7 +73,20 @@ class RGB_LED(object):
             brightness (:obj:`int8`): Intensity of brightness (between 0 and 255)
 
         """
+        # remap vehicle LED to physical LED
+        led = self.VEHICLE_TO_PHYSICAL_LED_MAPPING[led]
         self.pwm.setPWM(3 * led + offset, brightness << 4, 4095)
+
+    def set_OFF(self, leds: Union[None, int, List[int]] = None):
+        if leds is None:
+            leds = range(5)
+        if isinstance(leds, int):
+            leds = [leds]
+        # set all LEDs
+        for led in leds:
+            for ch in range(3):
+                # sets fully off all the channels
+                self._set_led_brightness(led, ch, 0)
 
     def set_RGB(self, led: int, color: Tuple[float, float, float], intensity: float = 1.0, is_test_cmd: bool = False):
         """Sets value for brightness for all channels of one LED
@@ -97,7 +116,5 @@ class RGB_LED(object):
         """
         if not hasattr(self, "pwm"):
             return
-        for i in range(15):
-            # Sets fully off all channels of all the LEDs (3 channles * 5 LEDs)
-            self.pwm.setPWM(i, 0, 4095)
+        self.set_OFF()
         del self.pwm
