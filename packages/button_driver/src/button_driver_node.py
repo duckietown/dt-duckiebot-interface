@@ -11,6 +11,7 @@ from duckietown_msgs.msg import (
 from duckietown.dtros import DTROS, NodeType, TopicType
 
 from button_driver import ButtonEvent, ButtonDriver
+from hardware_test_button import HardwareTestButton
 
 from dt_device_utils.device import shutdown_device
 
@@ -58,6 +59,9 @@ class ButtonDriverNode(DTROS):
         )
         # create event holder
         self._ongoing_event = None
+
+        # user hardware test
+        self._hardware_test = HardwareTestButton(driver=self._button)
 
     def _event_cb(self, event: ButtonEvent):
         # create partial event

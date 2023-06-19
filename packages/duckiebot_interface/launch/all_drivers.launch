@@ -108,6 +108,10 @@
         <include file="$(find display_renderers)/launch/networking_renderer_node.launch">
             <arg name="veh" value="$(arg veh)"/>
         </include>
+        <!-- robot_info: renders robot hostname, model and software firmware -->
+        <include file="$(find display_renderers)/launch/robot_info_renderer_node.launch">
+            <arg name="veh" value="$(arg veh)"/>
+        </include>
     </group>
 
     <!-- Button driver -->

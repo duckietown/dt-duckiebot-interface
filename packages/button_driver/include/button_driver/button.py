@@ -1,4 +1,5 @@
 from enum import IntEnum
+from typing import Callable
 
 from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
 
@@ -44,8 +45,13 @@ class ButtonDriver:
         GPIO.setup(self._signal_gpio_pin, GPIO.IN)
         # create LED object
         self._led = ButtonLED(led_gpio_pin)
+        # prevent_default when performing tests
+        self._prevent_default = False
+        # callback when test finishes, only supplied when starting a test
+        self._test_callback = None
         # attach event listeners to the signal GPIO pin
         GPIO.add_event_detect(self._signal_gpio_pin, GPIO.BOTH, callback=self._cb)
+
 
     @property
     def led(self) -> "ButtonLED":
@@ -54,7 +60,23 @@ class ButtonDriver:
     def _cb(self, pin):
         signal = int(GPIO.input(pin))
         event = ButtonEvent(signal)
+        # when running tests
+        if self._prevent_default:
+            if event == ButtonEvent.RELEASE:
+                if isinstance(self._test_callback, Callable):
+                    self._test_callback()
+                self.finish_test()
+            return
+
         self._callback(event)
+
+    def start_test(self, test_cb):
+        self._test_callback = test_cb
+        self._prevent_default = True
+    
+    def finish_test(self):
+        self._prevent_default = False
+        self._test_callback = None
 
     def shutdown(self):
         # remove event listeners

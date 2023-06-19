@@ -147,13 +147,13 @@ class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
 
 
 class UsageStatsFragmentRenderer(TextFragmentRenderer):
-    BAR_LEN = 14
+    BAR_LEN = 11
+    BAR_SYMBOL = "#"
     CANVAS = """\
-TEMP |{ctmp_bar}| {ctmp}
-CPU  |{pcpu_bar}| {pcpu}
-RAM  |{pmem_bar}| {pmem}
-DISK |{pdsk_bar}| {pdsk}
-"""
+TMP |{ctmp_bar}| {ctmp}
+CPU |{pcpu_bar}| {pcpu}
+RAM |{pmem_bar}| {pmem}
+DSK |{pdsk_bar}| {pdsk}"""
 
     def __init__(self):
         super(UsageStatsFragmentRenderer, self).__init__(
@@ -204,7 +204,7 @@ DISK |{pdsk_bar}| {pdsk}
             return f"ERR"
         value /= scale
         full = int(cls.BAR_LEN * value)
-        return "|" * full + " " * (cls.BAR_LEN - full)
+        return cls.BAR_SYMBOL * full + " " * (cls.BAR_LEN - full)
 
 
 if __name__ == "__main__":

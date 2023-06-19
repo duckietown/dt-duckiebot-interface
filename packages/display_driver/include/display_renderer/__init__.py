@@ -12,6 +12,11 @@ from .renderer import (
 
 Z_SYSTEM = 200
 
+# default pages shown
 PAGE_HOME = 0
-PAGE_TOF = 1
-PAGE_SHUTDOWN = 2
+PAGE_ROBOT_INFO = 1
+PAGE_TOF = 2
+
+# pages created due to special event, and the page order doesn't matter much
+PAGE_SHUTDOWN = 90
+PAGE_TEST_OLED_DISPLAY = 99

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from typing import Tuple
 
 from Adafruit_PWM_Servo_Driver import PWM
 
@@ -43,14 +44,22 @@ class RGB_LED(object):
         for i in range(15):
             # Sets fully off all the pins
             self.pwm.setPWM(i, 0, 4095)
+        # hardware testing flag
+        self._is_performing_test = False
 
-    def setLEDBrightness(self, led, offset, brightness):
+    def start_hardware_test(self):
+        self._is_performing_test = True
+    
+    def finish_hardware_test(self):
+        self._is_performing_test = False
+
+    def _set_led_brightness(self, led: int, offset: int, brightness: int):
         """Sets value for brightness for one color on one LED.
 
         Calls the function pwm.setPWM to set the PWM signal according to
         the input brightness.
 
-        Typically shouldn't be used directly. Use :obj:`setRGB` instead.
+        Typically, shouldn't be used directly. Use :obj:`setRGB` instead.
 
         Args:
             led (:obj:`int`): Index of specific LED (from the table above)
@@ -60,7 +69,7 @@ class RGB_LED(object):
         """
         self.pwm.setPWM(3 * led + offset, brightness << 4, 4095)
 
-    def setRGB(self, led, color):
+    def set_RGB(self, led: int, color: Tuple[float, float, float], intensity: float = 1.0, is_test_cmd: bool = False):
         """Sets value for brightness for all channels of one LED
 
         Converts the input color brightness from [0,1] to [0,255] for all
@@ -71,11 +80,14 @@ class RGB_LED(object):
         Args:
             led (:obj:`int`): Index of specific LED (from the table above)
             color (:obj:`list` of :obj:`float`): Brightness for the three RGB channels, in interval [0,1]
+            intensity (:obj:`float`): Intensity of the LED
+            is_test_cmd (:obj:`bool`): whether this is a command issue by the hardware test
         """
 
-        self.setLEDBrightness(led, self.OFFSET_RED, int(color[0] * 255))
-        self.setLEDBrightness(led, self.OFFSET_GREEN, int(color[1] * 255))
-        self.setLEDBrightness(led, self.OFFSET_BLUE, int(color[2] * 255))
+        if not self._is_performing_test or is_test_cmd:
+            self._set_led_brightness(led, self.OFFSET_RED, int(color[0] * intensity * 255))
+            self._set_led_brightness(led, self.OFFSET_GREEN, int(color[1] * intensity * 255))
+            self._set_led_brightness(led, self.OFFSET_BLUE, int(color[2] * intensity * 255))
 
     def __del__(self):
         """Destructur method.
@@ -83,6 +95,8 @@ class RGB_LED(object):
         Turns off all the LEDs and deletes the PWM object.
 
         """
+        if not hasattr(self, "pwm"):
+            return
         for i in range(15):
             # Sets fully off all channels of all the LEDs (3 channles * 5 LEDs)
             self.pwm.setPWM(i, 0, 4095)

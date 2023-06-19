@@ -10,6 +10,8 @@ find_package(catkin REQUIRED COMPONENTS
 
 catkin_package()
 
+catkin_python_setup()
+
 include_directories(
   ${catkin_INCLUDE_DIRS}
 )

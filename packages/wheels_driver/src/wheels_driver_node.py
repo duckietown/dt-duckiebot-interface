@@ -5,6 +5,7 @@ from duckietown_msgs.msg import WheelsCmdStamped, BoolStamped
 from wheels_driver.dagu_wheels_driver import DaguWheelsDriver
 
 from duckietown.dtros import DTROS, TopicType, NodeType
+from hardware_test_wheels import HardwareTestMotor, HardwareTestMotorSide
 
 
 class WheelsDriverNode(DTROS):
@@ -50,6 +51,10 @@ class WheelsDriverNode(DTROS):
         # Subscribers
         self.sub_topic = rospy.Subscriber("~wheels_cmd", WheelsCmdStamped, self.wheels_cmd_cb, queue_size=1)
         self.sub_e_stop = rospy.Subscriber("~emergency_stop", BoolStamped, self.estop_cb, queue_size=1)
+
+        # # user hardware tests
+        self._hardware_test_left = HardwareTestMotor(HardwareTestMotorSide.LEFT, self.driver)
+        self._hardware_test_right = HardwareTestMotor(HardwareTestMotorSide.RIGHT, self.driver)
 
         self.log("Initialized.")
 
