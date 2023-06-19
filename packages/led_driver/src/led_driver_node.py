@@ -54,10 +54,10 @@ class LEDDriverNode(DTROS):
 
         # user hardware tests
         self._hardware_test_front = HardwareTestLED(
-            self.led, info_str="front", led_ids=[0, 1, 2], idle_lighting=self._idle
+            self.led, info_str="front", led_ids=[0, 2, 4], idle_lighting=self._idle
         )
         self._hardware_test_back = HardwareTestLED(
-            self.led, info_str="back", led_ids=[3, 4], idle_lighting=self._idle
+            self.led, info_str="back", led_ids=[1, 3], idle_lighting=self._idle
         )
 
         # ---
