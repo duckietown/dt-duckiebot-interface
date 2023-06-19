@@ -37,7 +37,9 @@ class LEDDriverNode(DTROS):
 
     def __init__(self, node_name):
         # Initialize the DTROS parent class
-        super(LEDDriverNode, self).__init__(node_name=node_name, node_type=NodeType.DRIVER)
+        super(LEDDriverNode, self).__init__(
+            node_name=node_name, node_type=NodeType.DRIVER
+        )
         # load params
         self._idle = rospy.get_param("~idle")
         # initialize LED library
@@ -46,11 +48,17 @@ class LEDDriverNode(DTROS):
         for i in range(5):
             self.led.set_RGB(i, self._idle["color"][i], self._idle["intensity"][i])
         # subscribers
-        self.sub_topic = rospy.Subscriber("~led_pattern", LEDPattern, self.led_cb, queue_size=1)
+        self.sub_topic = rospy.Subscriber(
+            "~led_pattern", LEDPattern, self.led_cb, queue_size=1
+        )
 
         # user hardware tests
-        self._hardware_test_front = HardwareTestLED(self.led, info_str="front", led_ids=[0, 1, 2], idle_lighting=self._idle)
-        self._hardware_test_back = HardwareTestLED(self.led, info_str="back", led_ids=[3, 4], idle_lighting=self._idle)
+        self._hardware_test_front = HardwareTestLED(
+            self.led, info_str="front", led_ids=[0, 1, 2], idle_lighting=self._idle
+        )
+        self._hardware_test_back = HardwareTestLED(
+            self.led, info_str="back", led_ids=[3, 4], idle_lighting=self._idle
+        )
 
         # ---
         self.log("Initialized.")
