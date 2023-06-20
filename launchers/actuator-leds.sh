@@ -47,10 +47,10 @@ BLUE="{r: 0, g: 0, b: 1, a: ${INTENSITY}}"
 read -r -d '' PATTERN << EOM
 {rgb_vals: [
     ${WHITE},
-    ${RED},
+    ${BLUE},
     ${OFF},
     ${GREEN},
-    ${BLUE},
+    ${RED},
 ]}
 EOM
 
