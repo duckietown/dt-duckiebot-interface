@@ -8,6 +8,7 @@ from dt_duckiematrix_protocols.robot.features.sensors import TimeOfFlight
 from dt_duckiematrix_utils.ros import \
     on_duckiematrix_connection_request, \
     DuckiematrixLinkDescription
+from dt_duckiematrix_protocols.robot.robots import RangeEnabledRobot
 from dt_robot_utils import get_robot_configuration
 from tof_driver.tof_driver_abs import ToFDriverAbs, ToFAccuracy
 
@@ -47,7 +48,7 @@ class VirtualToFDriver(ToFDriverAbs):
         configuration = get_robot_configuration()
         # prepare zmq pipeline
         self._matrix: Matrix = Matrix(link.uri)
-        robot = self._matrix.robots.RangeEnabledRobot(link.entity)
+        robot : RangeEnabledRobot = self._matrix.robots.RangeEnabledRobot(link.entity)
         self._device: TimeOfFlight = robot.time_of_flight(self._name)
         # subscribe to camera topic
         self._device.attach(self._process_range)
