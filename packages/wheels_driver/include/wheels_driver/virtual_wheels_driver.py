@@ -98,7 +98,14 @@ class VirtualWheelsDriver:
     def __del__(self):
         self.release()
 
-
+    @property
+    def leftPWM(self):
+        return self._wheels['left']
+    
+    @property
+    def rightPWM(self):
+        return self._wheels['right']
+    
 def clamped_value(v, deadzone, min_v, max_v) -> float:
     """Transforms the requested speed into a clamped float number.
 
