@@ -98,9 +98,11 @@ class ButtonDriverNode(DTROS):
 
     def _react(self, event: int):
         if event in [ButtonEventMsg.EVENT_HELD_3SEC, ButtonEventMsg.EVENT_HELD_10SEC]:
-            self._show_shutdown_behavior()
             # init shutdown sequence
             res = shutdown_device()
+            # NOTE: the above method initiates the shutdown process with health-API,
+            # which eventually calls the _show_shutdown_behavior function via a service
+
             if not res:
                 self.logerr("Could not initialize the shutdown sequence")
     
