@@ -5,7 +5,7 @@ from typing import Optional
 import numpy as np
 
 from dt_duckiematrix_protocols import Matrix
-from dt_duckiematrix_protocols.robot.features.motion import DifferentialDrive
+from dt_duckiematrix_protocols.robot.features.motion import PWMDifferentialDrive
 from dt_duckiematrix_protocols.robot.robots import DifferentialDriveRobot
 from dt_duckiematrix_utils.ros import DuckiematrixLinkDescription, \
     on_duckiematrix_connection_request
@@ -36,7 +36,7 @@ class VirtualWheelsDriver:
         print(f"[{this}] Motor #2: VIRTUAL(right)")
         # register connection setup function
         self._matrix: Optional[Matrix] = None
-        self._device: Optional[DifferentialDrive] = None
+        self._device: Optional[PWMDifferentialDrive] = None
         # register connection setup function
         print(f"[VirtualMotors]: Waiting for connection request...")
         self._connection_request: Optional[DuckiematrixLinkDescription] = None
@@ -59,7 +59,7 @@ class VirtualWheelsDriver:
         # prepare zmq pipeline
         self._matrix: Matrix = Matrix(link.uri, auto_commit=True)
         robot: DifferentialDriveRobot = self._matrix.robots.create(configuration.name, link.entity)
-        self._device: DifferentialDrive = robot.drive
+        self._device: PWMDifferentialDrive = robot.drive
         self._publish()
         print(f"[VirtualMotors]: Initialized.")
 
@@ -98,7 +98,14 @@ class VirtualWheelsDriver:
     def __del__(self):
         self.release()
 
-
+    @property
+    def leftPWM(self):
+        return self._wheels['left']
+    
+    @property
+    def rightPWM(self):
+        return self._wheels['right']
+    
 def clamped_value(v, deadzone, min_v, max_v) -> float:
     """Transforms the requested speed into a clamped float number.
 

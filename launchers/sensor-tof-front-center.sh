@@ -17,7 +17,8 @@ dt-launchfile-init
 dt-exec roslaunch --wait \
     tof_driver tof_node.launch \
     veh:="$VEHICLE_NAME" \
-    name:="front_center"
+    name:="front_center" \
+    robot_type:="$ROBOT_TYPE"
 
 
 # ----------------------------------------------------------------------------
