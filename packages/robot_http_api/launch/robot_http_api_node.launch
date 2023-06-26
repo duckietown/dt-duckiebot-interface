@@ -8,6 +8,7 @@
     <group ns="$(arg veh)">
         <remap if="$(eval robot_type == 'duckiebot')" from="robot_http_api_node/estop" to="wheels_driver_node/emergency_stop"/>
         <remap if="$(eval robot_type == 'duckiebot')" from="robot_http_api_node/wheels_cmd" to="wheels_driver_node/wheels_cmd"/>
+        <remap if="$(eval robot_type == 'duckiebot')" from="robot_http_api_node/shutdown_behavior" to="button_driver_node/shutdown_behavior"/>
         <node pkg="robot_http_api" type="$(arg node_name).py" name="$(arg node_name)" output="screen" required="true" />
     </group>
 </launch>

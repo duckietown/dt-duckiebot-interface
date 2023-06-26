@@ -16,8 +16,9 @@ from hardware_test_button import HardwareTestButton
 from dt_device_utils.device import shutdown_device
 
 # for shutting down the front and back LEDs
-from duckietown_msgs.srv import ChangePattern
-from std_msgs.msg import String
+from duckietown_msgs.msg import LEDPattern
+from std_msgs.msg import ColorRGBA
+from std_srvs.srv import Trigger, TriggerResponse
 from duckietown.dtros.utils import apply_namespace
 
 # display renderer for shutdown confirmation
@@ -48,14 +49,11 @@ class ButtonDriverNode(DTROS):
         # create button driver
         self._button = ButtonDriver(self._led_gpio_pin, self._signal_gpio_pin, self._event_cb)
         self._button.led.on()
-        # display to confirm shutdown
-        self._renderer = BatteryShutdownConfirmationRenderer()
-        self._display_pub = rospy.Publisher(
-            "~fragments",
-            DisplayFragment,
-            queue_size=1,
-            dt_topic_type=TopicType.VISUALIZATION,
-            dt_help="Fragments to display on the display",
+
+        # shutdown confirmation service (for external methods of shutting down, e.g. dts/Dashboard):
+        #   turn off LED, blink power LED, show Shutdown page on Display
+        self._srv_shutdown_behavior = rospy.Service(
+            "~shutdown_behavior", Trigger, self._srv_cb_shutdown_behavior,
         )
         # create event holder
         self._ongoing_event = None
@@ -85,8 +83,6 @@ class ButtonDriverNode(DTROS):
             return
         # - held for 3 secs
         if self._TIME_HOLD_3S < duration < 2 * self._TIME_HOLD_3S:
-            # publish a display showing shutdown confirmation
-            self._display_pub.publish(self._renderer.as_msg())
             time.sleep(1)
             self._publish(ButtonEventMsg.EVENT_HELD_3SEC)
             self._react(ButtonEventMsg.EVENT_HELD_3SEC)
@@ -102,28 +98,59 @@ class ButtonDriverNode(DTROS):
 
     def _react(self, event: int):
         if event in [ButtonEventMsg.EVENT_HELD_3SEC, ButtonEventMsg.EVENT_HELD_10SEC]:
-            # blink top power button as a confirmation, too
-            self._button.led.confirm_shutdown()
-
-            # turn off front and back LEDs
-            try:
-                srv = rospy.ServiceProxy(
-                    apply_namespace("led_emitter_node/set_pattern", ns_level=1),
-                    ChangePattern,
-                )
-                msg = String()
-                msg.data = "LIGHT_OFF"
-                resp = srv(msg)
-                self.loginfo(str(resp))
-            except rospy.ServiceException as e:
-                # not a big deal if failed this
-                self.logerr("LED shutdown service call failed {}".format(e))
-
-            time.sleep(1)
             # init shutdown sequence
             res = shutdown_device()
+            # NOTE: the above method initiates the shutdown process with health-API,
+            # which eventually calls the _show_shutdown_behavior function via a service
+
             if not res:
                 self.logerr("Could not initialize the shutdown sequence")
+    
+    def _show_shutdown_behavior(self):
+        # the page confirming shutdown
+        _renderer = BatteryShutdownConfirmationRenderer()
+        # publish a display showing shutdown confirmation
+        _display_pub = rospy.Publisher(
+            "~fragments",
+            DisplayFragment,
+            latch=True,
+            queue_size=1,
+        )
+        _display_pub.publish(_renderer.as_msg())
+        n_times_to_try = 3
+        # try several times to go to page
+        for _ in range(n_times_to_try):
+            # emulate button event to switch to shutdown page
+            self._publish(ButtonEventMsg.EVENT_HELD_3SEC)
+            rospy.sleep(1.0 / n_times_to_try)
+
+        # turn off LEDs
+        _led_pub = rospy.Publisher(
+            apply_namespace("led_emitter_node/led_pattern", ns_level=1),
+            LEDPattern,
+            latch=True,
+            queue_size=1,
+        )
+        msg_led = LEDPattern()
+        msg_rgba = ColorRGBA(r=0, g=0, b=0, a=0)
+        msg_led.rgb_vals = [msg_rgba] * 5
+        _led_pub.publish(msg_led)
+
+        # blink top power button as a confirmation, too
+        self._button.led.confirm_shutdown()
+
+        rospy.sleep(1)
+
+    def _srv_cb_shutdown_behavior(self, _):
+        # for external methods of shutting down (e.g. from dts or the Dashboard)
+        try:
+            self._show_shutdown_behavior()
+            return TriggerResponse(success=True, message="")
+        except Exception as e:
+            return TriggerResponse(
+                success=False,
+                message=f"Failed to show shutdown behaviors. Reason: {e}",
+            )
 
     def on_shutdown(self):
         if hasattr(self, "_button"):
