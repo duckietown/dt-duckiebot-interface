@@ -5,4 +5,4 @@
 dt-vl53l0x
 
 # public protocols used to communicate with a duckiematrix engine
-dt-duckiematrix-protocols-ente>=0.1.6
+dt-duckiematrix-protocols-ente>=0.1.8
