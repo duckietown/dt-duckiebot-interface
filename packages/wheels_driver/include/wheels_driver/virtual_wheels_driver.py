@@ -59,7 +59,7 @@ class VirtualWheelsDriver:
         # prepare zmq pipeline
         self._matrix: Matrix = Matrix(link.uri, auto_commit=True)
         robot: DifferentialDriveRobot = self._matrix.robots.create(configuration.name, link.entity)
-        self._device: PWMDifferentialDrive = robot.drive
+        self._device: PWMDifferentialDrive = robot.drive_pwm
         self._publish()
         print(f"[VirtualMotors]: Initialized.")
 
