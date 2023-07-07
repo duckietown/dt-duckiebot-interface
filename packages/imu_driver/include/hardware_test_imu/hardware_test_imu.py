@@ -13,27 +13,17 @@ class HardwareTestIMU(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                "Put your Duckiebot in its normal orientation, on a surface (e.g. desk).",
-                "Make sure you can reach and grab the robot when the test starts.",
-            ]
-        )
-
-    def test_description_running(self) -> str:
-        return self.html_util_ul(
-            [
-                "Hold your Duckiebot up a little bit off the surface.",
-                "Click on the <strong>Run the test</strong> button below to start the test.",
+                "Place your Duckiebot on a flat surface within reach.",
             ]
         )
 
     def test_description_expectation(self) -> str:
         return self.html_util_ul(
             [
-                "Once the test starts, a modal would pop up with a game.",
-                "You will see a flat plane reflecting your Duckiebot's orientation.",
-                "Your objective is to keep a ball on the plane by rotating your robot.",
-                "The test is considered successful, if you're able to control the plane naturally by moving your Duckiebot.",
-                "If the plane does not move like your Duckiebot, there is a problem.",
+                "Once the test starts, a modal will pop up with a game.",
+                "You will see a flat plane reflecting your Duckiebot's orientation - your objective is to move the ball while keeping it on the plane.",
+                "To play, control the plane by <strong>picking up and tilting</strong> your Duckiebot.",
+                "The test is successful if the plane moves naturally with the rotation of your Duckiebot.",
             ]
         )
 

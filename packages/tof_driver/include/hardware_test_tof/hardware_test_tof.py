@@ -19,8 +19,7 @@ class HardwareTestToF(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                "Put your Duckiebot in its normal orientation.",
-                "Place it near you, with its camera facing an empty space.",
+                "Place your Duckiebot on a flat surface with at least one meter of empty space in front of the Time-of-Flight sensor on the front bumper.",
             ]
         )
 
@@ -36,23 +35,10 @@ class HardwareTestToF(HardwareTest):
     def cb_run_test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
 
-        instructions = self.html_util_ul(
-            [
-                f"Now move your hand in front of the <strong>{self._sensor_name_human}</strong> Time-of-Flight sensor at different distances.",
-                "Once your decide the test has passed/failed, you may mark the decision, and close this modal.",
-            ]
-        )
-
         # Return the service response
         return self.format_response_stream(
             success=True,  # does not matter here
             test_topic_name=f"{self._sensor_name}_tof_driver_node/range",
             test_topic_type="sensor_msgs/Range",
-            lst_blocks=[
-                self.format_obj(
-                    key="Instructions",
-                    value_type=HardwareTestJsonParamType.HTML,
-                    value=instructions,
-                ),
-            ],
+            lst_blocks=[],
         )

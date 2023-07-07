@@ -40,7 +40,7 @@ class HardwareTestLED(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                f"Put your Duckiebot in its normal orientation, where you can see the {self._info_str} LEDs.",
+                f"Place your Duckiebot on a flat surface in a position that allows you to see the {self._info_str} LEDs.",
             ]
         )
 
@@ -62,7 +62,11 @@ class HardwareTestLED(HardwareTest):
     def _fade_mono(self, fade_in: bool, interval_secs: float, mono_hue: int = 0):
         """fade IN or OUT in a mono color"""
         # number of different colors to show
-        n_itr = int(self.fade_in_secs / interval_secs) if fade_in else int(self.fade_out_secs / interval_secs)
+        n_itr = (
+            int(self.fade_in_secs / interval_secs)
+            if fade_in
+            else int(self.fade_out_secs / interval_secs)
+        )
 
         # increasing brightness
         seq_v = np.arange(0.0, 1.0, float(1.0 / n_itr))
