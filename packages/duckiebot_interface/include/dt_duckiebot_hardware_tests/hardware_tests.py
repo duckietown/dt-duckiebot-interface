@@ -16,6 +16,7 @@ Here're the steps to write a new test:
 
 import json
 import rospy
+import re
 
 from abc import ABC, abstractmethod
 from enum import Enum
@@ -124,6 +125,30 @@ class HardwareTest(ABC):
             ]
         )
 
+    def test_description_collapsable_info_panel(self):
+        """Use Bootstrap3 collapsable panel for Logs and FAQs sections"""
+
+        # convert arbitrary string ID to a valid html element ID
+        id_str = re.sub(r'[^a-zA-Z0-9-_:]', '_', self.test_id())
+        panel_id = f"getting-help-panel-{id_str}"
+
+        contents = "".join([
+            "Demo videos and FAQs",
+            self.test_description_link_to_docs(),
+            "Logs Gathering (in case of errors)",
+            self.test_description_log_gather(),
+        ])
+
+        return f"""
+        <ul><li><button class="btn" data-toggle="collapse" data-target="#{panel_id}">
+        Click to toggle the information</button></li></ul>
+        <div class="panel panel-default collapse" id="{panel_id}">
+            <div class="panel-body">
+                {contents}
+            </div>
+        </div>
+        """
+
     def test_description(self) -> List:
         """Test descriptions"""
         return [
@@ -143,14 +168,9 @@ class HardwareTest(ABC):
                 self.test_description_running(),
             ),
             self.format_obj(
-                "Demo videos and FAQs",
+                "Getting help with issues",
                 HardwareTestJsonParamType.HTML,
-                self.test_description_link_to_docs(),
-            ),
-            self.format_obj(
-                "Logs Gathering (in case of errors)",
-                HardwareTestJsonParamType.HTML,
-                self.test_description_log_gather(),
+                self.test_description_collapsable_info_panel(),
             ),
         ]
 
