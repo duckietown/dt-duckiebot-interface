@@ -34,7 +34,12 @@ class HardwareTestMotor(HardwareTest):
         return f"Motor ({self._info_str})"
 
     def test_description_preparation(self) -> str:
-        return self.html_util_ul(["Put your Duckiebot upside down."])
+        return self.html_util_ul(
+            [
+                "Place your Duckiebot upside down on a flat surface with its wheels in the air.",
+                "When you run the test, the wheels will start to spin.",
+            ]
+        )
 
     def test_description_expectation(self) -> str:
         return self.html_util_ul(
@@ -53,9 +58,13 @@ class HardwareTestMotor(HardwareTest):
             start_ts = rospy.Time.now()
             end_ts = start_ts + rospy.Duration(self.duration)
             if self._side == HardwareTestMotorSide.LEFT:
-                self._driver.set_wheels_speed(left=self.vel, right=0.0, is_test_cmd=True)
+                self._driver.set_wheels_speed(
+                    left=self.vel, right=0.0, is_test_cmd=True
+                )
             else:
-                self._driver.set_wheels_speed(left=0.0, right=self.vel, is_test_cmd=True)
+                self._driver.set_wheels_speed(
+                    left=0.0, right=self.vel, is_test_cmd=True
+                )
             while rospy.Time.now() < end_ts:
                 rospy.sleep(1.0)
             self._driver.set_wheels_speed(left=0.0, right=0.0, is_test_cmd=True)

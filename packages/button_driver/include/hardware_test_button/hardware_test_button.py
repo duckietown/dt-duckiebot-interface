@@ -27,17 +27,16 @@ class HardwareTestButton(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                "Put your Duckiebot in its normal orientation, and make sure you can see and press the top button."
+                "Place your Duckiebot on a flat surface and locate the power button on the top plate."
             ]
         )
 
     def test_description_expectation(self) -> str:
         return self.html_util_ul(
             [
-                f"The top button's LED should start blinking at {self.led_blink_hz} HZ.",
-                f"In about {self.led_blink_secs} seconds, it should stop blinking.",
-                "<strong>After</strong> the LED stops blinking, as soon as you press and release the button, the test should finish.",
-                "You should perform the test multiple times and verify the button click event terminates the test promptly.",
+                f"You should see the LED in the power button blink for about {self.led_blink_secs} seconds.",
+                "When the LED <strong>stops</strong> blinking, press and release the button to complete the test.",
+                "Try performing this test several times to verify that pressing the power button terminates the test promptly.",
             ]
         )
 

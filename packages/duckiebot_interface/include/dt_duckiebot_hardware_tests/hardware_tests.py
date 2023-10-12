@@ -16,12 +16,29 @@ Here're the steps to write a new test:
 
 import json
 import rospy
+import re
 
 from abc import ABC, abstractmethod
 from enum import Enum
 from typing import List
 
 from std_srvs.srv import Trigger, TriggerResponse
+
+
+"""
+To be formatted for pointing to the correct documentation and section
+
+change following values
+* when testing, or
+* for different distros
+"""
+DOCS_SUB_DOMAIN = "docs"
+DOCS_RELEASE_DISTRO = "daffy"
+DOCS_BASE_URL = (
+    f"https://{DOCS_SUB_DOMAIN}.duckietown.com/{DOCS_RELEASE_DISTRO}"
+    "/opmanual-duckiebot/operations/dashboard"
+    "/user_hardware_testing_tools.html#{url_section_name}"
+)
 
 
 class HardwareTestJsonParamType(Enum):
@@ -89,6 +106,15 @@ class HardwareTest(ABC):
         """Expected outcome(s) and/or how to determine if a test was successful"""
         pass
 
+    def test_description_link_to_docs(self) -> str:
+        """Link to official documentation about the Hardware Tests"""
+        url_videos = DOCS_BASE_URL.format(url_section_name="demos-of-the-hardware-tests")
+        url_faqs = DOCS_BASE_URL.format(url_section_name="faqs-reporting-problems-getting-help")
+        return self.html_util_ul([
+            f"<a href='{url_videos}'><strong>How-to</strong> series videos</a>",
+            f"<a href='{url_faqs}'>FAQs and getting help</a>",
+        ]) + "<p style='font-size: 8pt'>(In case of broken links, please report on the Duckietown Slack.)</p>"
+
     def test_description_log_gather(self) -> str:
         """How to gather logs before reporting"""
         return self.html_util_ul(
@@ -98,6 +124,30 @@ class HardwareTest(ABC):
                 "<code>docker -H [ROBOT_NAME].local logs duckiebot-interface > [path/to/save/]logs-db-iface.txt</code>",
             ]
         )
+
+    def test_description_collapsable_info_panel(self):
+        """Use Bootstrap3 collapsable panel for Logs and FAQs sections"""
+
+        # convert arbitrary string ID to a valid html element ID
+        id_str = re.sub(r'[^a-zA-Z0-9-_:]', '_', self.test_id())
+        panel_id = f"getting-help-panel-{id_str}"
+
+        contents = "".join([
+            "Demo videos and FAQs",
+            self.test_description_link_to_docs(),
+            "Logs Gathering (in case of errors)",
+            self.test_description_log_gather(),
+        ])
+
+        return f"""
+        <ul><li><button class="btn" data-toggle="collapse" data-target="#{panel_id}">
+        Click to toggle the information</button></li></ul>
+        <div class="panel panel-default collapse" id="{panel_id}">
+            <div class="panel-body">
+                {contents}
+            </div>
+        </div>
+        """
 
     def test_description(self) -> List:
         """Test descriptions"""
@@ -118,9 +168,9 @@ class HardwareTest(ABC):
                 self.test_description_running(),
             ),
             self.format_obj(
-                "Logs Gathering (in case of errors)",
+                "Getting help with issues",
                 HardwareTestJsonParamType.HTML,
-                self.test_description_log_gather(),
+                self.test_description_collapsable_info_panel(),
             ),
         ]
 

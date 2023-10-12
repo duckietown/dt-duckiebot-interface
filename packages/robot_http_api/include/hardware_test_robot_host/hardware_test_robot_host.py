@@ -20,7 +20,7 @@ class HardwareTestWifi(HardwareTest):
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
             [
-                "Make sure the USB Wifi dongle is plugged in to your Duckiebot, and it is blinking.",
+                "Make sure the USB Wifi dongle is plugged in to your Duckiebot and is blinking.",
             ]
         )
 
@@ -78,24 +78,20 @@ class HardwareTestBattery(HardwareTest):
         return "Battery"
 
     def test_description_preparation(self) -> str:
-        return self.html_util_ul(["Place your Duckiebot near the charging cable."])
+        return self.html_util_ul(
+            [
+                "Place your Duckiebot on a flat surface with the charging cable plugged in."
+            ]
+        )
 
     def test_description_expectation(self) -> str:
         return self.html_util_ul(
             [
                 "The battery firmware version should be at least <code>2.0.2</code>.",
                 "The PCB version should be at least <code>16</code>.",
-                "The test result should reflect the accurate charging status, within 2 seconds of a change.",
-                "Only mark the Success when the version examinations pass, and the charging states are indicated correctly.",
-            ]
-        )
-
-    def test_description_running(self) -> str:
-        return self.html_util_ul(
-            [
-                "Run the test for multiple times, with and without the Duckiebot being charged.",
-                "Check the results against the Expected Outcomes each time.",
-                "Please click the <strong>Run the Test</strong> button below to run the tests.",
+                "Run the test first with the charging cable plugged in.",
+                "Then unplug the charging cable, wait 5 seconds and rerun the test.",
+                "If the versions and charging state are correct for both tests, you can then mark the test as Success.",
             ]
         )
 

@@ -12,31 +12,26 @@ class HardwareTestCamera(HardwareTest):
 
     def test_description_preparation(self) -> str:
         return self.html_util_ul(
-            ["Place the Duckiebot within your reach, as you will need to move it during the test."]
+            [
+                "Place the Duckiebot on a flat surface within your reach, and make sure that the lens cap has been removed from the camera."
+            ]
         )
 
     def test_description_expectation(self) -> str:
-        return self.html_util_ul(["A live camera stream should be shown below."])
+        return self.html_util_ul(
+            [
+                "You should see a live camera stream from your Duckiebot displayed below.",
+                "Move your Duckiebot in a few directions and confirm that the camera stream is updating with the camera motion.",
+            ]
+        )
 
     def cb_run_test(self, _):
         rospy.loginfo(f"[{self.test_id()}] Test service called.")
-
-        instructions = self.html_util_ul(
-            [
-                "Move you Duckiebot for a few seconds, and check the stream corresponds to that.",
-            ]
-        )
 
         # Return the service response
         return self.format_response_stream(
             success=True,  # does not matter here
             test_topic_name=f"camera_node/image/compressed",
             test_topic_type="sensor_msgs/CompressedImage",
-            lst_blocks=[
-                self.format_obj(
-                    key="Instructions",
-                    value_type=HardwareTestJsonParamType.HTML,
-                    value=instructions,
-                ),
-            ],
+            lst_blocks=[],
         )
