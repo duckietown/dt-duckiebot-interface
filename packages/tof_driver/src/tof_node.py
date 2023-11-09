@@ -127,8 +127,9 @@ class ToFNode(DTROS):
                     continue
                 self.loginfo(f"Device found on connector {conn}")
                 return sensor
-                
-        sensor = ToFDriver(accuracy=self._accuracy,name=self._sensor_name)
+        else:        
+            sensor = ToFDriver(accuracy=self._accuracy,name=self._sensor_name)
+
         sensor.setup()
         sensor.start()
         return sensor
