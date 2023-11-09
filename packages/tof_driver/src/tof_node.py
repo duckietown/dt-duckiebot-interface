@@ -108,6 +108,9 @@ class ToFNode(DTROS):
 
     def _find_sensor(self) -> Optional[ToFDriver]:
         if get_robot_hardware() != RobotHardware.VIRTUAL:
+            if not self._i2c_connectors:
+                self.logwarn("No i2c connectors specified in the configuration")
+
             for connector in self._i2c_connectors:
                 conn: str = "[bus:{bus}](0x{address:02X})".format(**connector)
                 self.loginfo(f"Trying to open device on connector {conn}")
