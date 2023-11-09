@@ -1,6 +1,8 @@
-bus: 1
-address: 0x29
 sensor_name: "bottom"
 frequency: 30
 mode: "GOOD"
 display_fragment_frequency: 0
+connectors:
+    # DD21 - One ToF sensor connected directly to the HUT
+    -   bus: 1
+        address: 0x29
