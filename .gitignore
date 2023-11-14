@@ -1,8 +1,9 @@
 docs/build
 *pyc
 
-.idea
-.vscode
+# documentation artifacts
+html/*
+!html/HTML_DOCS_WILL_BE_GENERATED_HERE
 
 # otherwise CI thinks index not clean
 *.resolved

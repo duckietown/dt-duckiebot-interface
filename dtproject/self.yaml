@@ -1,0 +1,8 @@
+name: "dt-duckiebot-interface"
+maintainer:
+    name: "Andrea F. Daniele"
+    email: "afdaniele@duckietown.com"
+description: "Contains all the drivers needed to communicate with sensors and actuators on a Duckietown device"
+version: 4.2.4
+# pick an icon from: https://fontawesome.com/v4.7.0/icons/
+icon: wrench
