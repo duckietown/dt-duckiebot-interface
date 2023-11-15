@@ -3,14 +3,14 @@
 
 # Jetson packages
 #   - 2.0.20 is the last version supporting Python3.8
-Jetson.GPIO<=2.0.20
+Jetson.GPIO==2.0.20
 
 # RPi packages
-RPi.GPIO
+RPi.GPIO==0.7.1
 
 # dependencies for the OLED display
-luma.oled
+luma.oled==3.13.0
 
 # dependencies for the IMU sensor
-adafruit-circuitpython-mpu6050
+adafruit-circuitpython-mpu6050==1.2.3
 
