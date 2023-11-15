@@ -330,13 +330,13 @@ class FlightController(DTROS):
 
         if self._board.ANALOG is not None:
             if 'voltage' in self._board.ANALOG:
-                voltage = self._board.ANALOG['voltage'] / 10.0  # reading scale
+                voltage = self._board.ANALOG['voltage']
             else:
                 self.logwarn("Unable to get Battery data: " + str(self._board.ANALOG))
                 voltage = -1
         else:
             voltage = -1
-            self.logwarn(f"Unable to get Battery data, analog is none")
+            self.logwarn("Unable to get Battery data, ANALOG is none")
 
         msg = BatteryState()
         msg.header = Header(stamp=rospy.Time.now())
@@ -582,7 +582,7 @@ class FlightController(DTROS):
 
         # transform euler angles into quaternion
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
-        # calculate the linear accelerations #TODO: check if the scaling is already performed in the MSPy library
+        # calculate the linear accelerations
         lin_acc_x = self._board.SENSOR_DATA['accelerometer'][0] * self.accRawToMss - self.accZeroX
         lin_acc_y = self._board.SENSOR_DATA['accelerometer'][1] * self.accRawToMss - self.accZeroY
         lin_acc_z = self._board.SENSOR_DATA['accelerometer'][2] * self.accRawToMss - self.accZeroZ
