@@ -320,7 +320,7 @@ class FlightController(DTROS):
     def _fly_commands_cb(self, msg):
         """ Store and send the flight commands if the current mode is FLYING """
         if self._requested_mode is DroneMode.FLYING:
-            # compile command to be sent to the flight controller board via MultiWii
+            # compile command to be sent to the flight controller board
             self._command = [int(msg.roll), int(msg.pitch), int(msg.yaw), int(msg.throttle)]
 
     def _read_battery_status(self):
@@ -505,7 +505,7 @@ class FlightController(DTROS):
                         dataHandler = self._board.receive_msg()
                         self._board.process_recv_data(dataHandler)
             else:
-                raise FCError(f"Unable to get MOTOR data, retry...")
+                raise FCError("Unable to get MOTOR data, retry...")
         except Exception as e:
             self.logwarn(f"Unable to get MOTOR data {e}, retry...")
             raise FCError(f"Unable to get MOTOR data {e}, retry...")
@@ -587,7 +587,7 @@ class FlightController(DTROS):
         lin_acc_y = self._board.SENSOR_DATA['accelerometer'][1] * self.accRawToMss - self.accZeroY
         lin_acc_z = self._board.SENSOR_DATA['accelerometer'][2] * self.accRawToMss - self.accZeroZ
 
-        # TODO: revisit this and use ROS' frames
+        # TODO: we should revisit this and use ROS' frames
         # Rotate the IMU frame to align with our convention for the drone's body
         # frame. IMU: x is forward, y is left, z is up. We want: x is right,
         # y is forward, z is up.
