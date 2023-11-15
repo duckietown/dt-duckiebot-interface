@@ -7,6 +7,8 @@ from enum import IntEnum
 from threading import Semaphore
 from typing import List, Optional
 
+from collections import defaultdict
+
 import numpy as np
 import rospy
 import sys
@@ -25,7 +27,7 @@ from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, DTParam, ParamType
 from h2r_multiwii import MultiWii
 from h2r_multiwii.types import MultiWiiRpyPid
-
+from yamspy import MSPy
 
 class DroneMode(IntEnum):
     DISARMED = 0
@@ -90,18 +92,17 @@ class FlightController(DTROS):
         self._heartbeat_thr = rospy.Duration.from_sec(1)
 
         # (try to) connect to the flight controller board
-        self._board: Optional[MultiWii] = None
+        self._board: Optional[MSPy] = None
         self._open_board()
         if self._board is None:
             return
 
-        # fixme: if update PID param failed with FC, ros param and FC PIDs are inconsistent
+        # TODO: if update PID param failed with FC, ros param and FC PIDs are inconsistent
         # low priority. the params will be of the true values on next container start-up
 
         # obtain default PID values
-        #self._board.receiveDataPacket()
-        #self._board.receiveDataPacket()
-        initial_rpy_pids: MultiWiiRpyPid = self._board.get_pids_rpy()
+        self.pids = defaultdict(dict)
+        initial_rpy_pids: MultiWiiRpyPid = self._get_pid_values_board()
         self._param_roll_P = DTParam('~roll_P', default=initial_rpy_pids.roll_p,
                                      param_type=ParamType.INT)
         self._param_roll_P.register_update_callback(
@@ -251,25 +252,31 @@ class FlightController(DTROS):
         self.loginfo("Calibrating IMU...")
         try:
             with self._lock:
-                self._board.sendCMD(0, MultiWii.ACC_CALIBRATION, [])
-                self._board.receiveDataPacket()
-                # wait 2 secs
-                time.sleep(2)
+                if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_ACC_CALIBRATION'],data=[]):
+                    dataHandler = self._board.receive_msg()
+                    self._board.process_recv_data(dataHandler)
                 # read IMU 10 times
                 data = copy.deepcopy(self._default_accelerometer_calib)
                 counter = 1
                 num_points = 20
+                
                 for _ in range(num_points):
                     # noinspection PyBroadException
                     try:
-                        self._board.getData(MultiWii.RAW_IMU)
-                        data["x"] += self._board.rawIMU["ax"]
-                        data["y"] += self._board.rawIMU["ay"]
-                        data["z"] += self._board.rawIMU["az"]
-                        counter += 1
-                        time.sleep(1.0 / self._frequency["imu"])
-                    except Exception:
-                        pass
+                        self._board.fast_read_imu()
+                        time.sleep(0.2)
+                        
+                        # Sometimes we receive a [0,0,0] SENSOR_DATA array, we need to skip this for
+                        # averaging
+                        if np.sum(self._board.SENSOR_DATA['accelerometer']) > 50:
+                            data["x"] += self._board.SENSOR_DATA['accelerometer'][0]
+                            data["y"] += self._board.SENSOR_DATA['accelerometer'][1]
+                            data["z"] += self._board.SENSOR_DATA['accelerometer'][2]
+
+                            counter += 1
+                    except Exception as e:
+                        self.logwarn(f"Could not calibrate IMU, received the following exception: {e}")
+                        
                 if counter < num_points * 0.5:
                     msg = f"After the calibration, we only received {counter - 1} datapoints " \
                           f"out of {num_points} expected. Aborting calibration..."
@@ -277,9 +284,9 @@ class FlightController(DTROS):
                     return TriggerResponse(success=False, message=msg)
                 # compute calibration
                 calibration = {
-                    "x": data["x"] / counter,
-                    "y": data["y"] / counter,
-                    "z": data["z"] / counter
+                    "x": data["x"] / (counter),
+                    "y": data["y"] / (counter),
+                    "z": data["z"] / (counter)
                 }
                 with open(self._calib_file, "wt") as fout:
                     yaml.safe_dump(calibration, fout)
@@ -303,13 +310,15 @@ class FlightController(DTROS):
             self._command = [int(msg.roll), int(msg.pitch), int(msg.yaw), int(msg.throttle)]
 
     def _read_battery_status(self):
-        self._board.getData(MultiWii.ANALOG)
-        
-        if self._board.analog is not None:
-            if 'vbat' in self._board.analog:
-                voltage = self._board.analog['vbat'] / 10.0  # reading scale
+        if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_ANALOG'], data=[]):
+            dataHandler = self._board.receive_msg()
+            self._board.process_recv_data(dataHandler)
+
+        if self._board.ANALOG is not None:
+            if 'voltage' in self._board.ANALOG:
+                voltage = self._board.ANALOG['voltage'] / 10.0  # reading scale
             else:
-                self.logwarn("Unable to get Battery data: " + str(self._board.analog))
+                self.logwarn("Unable to get Battery data: " + str(self._board.ANALOG))
                 voltage = -1
         else:
             voltage = -1
@@ -326,7 +335,6 @@ class FlightController(DTROS):
         try:
             while not self.is_shutdown:
                 # if the current mode is anything other than disarmed, preform as safety check
-                self._board.receiveDataPacket()
                 if self._requested_mode is not DroneMode.DISARMED:
                     # break the loop if a safety check has failed
                     if self._should_disarm():
@@ -372,8 +380,7 @@ class FlightController(DTROS):
             traceback.print_exc()
         finally:
             self.loginfo('Shutdown received, disarming...')
-            self._board.sendCMD(8, MultiWii.SET_RAW_RC, self.rc_command(DroneMode.DISARMED))
-            self._board.receiveDataPacket()
+            self._board.fast_msp_rc_cmd(self.rc_command(DroneMode.DISARMED))
             time.sleep(0.5)
 
     def _compute_flight_commands(self):
@@ -396,20 +403,28 @@ class FlightController(DTROS):
                     self._command = self.rc_command(DroneMode.ARMED)
                     self._mode_change_counter += 1
                 else:
+                    # TODO: check if IDLE command is correct
                     self._command = self.rc_command(DroneMode.IDLE)
 
         if self._requested_mode is not DroneMode.ARMED:
             self._mode_change_counter = 0
-
+    
     def _send_flight_commands(self):
         """ Send commands to the flight controller board """
         try:
-            self._board.sendCMD(8, MultiWii.SET_RAW_RC, self._command)
-            self._board.receiveDataPacket()
+            if self._board.send_RAW_RC(self._command):
+                    dataHandler = self._board.receive_msg()
+                    self._board.process_recv_data(dataHandler)
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command
-            self._commands_pub.publish(DroneControl(*self._command))
+            # TODO: add aux1 and aux2 to DroneControl ros msg
+            self._commands_pub.publish(DroneControl(
+                self._command[0],
+                self._command[1],
+                self._command[2],
+                self._command[3],
+            ))
         except Exception as e:
             self.logerr(f"Error communicating with board {e}")
 
@@ -472,31 +487,65 @@ class FlightController(DTROS):
         """
         try:
             # read m1, m2, m3, m4
-            self._board.getData(MultiWii.MOTOR)
+            if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_MOTOR'], data=[]):
+                        dataHandler = self._board.receive_msg()
+                        self._board.process_recv_data(dataHandler)
+            else:
+                raise FCError(f"Unable to get MOTOR data, retry...")
         except Exception as e:
             self.logwarn(f"Unable to get MOTOR data {e}, retry...")
             raise FCError(f"Unable to get MOTOR data {e}, retry...")
 
+        # self.logdebug(f"Retrieved MOTOR data: {self._board.MOTOR_DATA}")
         # create Motor message
         return DroneMotorCommand(
             header=Header(stamp=rospy.Time.now()),
             minimum=self._motor_command_range[0],
             maximum=self._motor_command_range[1],
-            m1=int(self._board.motor["m1"]),
-            m2=int(self._board.motor["m2"]),
-            m3=int(self._board.motor["m3"]),
-            m4=int(self._board.motor["m4"]),
+            m1=int(self._board.MOTOR_DATA[0]),
+            m2=int(self._board.MOTOR_DATA[1]),
+            m3=int(self._board.MOTOR_DATA[2]),
+            m4=int(self._board.MOTOR_DATA[3]),
         )
+    
+    def _get_pid_values_board(self):
+        if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_PIDNAMES'], data=[]):
+            dataHandler = self._board.receive_msg()
+            self._board.process_recv_data(dataHandler)
+            self.loginfo(f'Received PID names from FC: {self._board.PIDNAMES}')
 
+        if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_PID'], data=[]):
+            dataHandler = self._board.receive_msg()
+            self._board.process_recv_data(dataHandler)
+            self.loginfo(f'Received PID values from FC: {self._board.PIDs}')
+
+        for name, pid_values in zip(self._board.PIDNAMES, self._board.PIDs):
+            self.pids[name]['p'] = pid_values[0]
+            self.pids[name]['i'] = pid_values[1]
+            self.pids[name]['d'] = pid_values[2]
+
+        ret = MultiWiiRpyPid(
+            roll_p=self.pids['ROLL']['p'],
+            roll_i=self.pids['ROLL']['i'],
+            roll_d=self.pids['ROLL']['d'],
+            pitch_p=self.pids['PITCH']['p'],
+            pitch_i=self.pids['PITCH']['i'],
+            pitch_d=self.pids['PITCH']['d'],
+            yaw_p=self.pids['YAW']['p'],
+            yaw_i=self.pids['YAW']['i'],
+            yaw_d=self.pids['YAW']['d'],
+        )  
+        return ret
+                
     def _read_imu_message(self):
         """
         Compute the ROS IMU message by reading data from the board.
         """
         try:
             # read roll, pitch, heading
-            self._board.getData(MultiWii.ATTITUDE)
+            self._board.fast_read_attitude()
             # read lin_acc_x, lin_acc_y, lin_acc_z
-            self._board.getData(MultiWii.RAW_IMU)
+            self._board.fast_read_imu()
         except Exception as e:
             self.logwarn(f"Unable to get IMU data {e}, retry...")
             raise FCError(f"Unable to get IMU data {e}, retry...")
@@ -509,9 +558,9 @@ class FlightController(DTROS):
         )
 
         # calculate values to update imu_message:
-        roll = np.deg2rad(self._board.attitude['angx'])
-        pitch = -np.deg2rad(self._board.attitude['angy'])
-        heading = np.deg2rad(self._board.attitude['heading'])
+        roll = np.deg2rad(self._board.SENSOR_DATA['kinematics'][0])
+        pitch = -np.deg2rad(self._board.SENSOR_DATA['kinematics'][1])
+        heading = np.deg2rad(self._board.SENSOR_DATA['kinematics'][2])
         # Note that at pitch angles near 90 degrees, the roll angle reading can fluctuate a lot
         # transform heading (similar to yaw) to standard math conventions, which
         # means angles are in radians and positive rotation is CCW
@@ -519,11 +568,12 @@ class FlightController(DTROS):
 
         # transform euler angles into quaternion
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
-        # calculate the linear accelerations
-        lin_acc_x = self._board.rawIMU['ax'] * self.accRawToMss - self.accZeroX
-        lin_acc_y = self._board.rawIMU['ay'] * self.accRawToMss - self.accZeroY
-        lin_acc_z = self._board.rawIMU['az'] * self.accRawToMss - self.accZeroZ
+        # calculate the linear accelerations #TODO: check if the scaling is already performed in the MSPy library
+        lin_acc_x = self._board.SENSOR_DATA['accelerometer'][0] * self.accRawToMss - self.accZeroX
+        lin_acc_y = self._board.SENSOR_DATA['accelerometer'][1] * self.accRawToMss - self.accZeroY
+        lin_acc_z = self._board.SENSOR_DATA['accelerometer'][2] * self.accRawToMss - self.accZeroZ
 
+        # TODO: revisit this and use ROS' frames
         # Rotate the IMU frame to align with our convention for the drone's body
         # frame. IMU: x is forward, y is left, z is up. We want: x is right,
         # y is forward, z is up.
@@ -608,9 +658,12 @@ class FlightController(DTROS):
             sys.exit(2)
         # get device path
         dev = devs[0]
+
         # try connecting
         try:
-            board = MultiWii(dev)
+            board = MSPy(dev).__enter__()
+            if board == 1:
+                raise SerialException
         except SerialException:
             self.logfatal(f"Cannot connect to the flight controller board at '{dev}'. "
                           f"The USB is unplugged. Please check connection.")
