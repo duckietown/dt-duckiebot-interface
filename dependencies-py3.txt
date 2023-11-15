@@ -14,3 +14,5 @@ luma.oled
 # dependencies for the IMU sensor
 adafruit-circuitpython-mpu6050
 
+# dependency for the flight controller
+yamspy==0.3.3
