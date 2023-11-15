@@ -8,6 +8,7 @@ from threading import Semaphore
 from typing import List, Optional
 
 from collections import defaultdict
+from dataclasses import dataclass
 
 import numpy as np
 import rospy
@@ -25,9 +26,22 @@ from std_srvs.srv import Trigger, TriggerResponse
 
 from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, DTParam, ParamType
-from h2r_multiwii import MultiWii
-from h2r_multiwii.types import MultiWiiRpyPid
 from yamspy import MSPy
+
+
+@dataclass
+class MultiWiiRpyPid:
+    roll_p: int
+    roll_i: int
+    roll_d: int
+
+    pitch_p: int
+    pitch_i: int
+    pitch_d: int
+
+    yaw_p: int
+    yaw_i: int
+    yaw_d: int
 
 class DroneMode(IntEnum):
     DISARMED = 0
@@ -682,8 +696,8 @@ class FlightController(DTROS):
         if self._board is None:
             return
         self.loginfo("Disarming!")
-        self._board.sendCMD(8, MultiWii.SET_RAW_RC, self.rc_command(DroneMode.DISARMED))
-        self._board.receiveDataPacket()
+        self._command = self.rc_command(DroneMode.ARMED)
+        self._switch_to_mode(DroneMode.ARMED, quiet=True)
         self._mode_pub.publish(DroneModeMsg(mode=DroneMode.DISARMED.value))
         rospy.sleep(0.5)
         sys.exit()
