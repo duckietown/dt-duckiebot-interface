@@ -298,9 +298,9 @@ class FlightController(DTROS):
                     return TriggerResponse(success=False, message=msg)
                 # compute calibration
                 calibration = {
-                    "x": data["x"] / (counter),
-                    "y": data["y"] / (counter),
-                    "z": data["z"] / (counter)
+                    "x": data["x"] / counter,
+                    "y": data["y"] / counter,
+                    "z": data["z"] / counter
                 }
                 with open(self._calib_file, "wt") as fout:
                     yaml.safe_dump(calibration, fout)
