@@ -280,6 +280,7 @@ class FlightController(DTROS):
                         self._board.fast_read_imu()
                         time.sleep(0.2)
                         
+                        # TODO: we should investigate this further
                         # Sometimes we receive a [0,0,0] SENSOR_DATA array, we need to skip this for
                         # averaging
                         if np.sum(np.abs(self._board.SENSOR_DATA['accelerometer'])) > 50:
@@ -502,8 +503,8 @@ class FlightController(DTROS):
         try:
             # read m1, m2, m3, m4
             if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_MOTOR'], data=[]):
-                        dataHandler = self._board.receive_msg()
-                        self._board.process_recv_data(dataHandler)
+                dataHandler = self._board.receive_msg()
+                self._board.process_recv_data(dataHandler)
             else:
                 raise FCError("Unable to get MOTOR data, retry...")
         except Exception as e:
