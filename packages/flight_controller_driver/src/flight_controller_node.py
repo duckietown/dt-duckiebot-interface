@@ -30,7 +30,7 @@ from yamspy import MSPy
 
 
 @dataclass
-class MultiWiiRpyPid:
+class AttitudePidGains:
     roll_p: int
     roll_i: int
     roll_d: int
@@ -116,7 +116,7 @@ class FlightController(DTROS):
 
         # obtain default PID values
         self.pids = defaultdict(dict)
-        initial_rpy_pids: MultiWiiRpyPid = self._get_pid_values_board()
+        initial_rpy_pids: AttitudePidGains = self._get_pid_values_board()
         self._param_roll_P = DTParam('~roll_P', default=initial_rpy_pids.roll_p,
                                      param_type=ParamType.INT)
         self._param_roll_P.register_update_callback(
@@ -538,7 +538,7 @@ class FlightController(DTROS):
             self.pids[name]['i'] = pid_values[1]
             self.pids[name]['d'] = pid_values[2]
 
-        ret = MultiWiiRpyPid(
+        ret = AttitudePidGains(
             roll_p=self.pids['ROLL']['p'],
             roll_i=self.pids['ROLL']['i'],
             roll_d=self.pids['ROLL']['d'],
