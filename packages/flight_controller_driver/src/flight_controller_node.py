@@ -282,7 +282,7 @@ class FlightController(DTROS):
                         
                         # Sometimes we receive a [0,0,0] SENSOR_DATA array, we need to skip this for
                         # averaging
-                        if np.sum(self._board.SENSOR_DATA['accelerometer']) > 50:
+                        if np.sum(np.abs(self._board.SENSOR_DATA['accelerometer'])) > 50:
                             data["x"] += self._board.SENSOR_DATA['accelerometer'][0]
                             data["y"] += self._board.SENSOR_DATA['accelerometer'][1]
                             data["z"] += self._board.SENSOR_DATA['accelerometer'][2]
@@ -696,8 +696,8 @@ class FlightController(DTROS):
         if self._board is None:
             return
         self.loginfo("Disarming!")
-        self._command = self.rc_command(DroneMode.ARMED)
-        self._switch_to_mode(DroneMode.ARMED, quiet=True)
+        self._command = self.rc_command(DroneMode.DISARMED)
+        self._switch_to_mode(DroneMode.DISARMED, quiet=True)
         self._mode_pub.publish(DroneModeMsg(mode=DroneMode.DISARMED.value))
         rospy.sleep(0.5)
         sys.exit()
