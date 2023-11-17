@@ -7,4 +7,4 @@ dt-vl53l0x==0.0.1
 # public protocols used to communicate with a duckiematrix engine
 #TODO: drop -ente from this
 #TODO: this becomes the Duckietown SDK
-dt-duckiematrix-protocols-ente==0.1.8
+dt-duckiematrix-protocols-ente>=0.1.8,<1
