@@ -47,7 +47,7 @@ class VirtualCamera(AbsCameraNode):
         if self._device:
             self.release()
         # prepare connection to Duckiematrix
-        self.log(f"[VirtualCamera]: Connecting to Matrix Engine at '{link.uri}'.")
+        self.log(f"[VirtualCamera]: Connecting to Matrix Engine at '{link.uri}' for entity '{link.entity}'.")
         self._matrix: Matrix = Matrix(link.uri)
         self._device: Camera = self._matrix.robots.CameraEnabledRobot(link.entity).camera
         # subscribe to camera topic
