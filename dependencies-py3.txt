@@ -14,5 +14,8 @@ luma.oled==3.13.0
 # dependencies for the IMU sensor
 adafruit-circuitpython-mpu6050==1.2.3
 
+# dependency for the flight controller
+yamspy==0.3.3
+
 # this is the last working version of pillow
 Pillow==9.5.0
