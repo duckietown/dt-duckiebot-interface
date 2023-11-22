@@ -16,3 +16,6 @@ adafruit-circuitpython-mpu6050
 
 # dependencies for the LED hardware test
 colorir
+
+# this is the last working version of pillow
+pillow==9.5.0
