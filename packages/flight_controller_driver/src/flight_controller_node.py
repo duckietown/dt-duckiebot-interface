@@ -155,6 +155,9 @@ class FlightController(DTROS):
                                     param_type=ParamType.INT)
         self._param_yaw_D.register_update_callback(
             lambda: self._board.set_pids_rpy(yaw_d=self._param_yaw_D.value))
+        
+        # Accelerometer scaling (from IMU values to m/s)
+        self.accRawToMss = 9.81/512
 
         # reminders
         self._motors_reminder = DTReminder(frequency=self._frequency["motors"])
@@ -164,29 +167,6 @@ class FlightController(DTROS):
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self.rc_command(DroneMode.DISARMED)
         self._last_command = self.rc_command(DroneMode.DISARMED)
-
-        # accelerometer calibration
-        calibs_folder = '/data/config/calibrations/accelerometer'
-        os.makedirs(calibs_folder, exist_ok=True)
-        self._accelerometer_frame_id = os.path.join(rospy.get_namespace(), 'accelerometer')
-        self._calib_file = os.path.join(calibs_folder, f"{self._veh}.yaml")
-        self._default_accelerometer_calib = {
-            "x": 0,
-            "y": 0,
-            "z": 512
-        }
-
-        # locate calibration yaml file or use the default otherwise
-        if not os.path.isfile(self._calib_file):
-            self.logwarn(f"Calibration not found: {self._calib_file}.\n Using default instead.")
-            self._accelerometer_calib = copy.deepcopy(self._default_accelerometer_calib)
-        else:
-            with open(self._calib_file, "rt") as fin:
-                self._accelerometer_calib = yaml.safe_load(fin)
-        self.loginfo(f"Using accelerometer calibration: {self._accelerometer_calib}")
-
-        # accelerometer parameters
-        self._apply_calibration()
 
         # publishers
         self._imu_pub = rospy.Publisher("~imu", Imu, queue_size=1)
@@ -221,12 +201,6 @@ class FlightController(DTROS):
 
         """
         return self._mode_to_rc_command.get(mode)
-
-    def _apply_calibration(self):
-        self.accRawToMss = 9.81 / self._accelerometer_calib["z"]
-        self.accZeroX = self._accelerometer_calib["x"] * self.accRawToMss
-        self.accZeroY = self._accelerometer_calib["y"] * self.accRawToMss
-        self.accZeroZ = self._accelerometer_calib["z"] * self.accRawToMss
 
     def _needs_heartbeat(self, name: str) -> bool:
         return self._heartbeats.value.get(name, False) is True
@@ -269,49 +243,10 @@ class FlightController(DTROS):
                 if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_ACC_CALIBRATION'],data=[]):
                     dataHandler = self._board.receive_msg()
                     self._board.process_recv_data(dataHandler)
-                # read IMU 10 times
-                data = copy.deepcopy(self._default_accelerometer_calib)
-                counter = 1
-                num_points = 20
-                
-                for _ in range(num_points):
-                    # noinspection PyBroadException
-                    try:
-                        self._board.fast_read_imu()
-                        time.sleep(0.2)
-                        
-                        # TODO: we should investigate this further
-                        # Sometimes we receive a [0,0,0] SENSOR_DATA array, we need to skip this for
-                        # averaging
-                        if np.sum(np.abs(self._board.SENSOR_DATA['accelerometer'])) > 50:
-                            data["x"] += self._board.SENSOR_DATA['accelerometer'][0]
-                            data["y"] += self._board.SENSOR_DATA['accelerometer'][1]
-                            data["z"] += self._board.SENSOR_DATA['accelerometer'][2]
+                    print("IMU Calibration performed")
 
-                            counter += 1
-                    except Exception as e:
-                        self.logwarn(f"Could not calibrate IMU, received the following exception: {e}")
-                        
-                if counter < num_points * 0.5:
-                    msg = f"After the calibration, we only received {counter - 1} datapoints " \
-                          f"out of {num_points} expected. Aborting calibration..."
-                    self.logwarn(msg)
-                    return TriggerResponse(success=False, message=msg)
-                # compute calibration
-                calibration = {
-                    "x": data["x"] / counter,
-                    "y": data["y"] / counter,
-                    "z": data["z"] / counter
-                }
-                with open(self._calib_file, "wt") as fout:
-                    yaml.safe_dump(calibration, fout)
-                # apply calibration
-                self._accelerometer_calib = calibration
-                self._apply_calibration()
-                # ---
-                print(f"IMU Calibration based on {counter - 1}/{num_points} datapoints:",
-                      json.dumps(calibration, indent=4, sort_keys=True))
-
+                else:
+                    raise FCError("Unable to calibrate IMU, retry...")
         except Exception as e:
             traceback.print_exc()
             return TriggerResponse(success=False, message=str(e))
@@ -584,9 +519,9 @@ class FlightController(DTROS):
         # transform euler angles into quaternion
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
         # calculate the linear accelerations
-        lin_acc_x = self._board.SENSOR_DATA['accelerometer'][0] * self.accRawToMss - self.accZeroX
-        lin_acc_y = self._board.SENSOR_DATA['accelerometer'][1] * self.accRawToMss - self.accZeroY
-        lin_acc_z = self._board.SENSOR_DATA['accelerometer'][2] * self.accRawToMss - self.accZeroZ
+        lin_acc_x = self._board.SENSOR_DATA['accelerometer'][0] * self.accRawToMss
+        lin_acc_y = self._board.SENSOR_DATA['accelerometer'][1] * self.accRawToMss
+        lin_acc_z = self._board.SENSOR_DATA['accelerometer'][2] * self.accRawToMss
 
         # TODO: we should revisit this and use ROS' frames
         # Rotate the IMU frame to align with our convention for the drone's body
