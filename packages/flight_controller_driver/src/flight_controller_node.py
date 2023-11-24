@@ -241,9 +241,11 @@ class FlightController(DTROS):
         try:
             with self._lock:
                 if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_ACC_CALIBRATION'],data=[]):
+                    self.logdebug("Sent accelerometer calibration message")
                     dataHandler = self._board.receive_msg()
+                    self.logdebug("Received accelerometer calibration response message")
                     self._board.process_recv_data(dataHandler)
-                    print("IMU Calibration performed")
+                    self.loginfo("IMU Calibration performed")
 
                 else:
                     raise FCError("Unable to calibrate IMU, retry...")
