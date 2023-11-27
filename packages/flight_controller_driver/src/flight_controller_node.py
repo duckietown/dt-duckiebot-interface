@@ -355,7 +355,6 @@ class FlightController(DTROS):
                     self._command = self.rc_command(DroneMode.ARMED)
                     self._mode_change_counter += 1
                 else:
-                    # TODO: check if IDLE command is correct
                     self._command = self.rc_command(DroneMode.IDLE)
 
         if self._requested_mode is not DroneMode.ARMED:
@@ -364,9 +363,7 @@ class FlightController(DTROS):
     def _send_flight_commands(self):
         """ Send commands to the flight controller board """
         try:
-            if self._board.send_RAW_RC(self._command):
-                    dataHandler = self._board.receive_msg()
-                    self._board.process_recv_data(dataHandler)
+            self._board.fast_msp_rc_cmd(self._command)
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command
