@@ -6,15 +6,23 @@ from typing import Optional
 import adafruit_mpu6050
 import board
 import rospy
+import tf
 import yaml
 from adafruit_mpu6050 import MPU6050
 from sensor_msgs.msg import Imu, Temperature
+from geometry_msgs.msg import Vector3Stamped, QuaternionStamped
 from std_srvs.srv import Empty
 
 from hardware_test_imu import HardwareTestIMU
 from duckietown.dtros import DTROS, NodeType
 
 # TODO: calibration and loading custom config
+
+# Default publishing frame: the IMU data would make sense to humans when published in this frame, regardless where it's mounted
+DEFAULT_IMU_PUB_FRAME = "{robot_hostname}/bottom_plate"
+# when transform cannot be found, use the plain imu frame
+FALLBACK_IMU_PUB_FRAME = "{robot_hostname}/imu"
+
 
 class IMUNode(DTROS):
     def __init__(self):
@@ -46,6 +54,29 @@ class IMUNode(DTROS):
         self.loginfo("Gyro X:%.2f, Y: %.2f, Z: %.2f degrees/s" % self._sensor.gyro)
         self.loginfo("Temperature: %.2f C" % self._sensor.temperature)
         self.loginfo("===============IMU Initialization Complete===============")
+
+        # parent tf link lookup
+        default_pub_frame = DEFAULT_IMU_PUB_FRAME.format(robot_hostname=self._veh)
+        fallback_pub_frame = FALLBACK_IMU_PUB_FRAME.format(robot_hostname=self._veh)
+        try:
+            self.loginfo(f"Performing [IMU TF Lookup] ...")
+            self._tf_listener = tf.TransformListener()
+            self._tf_listener.waitForTransform(
+                default_pub_frame,
+                fallback_pub_frame,
+                rospy.Time(0),          # get most recent tf
+                rospy.Duration(10.0),   # max timeout
+            )
+            self._static_transform = self._tf_listener.lookupTransform(default_pub_frame, fallback_pub_frame, rospy.Time(0))
+            self._imu_pub_frame = default_pub_frame
+            self.loginfo(f"[IMU TF Lookup] Success!")
+        except (tf.LookupException, tf.ConnectivityException, tf.ExtrapolationException) as e:
+            # failed to obtain default->fallback tf link, use fallback frame
+            self._static_transform = None
+            self._imu_pub_frame = fallback_pub_frame
+            self.logwarn(f"[IMU TF Lookup] Failed! Exception: {str(e)}")
+        self.loginfo(f"Publishing IMU data in frame: {self._imu_pub_frame}")
+
         # ROS Pubsub initialization
         self.pub = rospy.Publisher('~data', Imu, queue_size=10)
         self.temp_pub = rospy.Publisher('~temperature', Temperature, queue_size=10)
@@ -81,8 +112,8 @@ class IMUNode(DTROS):
             gyro_data = self._sensor.gyro
             temp_data = self._sensor.temperature
             # Do it together so that the timestamp is honored
+
             # Populate Message
-            msg.header.frame_id = temp_msg.header.frame_id = f"{self._veh}/imu"
             # Orientation (we do not have this data)
             msg.orientation.x = msg.orientation.y = msg.orientation.z = msg.orientation.w = 0
             # If you have no estimate for one of the data elements
@@ -98,6 +129,29 @@ class IMUNode(DTROS):
             msg.linear_acceleration.x, msg.linear_acceleration.y, msg.linear_acceleration.z = tuple(
                 (acc_data[i] - self._accel_offset[i]) for i in range(len(acc_data)))
             msg.linear_acceleration_covariance = [0.0 for _ in range(len(msg.linear_acceleration_covariance))]
+
+            # perform static transfrom and change frame if applicable
+            msg.header.frame_id = FALLBACK_IMU_PUB_FRAME.format(robot_hostname=self._veh)
+            if self._static_transform is not None:
+                v3s = Vector3Stamped()
+                v3s.header = msg.header
+                v3s.vector = msg.linear_acceleration
+                msg.linear_acceleration = self._tf_listener.transformVector3(self._imu_pub_frame, v3s).vector
+
+                v3s = Vector3Stamped()
+                v3s.header = msg.header
+                v3s.vector = msg.angular_velocity
+                msg.angular_velocity = self._tf_listener.transformVector3(self._imu_pub_frame, v3s).vector
+
+                # # since no orientation (see above), no need to perform these; Just keeping for ref
+                # qs = QuaternionStamped()
+                # qs.header = msg.header
+                # qs.quaternion = msg.orientation
+                # msg.orientation = self._tf_listener.transformQuaternion(self._imu_pub_frame, qs).quaternion
+
+            # now set the frame ID to be the transformed frame ID
+            msg.header.frame_id = temp_msg.header.frame_id = self._imu_pub_frame
+
             # Pub
             self.pub.publish(msg)
             temp_msg.temperature = temp_data - self._temp_offset
