@@ -141,8 +141,7 @@ class IMUNode(DTROS):
                 (acc_data[i] - self._accel_offset[i]) for i in range(len(acc_data)))
             msg.linear_acceleration_covariance = [0.0 for _ in range(len(msg.linear_acceleration_covariance))]
 
-            msg.header.frame_id = self._fallback_pub_frame  # start from sensor frame
-            # perform transfrom and change frame if applicable
+            # perform transfrom if applicable
             if self._imu_pub_frame != self._fallback_pub_frame:
                 ang_vel = [
                     msg.angular_velocity.x,
@@ -167,11 +166,8 @@ class IMUNode(DTROS):
                 msg.linear_acceleration.y = linear_acc[1]
                 msg.linear_acceleration.z = linear_acc[2]
 
-                # set the applied frame
-                msg.header.frame_id = self._imu_pub_frame
-
             # set same frame for temperature message to be consistent 
-            temp_msg.header.frame_id = self._imu_pub_frame
+            msg.header.frame_id = temp_msg.header.frame_id = self._imu_pub_frame
 
             # Pub
             self.pub.publish(msg)
