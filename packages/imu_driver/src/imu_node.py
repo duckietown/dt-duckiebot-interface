@@ -5,8 +5,6 @@ from typing import Optional
 
 import adafruit_mpu6050
 import board
-import copy
-import numpy as np
 import rospy
 import yaml
 from adafruit_mpu6050 import MPU6050
