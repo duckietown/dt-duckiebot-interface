@@ -1,5 +1,5 @@
 """
-The wheel encoder package contains a single class (i.e., WheelEncoderDriver) that is responsible
+The time of flight package contains a single class (i.e., To) that is responsible
 for talking to a single wheel encoder.
 
 .. autoclass:: tof_driver.WheelEncoderDriver

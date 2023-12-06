@@ -1,20 +1,36 @@
 <?xml version="1.0"?>
 <launch>
-	<arg name="veh" doc="Name of vehicle. ex megaman"/>
-	<arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman"/>
+    <arg name="veh" doc="Name of vehicle. ex megaman"/>
+    <arg name="param_file_name_default" default="default" doc="Default param file name"/>
+    <arg name="param_file_name_virtual" default="virtual" doc="Virtual param file name"/>
 
-	<arg name="pkg_name" value="flight_controller_driver"/>
-	<arg name="node_name" value="flight_controller_node"/>
+    <arg name="pkg_name" value="flight_controller_driver"/>
+    <arg name="node_name" value="flight_controller_node"/>
 
-	<group ns="$(arg veh)">
-		<remap from="$(arg node_name)/heartbeat/altitude" to="altitude_node/heartbeat" />
+    <group ns="$(arg veh)">
+ 		<remap from="$(arg node_name)/heartbeat/altitude" to="altitude_node/heartbeat" />
 		<remap from="$(arg node_name)/heartbeat/joystick" to="joystick/heartbeat" />
 		<remap from="$(arg node_name)/heartbeat/pid" to="pid_node/heartbeat" />
 		<remap from="$(arg node_name)/heartbeat/state_estimator" to="state_estimator_node/heartbeat" />
-
-		<node  name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen">
+        
+        <node  name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py" output="screen">
 			<param name="veh" value="$(arg veh)" />
-			<rosparam command="load" file="$(find flight_controller_driver)/config/$(arg node_name)/$(arg param_file_name).yaml"/>
+			<!-- Use the `if` tag to conditionally load different param files -->
+			<if>
+				<not>
+					<env name="ROBOT_HARDWARE" value="virtual"/>
+				</not>
+				<param name="param_file_name" value="$(arg param_file_name_default)" />
+				<rosparam command="load" file="$(find flight_controller_driver)/config/$(arg node_name)/$(arg param_file_name_default).yaml"/>
+			</if>
+
+			<if>
+				<!-- Load the virtual param file when the condition is met -->
+				<env name="ROBOT_HARDWARE" value="virtual"/>
+				<param name="param_file_name" value="$(arg param_file_name_virtual)" />
+				<rosparam command="load" file="$(find flight_controller_driver)/config/$(arg node_name)/$(arg param_file_name_virtual).yaml"/>
+			</if>
 		</node>
-	</group>
+        <!-- ... rest of the node configuration ... -->
+    </group>
 </launch>
