@@ -1,0 +1,8 @@
+default:
+  container: default
+  service: dt-devcontainer
+  customizations:
+    vscode:
+      extensions:
+        - "ms-iot.vscode-ros"
+        - "donjayamanne.python-extension-pack"
