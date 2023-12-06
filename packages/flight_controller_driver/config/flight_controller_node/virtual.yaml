@@ -1,0 +1,31 @@
+device:
+    vendor_id: "0483"
+    product_id: "5740"
+
+frequency:
+    commands: 40
+    imu: 30
+    motors: 5
+    battery: 1
+
+heartbeats:
+    altitude: false
+    joystick: false
+    pid: false
+    state_estimator: false
+
+motor_command_range: [1000, 2000]
+
+# These simulate various stick configurations on the remote controller that trigger special
+# behaviors on the flight controller, such as ARM, DISARM, etc.
+# Each list is ['roll', 'pitch', 'yaw', 'throttle', 'aux1', 'aux2']
+rc_commands:
+    disarm: [ 1500, 1500, 1500, 900, 1000, 1000 ]
+    arm: [ 1500, 1500, 1500, 900, 1800, 1000 ]
+    idle: [ 1500, 1500, 1500, 1000, 1800, 1800  ]
+
+virtual_serial:
+    port: '/tmp/ttyS0'
+    sitl_ip: '127.0.0.1'
+    sitl_port: 5761
+

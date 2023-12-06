@@ -19,3 +19,6 @@ libgstreamer-plugins-base1.0-dev
 
 # tool needed to setup camera
 v4l-utils
+
+# tools for betaflight SITL
+socat
