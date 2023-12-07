@@ -26,6 +26,8 @@ rc_commands:
 
 virtual_serial:
     port: '/tmp/ttyS0'
-    sitl_ip: '127.0.0.1'
-    sitl_port: 5761
 
+sitl:
+    ip: '127.0.0.1'
+    msp_port: 5761
+    rc_port: 9004
