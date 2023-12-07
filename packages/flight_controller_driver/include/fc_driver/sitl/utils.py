@@ -42,20 +42,3 @@ class RCPacket:
     @channels.setter
     def channels(self, _channels: list):
         self._channels = _channels
-
-def main():
-    socketRC = SocketBetaflight('127.0.0.1', 9004, False)
-    if socketRC.init():
-        print("Not able to open socket")
-        return
-
-    while True:
-        pkt = RCPacket()
-        data = pkt.to_bytes()
-        socketRC.udp_send(data)
-        print(len(data))
-        time.sleep(1)  # Wait for 1 second between sending packets
-
-
-if __name__ == '__main__':
-    main()
