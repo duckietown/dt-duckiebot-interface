@@ -3,7 +3,8 @@ import rospy
 import subprocess
 from threading import Thread
 
-from .flight_controller_physical import FlightController
+from .sitl.utils import RCPacket, SocketBetaflight
+from .flight_controller_physical import FCError, FlightController
 
 class FlightControllerSITL(FlightController):
     def __init__(self):
@@ -20,23 +21,49 @@ class FlightControllerSITL(FlightController):
             raise
 
     def _get_board_device(self) -> str:
-        self._start_betaflight_sitl()
+        return self._start_betaflight_sitl()
 
-        return self._virtual_serial_port
-
-    def _start_betaflight_sitl(self):
+    def _start_betaflight_sitl(self) -> str:
         virtual_serial_config = rospy.get_param("~virtual_serial")
-        self._virtual_serial_port = virtual_serial_config['port']
-        self._sitl_ip = virtual_serial_config['sitl_ip']
-        self._sitl_port = virtual_serial_config['sitl_port']
-        """Start the betaflight SITL process and pipe the tcp port to a virtual serial port.
-        """
+        serial_port_path = virtual_serial_config['port']
+
+        sitl_config = rospy.get_param("~sitl")
+
+        sitl_ip = sitl_config['ip']
+        sitl_msp_port = sitl_config['msp_port']
+        sitl_rc_port = sitl_config['rc_port']
+
+        # Pipe the SITL tcp port to a virtual serial port.
         self._pipe_tcp_into_serial(
-                self._virtual_serial_port,
-                self._sitl_ip,
-                self._sitl_port
+                serial_port_path,
+                sitl_ip,
+                sitl_msp_port
                 )
-        pass
+        
+        # Connect to the virtual RC port.
+        self._connect_to_virtual_rc(
+            sitl_ip,
+            sitl_rc_port
+            )
+        
+        return serial_port_path
+
+    def _send_rc_to_board(self, rc_command):
+        """The rc command is processed and sent to the board via the virtual RC port.
+
+        Args:
+            rc_command (list): 6 element list of integers representing the RC command [0-2000].
+        """
+        pkt = RCPacket()
+        pkt.channels[0:6] = rc_command
+        self._virtual_rc.udp_send(pkt.to_bytes())
+    
+    def _connect_to_virtual_rc(self, ip, port):
+        self._virtual_rc = SocketBetaflight(ip, port)
+        if self._virtual_rc.init():
+            self.logerr("Not able to open socket")
+            raise FCError("Not able to open socket")
+
 
 
 def execute_command(command):

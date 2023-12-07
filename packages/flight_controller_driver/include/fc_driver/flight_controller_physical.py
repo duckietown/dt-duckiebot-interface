@@ -363,7 +363,7 @@ class FlightController(DTROS):
     def _send_flight_commands(self):
         """ Send commands to the flight controller board """
         try:
-            self._board.fast_msp_rc_cmd(self._command)
+            self._send_rc_to_board(self._command)
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command
@@ -376,6 +376,10 @@ class FlightController(DTROS):
             ))
         except Exception as e:
             self.logerr(f"Error communicating with board {e}")
+
+    def _send_rc_to_board(self, rc_command):
+        """ Send RC command to the flight controller board """
+        self._board.fast_msp_rc_cmd(rc_command)
 
     # heartbeat callbacks: These update the last time that data was received from a node
 
