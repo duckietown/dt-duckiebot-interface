@@ -12,28 +12,10 @@ dt-launchfile-init
 # NOTE: Use the variable DT_PROJECT_PATH to know the absolute path to your code
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
-# this is necessary for the camera pipeline to work on the Jetson Nano
-if [ "${ROBOT_HARDWARE}" == "jetson_nano" ]; then
-    export LD_PRELOAD=${LD_PRELOAD}:/usr/lib/aarch64-linux-gnu/libGLdispatch.so
-fi
-
 # If the robot type is duckiedrone and ROBOT_HARDWARE is virtual, then we need to launch the betaflight-SITL
 if [ "${ROBOT_TYPE}" == "duckiedrone" ] && [ "${ROBOT_HARDWARE}" == "virtual" ]; then
-    /usr/bin/betaflight/launch_betaflight.sh
+    dt-exec /usr/bin/betaflight/launch_betaflight.sh &
 fi
-
-# set module's health
-dt-set-module-healthy
-
-# launching app
-dt-exec roslaunch --wait \
-    duckiebot_interface all_drivers.launch \
-    veh:="$VEHICLE_NAME" \
-    robot_hardware:="$ROBOT_HARDWARE" \
-    robot_type:="$ROBOT_TYPE" \
-    robot_configuration:="$ROBOT_CONFIGURATION"
-
-
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE
 
