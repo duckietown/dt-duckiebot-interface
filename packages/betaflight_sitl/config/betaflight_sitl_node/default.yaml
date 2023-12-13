@@ -1,0 +1,3 @@
+sitl:
+  binary_path: /usr/bin/betaflight
+  config_path: /usr/bin/betaflight
