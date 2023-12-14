@@ -14,7 +14,7 @@ dt-launchfile-init
 
 # If the robot type is duckiedrone and ROBOT_HARDWARE is virtual, then we need to launch the betaflight-SITL
 if [ "${ROBOT_TYPE}" == "duckiedrone" ] && [ "${ROBOT_HARDWARE}" == "virtual" ]; then
-    dt-exec /usr/bin/betaflight/launch_betaflight.sh &
+    dt-exec /usr/bin/betaflight/launch_betaflight.sh
 fi
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE
