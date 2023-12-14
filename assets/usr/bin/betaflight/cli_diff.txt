@@ -1,0 +1,36 @@
+########################################
+# The content of this file can be used to restore the SITL configuration
+# through Betaflight Configurator
+########################################
+# version
+# Betaflight / SITL (SITL) 4.5.0 Dec 13 2023 / 12:56:26 () MSP API: 1.46
+
+# start the command batch
+batch start
+
+board_name SITL
+
+# feature
+feature -GPS
+feature -TELEMETRY
+feature 3D
+
+# aux
+aux 0 0 0 1500 2100 0 0
+
+# master
+set motor_pwm_protocol = PWM
+set pid_process_denom = 16
+
+profile 0
+
+# profile 0
+set tpa_low_always = ON
+set ez_landing_threshold = 0
+set ez_landing_limit = 100
+###ERROR IN diff: CORRUPTED CONFIG: ez_landing_limit = 100###
+
+rateprofile 0
+
+# end the command batch
+batch end
