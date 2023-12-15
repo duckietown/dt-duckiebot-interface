@@ -2,6 +2,10 @@
 # The content of this file can be used to restore the SITL configuration
 # through Betaflight Configurator
 ########################################
+# 
+
+# diff
+
 # version
 # Betaflight / SITL (SITL) 4.5.0 Dec 13 2023 / 12:56:26 () MSP API: 1.46
 
@@ -14,6 +18,9 @@ board_name SITL
 feature -GPS
 feature -TELEMETRY
 feature 3D
+
+# map
+map AERT1234
 
 # aux
 aux 0 0 0 1500 2100 0 0
@@ -34,3 +41,5 @@ rateprofile 0
 
 # end the command batch
 batch end
+
+# 
