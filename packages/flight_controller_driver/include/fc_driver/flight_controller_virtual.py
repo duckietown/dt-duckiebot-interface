@@ -54,6 +54,9 @@ class FlightControllerSITL(FlightController):
         Args:
             rc_command (list): 6 element list of integers representing the RC command [0-2000].
         """
+        # Swap yaw and throttle AERT1234->AETR1234 as expected by the RC input of the SITL.
+        rc_command[2], rc_command[3] = rc_command[3], rc_command[2]
+        
         pkt = RCPacket()
         pkt.channels[0:6] = rc_command
         self._virtual_rc.udp_send(pkt.to_bytes())
