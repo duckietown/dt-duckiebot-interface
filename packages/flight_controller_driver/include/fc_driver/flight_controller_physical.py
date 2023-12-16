@@ -25,7 +25,7 @@ from std_srvs.srv import Trigger, TriggerResponse
 
 from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, DTParam, ParamType
-
+from dt_robot_utils import get_robot_hardware, RobotHardware
 from yamspy import MSPy
 
 
