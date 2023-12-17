@@ -526,14 +526,6 @@
                 <origin xyz="0.017 0 0" rpy="-${0.5 * pi} 0 -${0.5 * pi}" />
             </joint>
 
-            <!-- IMU -->
-            <link name="${veh}/imu"/>
-            <joint name="${veh}_bottom_plate_to_imu" type="fixed">
-                <parent link="${veh}/bottom_plate"/>
-                <child link="${veh}/imu"/>
-                <origin xyz="0 0 0" />
-            </joint>
-
             <!-- TOF -->
             <link name="${veh}/tof/front_center"/>
             <joint name="${veh}_front_bumper_to_front_center_tof" type="fixed">
@@ -544,6 +536,26 @@
 
             <!-- END: Duckiebot: DB21X -->
 
+        </xacro:if>
+
+        <xacro:if value="${model in ['DB21M']}" >
+            <!-- IMU on DB21M -->
+            <link name="${veh}/imu"/>
+            <joint name="${veh}_bottom_plate_to_imu" type="fixed">
+                <parent link="${veh}/bottom_plate"/>
+                <child link="${veh}/imu"/>
+                <origin xyz="0 0 0"/>
+            </joint>
+        </xacro:if>
+
+        <xacro:if value="${model in ['DB21J', 'DBR4']}" >
+            <!-- IMU on other DB21X -->
+            <link name="${veh}/imu"/>
+            <joint name="${veh}_bottom_plate_to_imu" type="fixed">
+                <parent link="${veh}/bottom_plate"/>
+                <child link="${veh}/imu"/>
+                <origin xyz="0.024 0 0.019"  rpy="0 ${pi} 0"/>
+            </joint>
         </xacro:if>
 
         <!-- END: Duckiebot -->
