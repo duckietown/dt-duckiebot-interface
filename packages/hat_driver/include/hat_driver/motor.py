@@ -107,7 +107,9 @@ class GPIOMotorDirectionController(AbsMotorDirectionController):
 
 
 class Motor:
-    _K = 16
+    # Reference for this constant and the "<<4" operation
+    # https://github.com/duckietown/fw-device-hut/blob/4b912997c5042997e9f35da4b96676bfad0168e1/i2c/i2c_machine.c#L382C17-L382C29
+    _K = 2 ** 4
     _CONTROLLER = {
         MotorDirectionControl.PWM: PWMMotorDirectionController,
         MotorDirectionControl.GPIO: GPIOMotorDirectionController,
