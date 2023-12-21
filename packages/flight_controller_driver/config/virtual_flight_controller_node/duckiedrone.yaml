@@ -21,8 +21,8 @@ motor_command_range: [1000, 2000]
 # Each list is ['roll', 'pitch', 'yaw', 'throttle', 'aux1', 'aux2']
 rc_commands:
     disarm: [ 1500, 1500, 1500, 900, 1000, 1000 ]
-    arm: [ 1500, 1500, 1500, 900, 1800, 1000 ]
-    idle: [ 1500, 1500, 1500, 1000, 1800, 1800  ]
+    arm: [ 1500, 1500, 1500, 1500, 1800, 1000 ]
+    idle: [ 1500, 1500, 1500, 1500, 1800, 1800  ]
 
 virtual_serial:
     port: '/tmp/ttyS0'
