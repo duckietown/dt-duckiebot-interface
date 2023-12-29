@@ -259,7 +259,7 @@ class FlightController(DTROS):
         """ Store and send the flight commands if the current mode is FLYING """
         if self._requested_mode is DroneMode.FLYING:
             # compile command to be sent to the flight controller board
-            self._command = [int(msg.roll), int(msg.pitch), int(msg.yaw), int(msg.throttle)]
+            self._command = [int(msg.roll), int(msg.pitch), int(msg.yaw), int(msg.throttle), int(msg.aux1), int(msg.aux2)]
 
     def _read_battery_status(self):
         if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_ANALOG'], data=[]):
@@ -367,12 +367,14 @@ class FlightController(DTROS):
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command
-            # TODO: add aux1 and aux2 to DroneControl ros msg
+
             self._commands_pub.publish(DroneControl(
                 self._command[0],
                 self._command[1],
                 self._command[2],
                 self._command[3],
+                self._command[4],
+                self._command[5],
             ))
         except Exception as e:
             self.logerr(f"Error communicating with board {e}")
