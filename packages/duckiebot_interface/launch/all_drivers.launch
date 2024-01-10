@@ -30,11 +30,13 @@
         </group>
 
         <group if="$(eval arg('robot_type') in ['duckiedrone'])">
-            <include file="$(find raspicam_node)/launch/camera_node.launch">
-                <arg name="veh" value="$(arg veh)"/>
-                <arg name="param_file_name" value="$(arg robot_type)"/>
-                <arg name="enable_imv" value="true"/>
-            </include>
+            <group unless="$(eval arg('robot_hardware') == 'virtual')">
+                <include file="$(find raspicam_node)/launch/camera_node.launch">
+                    <arg name="veh" value="$(arg veh)"/>
+                    <arg name="param_file_name" value="$(arg robot_type)"/>
+                    <arg name="enable_imv" value="true"/>
+                </include>
+            </group>
         </group>
     </group>
 
