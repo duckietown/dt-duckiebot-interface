@@ -2,4 +2,4 @@
 # NOTE: only place Duckietown libraries here; these libraries will be resolved to the latest available version and pinned; pin a specific version only if necessary
 
 # VL53L0X ToF sensor driver
-dt-vl53l0x
+dt-vl53l0x==0.0.1
