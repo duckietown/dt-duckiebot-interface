@@ -153,6 +153,9 @@ class FlightController(DTROS):
         
         # Accelerometer scaling (from IMU values to m/s)
         self.accRawToMss = 9.81/512
+        
+        # yaw offset
+        self.yaw_offset = 0.0
 
         # reminders
         self._motors_reminder = DTReminder(frequency=self._frequency["motors"])
@@ -176,6 +179,7 @@ class FlightController(DTROS):
         # services
         self._srv_set_mode = rospy.Service("~set_mode", SetDroneMode, self._srv_set_mode_cb)
         self._srv_calib_imu = rospy.Service("~calibrate_imu", Trigger, self._srv_calibrate_imu_cb)
+        self._srv_zero_yaw = rospy.Service("~zero_yaw", Trigger, self._srv_zero_yaw_cb)
 
         # heartbeats
         rospy.Subscriber("~heartbeat/altitude", Empty, self._heartbeat_altitude_cb, queue_size=1)
@@ -229,6 +233,26 @@ class FlightController(DTROS):
             previous_mode=DroneModeMsg(mode=self._current_mode.value),
             current_mode=DroneModeMsg(mode=self._requested_mode.value),
         )
+
+    def _srv_zero_yaw_cb(self, _):
+        """ Zero yaw """
+        # Read the current yaw value
+        last_imu_msg = self._last_imu_msg
+        if last_imu_msg is None:
+            return TriggerResponse(success=False, message="No IMU data received yet")
+        
+        self._update_yaw_offset(last_imu_msg.orientation)
+
+        # respond
+        return TriggerResponse(success=True)
+
+    def _update_yaw_offset(self, orientation):
+        """ Update the yaw offset based on the given orientation """
+        quat = [orientation.x, orientation.y, orientation.z, orientation.w]
+        _, _, yaw = tf.transformations.euler_from_quaternion(quat)
+        self.yaw_offset += yaw 
+
+        self.loginfo(f"Yaw offset set to {self.yaw_offset}")
 
     def _srv_calibrate_imu_cb(self, _):
         """ Calibrate IMU """
@@ -512,10 +536,11 @@ class FlightController(DTROS):
         roll = np.deg2rad(self._board.SENSOR_DATA['kinematics'][0])
         pitch = -np.deg2rad(self._board.SENSOR_DATA['kinematics'][1])
         heading = np.deg2rad(self._board.SENSOR_DATA['kinematics'][2])
+
         # Note that at pitch angles near 90 degrees, the roll angle reading can fluctuate a lot
         # transform heading (similar to yaw) to standard math conventions, which
         # means angles are in radians and positive rotation is CCW
-        heading = (-heading) % (2 * np.pi)
+        heading = (-heading) % (2 * np.pi) - self.yaw_offset
 
         # transform euler angles into quaternion
         quaternion = tf.transformations.quaternion_from_euler(roll, pitch, heading)
@@ -563,6 +588,7 @@ class FlightController(DTROS):
             # euler_from_quaternion returns a heading in range [0, pi] or [0, -pi).
             # Thus need to convert the returned heading back into the range [0, 2pi).
             previous_heading = previous_heading % (2 * np.pi)
+            # TODO: Shouldn't this be `previous_heading = (previous_heading + np.pi) % (2 * np.pi)`
 
             current_t = msg.header.stamp
             dt = current_t.to_sec() - previous_t.to_sec()
