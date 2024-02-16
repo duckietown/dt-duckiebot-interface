@@ -1,0 +1,1 @@
+export PRETTYPRINT_EXTRAS_EXCLUDE="ipython_repr_pretty,ipython,django"
