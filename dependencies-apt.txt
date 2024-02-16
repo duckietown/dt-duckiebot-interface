@@ -1,12 +1,11 @@
 # LIST YOUR APT PACKAGES HERE
-ros-noetic-tf-conversions
-ros-noetic-joy
 
 # camera pipeline inside the container for Jetson-based robots
+# TODO: this 'freeglut3-dev' might be a bit heavy, try without
+freeglut3-dev
 bc
 bzip2
 can-utils
-freeglut3-dev
 gstreamer1.0-alsa
 gstreamer1.0-libav
 gstreamer1.0-plugins-bad

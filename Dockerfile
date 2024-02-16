@@ -66,10 +66,6 @@ ENV DT_PROJECT_NAME="${PROJECT_NAME}" \
     DT_PROJECT_LAUNCHERS_PATH="${PROJECT_LAUNCHERS_PATH}" \
     DT_LAUNCHER="${LAUNCHER}"
 
-# configure arch-specific environment
-COPY assets/setup/by-arch/${ARCH} /tmp/.setup-by-arch
-RUN /tmp/.setup-by-arch/setup.sh
-
 # install apt dependencies
 COPY ./dependencies-apt.txt "${PROJECT_PATH}/"
 RUN dt-apt-install ${PROJECT_PATH}/dependencies-apt.txt
@@ -83,19 +79,8 @@ RUN dt-pip3-install "${PROJECT_PATH}/dependencies-py3.*"
 # copy the source code
 COPY ./packages "${PROJECT_PATH}/packages"
 
-# on arm64v8, we can use the raspicam_node package as well
-RUN if [ "${ARCH}" = "arm64v8" ] ; then \
-    git clone \
-        --branch 0.5.0.duckietown.1 \
-        --depth 1 \
-        https://github.com/duckietown/raspicam_node \
-        "${REPO_PATH}/packages/raspicam_node" ; \
-    fi
-
 # build packages
-RUN . /opt/ros/${ROS_DISTRO}/setup.sh && \
-  catkin build \
-    --workspace ${CATKIN_WS_DIR}/
+RUN dt-colcon-build ${WORKSPACE_DIR}
 
 # install launcher scripts
 COPY ./launchers/. "${PROJECT_LAUNCHERS_PATH}/"
@@ -146,3 +131,7 @@ COPY assets/usr/share/fonts/*.ttf /usr/share/fonts/
 # copy betaflight sitl binary and config files
 COPY assets/usr/bin/betaflight /usr/bin/betaflight
 RUN chown -R duckie:duckie /usr/bin/betaflight/ && chmod +x /usr/bin/betaflight/launch_betaflight.sh
+
+
+# TODO: remove this once we gain access to the pypi project
+RUN pip3 install git+https://github.com/duckietown/lib-dtps-http.git@ente-staging

@@ -19,3 +19,9 @@ yamspy==0.3.3
 
 # this is the last working version of pillow
 Pillow==9.5.0
+
+# Time-of-Flight sensor
+adafruit-circuitpython-vl53l0x==3.6.11
+
+# Use /dev/i2c-* buses with circuitpython
+adafruit-extended-bus==1.0.2
