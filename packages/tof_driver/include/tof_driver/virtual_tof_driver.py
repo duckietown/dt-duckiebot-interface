@@ -1,4 +1,5 @@
 # !/usr/bin/env python3
+
 from threading import Condition
 from typing import Optional
 
@@ -10,7 +11,7 @@ from dt_duckiematrix_utils.ros import \
     DuckiematrixLinkDescription
 from dt_duckiematrix_protocols.robot.robots import RangeEnabledRobot
 from dt_robot_utils import get_robot_configuration
-from tof_driver.tof_driver_abs import ToFDriverAbs, ToFAccuracy
+from .tof_driver_abs import ToFDriverAbs, ToFAccuracy
 
 
 class VirtualToFDriver(ToFDriverAbs):
@@ -55,11 +56,11 @@ class VirtualToFDriver(ToFDriverAbs):
 
     def start(self):
         if self._connection_request is None:
-                # wait for connection request
-                print("[VirtualToF]: Waiting for connection request...")
-                with self._new_connection_request:
-                    self._new_connection_request.wait()
-                print("[VirtualToF]: Connection request received")
+            # wait for connection request
+            print("[VirtualToF]: Waiting for connection request...")
+            with self._new_connection_request:
+                self._new_connection_request.wait()
+            print("[VirtualToF]: Connection request received")
 
         if self._device is not None:
             self._device.start()

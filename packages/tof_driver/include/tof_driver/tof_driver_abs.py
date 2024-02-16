@@ -3,27 +3,33 @@ from abc import ABC
 
 import numpy as np
 
-from dt_vl53l0x import Vl53l0xAccuracyMode
+
+class ToFAccuracyMode:
+    GOOD = 0        # 33 ms timing budget 1.2m range
+    BETTER = 1      # 66 ms timing budget 1.2m range
+    BEST = 2        # 200 ms 1.2m range
+    LONG_RANGE = 3  # 33 ms timing budget 2m range
+    HIGH_SPEED = 4  # 20 ms timing budget 1.2m range
 
 
 @dataclasses.dataclass
 class ToFAccuracy:
-    mode: Vl53l0xAccuracyMode
+    mode: int
     timing_budget: float
     max_range: float
     # the following are taken from the sensor's datasheet
-    min_range: float = 0.05
+    min_range: float = 0.03
     fov: float = np.deg2rad(25)
 
     @staticmethod
     def from_string(mode: str):
         ms = 1 / 1000
         return {
-            "GOOD": ToFAccuracy(Vl53l0xAccuracyMode.GOOD, 33 * ms, 1.2),
-            "BETTER": ToFAccuracy(Vl53l0xAccuracyMode.BETTER, 66 * ms, 1.2),
-            "BEST": ToFAccuracy(Vl53l0xAccuracyMode.BEST, 200 * ms, 1.2),
-            "LONG_RANGE": ToFAccuracy(Vl53l0xAccuracyMode.LONG_RANGE, 33 * ms, 2.0),
-            "HIGH_SPEED": ToFAccuracy(Vl53l0xAccuracyMode.HIGH_SPEED, 20 * ms, 1.2)
+            "GOOD": ToFAccuracy(ToFAccuracyMode.GOOD, 33 * ms, 1.2),
+            "BETTER": ToFAccuracy(ToFAccuracyMode.BETTER, 66 * ms, 1.2),
+            "BEST": ToFAccuracy(ToFAccuracyMode.BEST, 200 * ms, 1.2),
+            "LONG_RANGE": ToFAccuracy(ToFAccuracyMode.LONG_RANGE, 33 * ms, 2.0),
+            "HIGH_SPEED": ToFAccuracy(ToFAccuracyMode.HIGH_SPEED, 20 * ms, 1.2)
         }[mode]
 
 
