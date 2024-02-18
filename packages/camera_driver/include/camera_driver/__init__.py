@@ -1,1 +1,1 @@
-from .AbsCameraNode import AbsCameraNode
+from .camera_driver_abs import CameraNodeAbs

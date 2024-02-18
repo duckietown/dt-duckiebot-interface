@@ -3,3 +3,6 @@
 
 #TODO: this becomes the Duckietown SDK
 dt-duckiematrix-protocols-ente>=0.1.8,<1
+
+# this is needed for the camera driver node
+lib-dt-computer-vision==0.1.6
