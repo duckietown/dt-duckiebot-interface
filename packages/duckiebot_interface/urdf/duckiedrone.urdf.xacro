@@ -31,6 +31,227 @@
 
         </xacro:if>
 
+        <xacro:if value="${model == 'DD24'}" >
+
+            <!-- START: Duckiedrone: DD24 -->
+            
+            <!-- /base_link is located in the centroid on the bottom plane of the BOTTOM PLATE -->
+            <link name="base_link">
+                <visual>
+                    <geometry>
+                        <mesh filename="package://duckietown/urdf/meshes/duckiedrone/DD24/BottomPlate_GPIO.stl" />
+                    </geometry>
+                </visual>
+                <!-- TODO DTSW-5169: update mass, inertia moments and CoM location relative to bottom plate
+                 using data from CAD model -->
+                <inertial>
+                    <mass value="0.65" />
+                    <origin xyz="0 0 0" rpy="0 0 0" />
+                    <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001" />
+                </inertial>
+            </link>
+
+            
+            <!-- TOP PLATE -->
+            <link name="${veh}/top_plate">
+                <visual>
+                    <geometry>
+                        <mesh filename="package://duckietown/urdf/meshes/duckiedrone/DD24/TopPlate_GPIO.stl" />
+                    </geometry>
+                </visual>
+            </link>
+            
+            <xacro:property name="standoffs_height" value="0.035" />
+
+            <joint name="${veh}_base_link_to_top_plate" type="fixed">
+                <parent link="base_link" />
+                <child link="${veh}/top_plate" />
+                <origin xyz="0 0 ${0.035}" />
+            </joint>
+
+            <!-- ~/footprint is located at the the centroid of the 4 feet on the ground -->
+
+            <joint name="${veh}_footprint_to_base_link" type="fixed">
+                <parent link="${veh}/footprint" />
+                <child link="base_link" />
+            </joint>
+
+            <!-- FEET -->
+
+            <!-- The 4 feet are defined as vertical cylinders positioned relative to the bottom plate -->
+            <!-- Define macro for a single foot -->
+            <xacro:macro name="leg" params="number angle side_length">
+                <xacro:property name="leg_name" value="leg_${number}" />
+                <link name="${leg_name}_link">
+                <visual>
+                    <origin xyz="0 0 0" rpy="0 0 0" />
+                    <geometry>
+                        <mesh filename="package://duckietown/urdf/meshes/duckiedrone/DD24/LandingGear.stl" />
+                    </geometry>
+                </visual>
+                </link>
+
+                <joint name="${leg_name}_joint" type="fixed">
+                    <origin xyz="${side_length/2 * cos(angle)} ${side_length/2 * sin(angle)} 0" rpy="0 0 0" />
+                    <parent link="base_link" />
+                    <child link="${leg_name}_link" />
+                </joint>
+            </xacro:macro>
+
+            <!-- Specify the side length of the square where the feet are positioned-->
+            <xacro:property name="side_length" value="0.2574" />
+
+            <!-- Define four instances of the single foot at the corners of the square -->
+            <xacro:leg number="1" angle="${pi/4}" side_length="${side_length}" />
+            <xacro:leg number="2" angle="${pi/4+pi/2}" side_length="${side_length}" />
+            <xacro:leg number="3" angle="${pi/4+pi}" side_length="${side_length}" />
+            <xacro:leg number="4" angle="${pi/4+pi*3/2}" side_length="${side_length}" />
+
+            <!-- Flight Controller -->
+            <link name="${veh}/flight_controller">
+                <xacro:property name="fc_height" value="0.0161" />
+                <xacro:property name="fc_width" value="0.0416" />
+                <visual>
+                    <geometry>
+                        <!-- TODO DTSW-5170: Add FC mesh-->
+                        <box size="${fc_width} ${fc_width} ${fc_height}"/>
+                    </geometry>
+                </visual>
+            </link>
+            <joint name="${veh}_base_link_to_flight_controller" type="fixed">
+                <parent link="base_link"/>
+                <child link="${veh}/flight_controller"/>
+                <origin xyz="-0.000041 -0.001336 +0.00905" />
+            </joint>
+
+            <!-- IMU -->
+            <link name="${veh}/imu">
+                <visual>
+                    <geometry>
+                        <box size="0.003 0.003 0.001"/>
+                    </geometry>
+                </visual>
+            </link>
+            <joint name="${veh}_flight_controller_to_imu" type="fixed">
+                <parent link="${veh}/flight_controller"/>
+                <child link="${veh}/imu"/>
+                <origin xyz="-0.00097 0.011642 0.0055" />
+            </joint>
+
+            <!-- camera mount -->
+            <link name="${veh}/camera_mount">
+                <visual>
+                    <geometry>
+                        <mesh filename="package://duckietown/urdf/meshes/duckiedrone/DD24/CameraMount.stl" />
+                    </geometry>
+                </visual>
+            </link>
+
+            <joint name="${veh}_base_link_to_camera_mount" type="fixed">
+                <parent link="base_link" />
+                <child link="${veh}/camera_mount" />
+                <origin xyz="0.0145 -0.108651 0" />
+            </joint>
+
+            <!-- camera support -->
+            <link name="${veh}/camera_support"/>
+            <joint name="${veh}_camera_mount_to_camera_support" type="fixed">
+                <parent link="${veh}/camera_mount" />
+                <child link="${veh}/camera_support" />
+                <origin xyz="-0.0145 -0.031034 0.014952" />
+            </joint>
+
+            <!-- camera frame -->
+            <link name="${veh}/camera_frame">
+                <visual>
+                    <geometry>
+                        <mesh filename="package://duckietown/urdf/meshes/duckiebot/DB18/fish_eye_camera.dae" />
+                    </geometry>
+                </visual>
+            </link>
+            <!-- TODO: this should not be fixed (floating), rotation should be computed from the extrinsics calibration of the camera -->
+            <joint name="${veh}_camera_support_to_camera_frame" type="fixed">
+                <parent link="${veh}/camera_support" />
+                <child link="${veh}/camera_frame" />
+                <origin rpy="0 ${50*pi/180} ${-0.5*pi}" />
+            </joint>
+
+            <!-- camera optical frame -->
+            <link name="${veh}/camera_optical_frame"/>
+            <joint name="${veh}_camera_frame_to_camera_optical_frame" type="fixed">
+                <parent link="${veh}/camera_frame" />
+                <child link="${veh}/camera_optical_frame" />
+                <origin xyz="0.017 0 0" rpy="-${0.5 * pi} 0 -${0.5 * pi}" />
+            </joint>
+
+            <!-- MOTOR/PROPELLERS -->
+            <!-- Define macro for a single motor -->
+            <xacro:macro name="motor" params="number angle side_length">
+                <xacro:property name="motor_name" value="motor_${number}" />
+                <link name="${veh}/${motor_name}_link">
+                <visual>
+                    <origin xyz="0 0 0" rpy="0 0 0" />
+                    <geometry>
+                            <xacro:if value="${number in [2,3]}">
+                                <mesh filename="package://duckietown/urdf/meshes/duckiedrone/DD24/DD24_CCW_prop_STL.stl" scale="0.001 0.001 0.001"/>
+                            </xacro:if>
+
+                            <xacro:if value="${number in [1,4]}">
+                                <mesh filename="package://duckietown/urdf/meshes/duckiedrone/DD24/DD24_CW_prop_STL.stl" scale="0.001 0.001 0.001"/>
+                            </xacro:if>
+                    </geometry>
+                </visual>
+                </link>
+
+                <!-- motor mounting location -->
+                <link name="${veh}/${motor_name}_mounting_link">
+                </link>
+
+                <joint name="${veh}_base_link_to_${motor_name}" type="fixed">
+                    <origin xyz="${side_length/2 * cos(angle)} ${side_length/2 * sin(angle)} 0.0025" rpy="0 0 0" />
+                    <parent link="base_link" />
+                    <child link="${veh}/${motor_name}_mounting_link" />
+                </joint>
+
+                <joint name="${motor_name}_joint" type="continuous">
+                    <parent link="${veh}/${motor_name}_mounting_link" />
+                    <child link="${veh}/${motor_name}_link" />
+                    <axis xyz="0 0 1" />
+                </joint>
+       
+            </xacro:macro>
+
+            <!-- TODO: the numbering of the motors should be configurable to match the configuration of the Flight Controller-->
+            <!-- Instantiate four motors at the same locations of each feet -->
+            <xacro:motor number="1" angle="${-pi/4}" side_length="${side_length}" />
+            <xacro:motor number="2" angle="${pi/4}" side_length="${side_length}" />
+            <xacro:motor number="3" angle="${pi/4+pi}" side_length="${side_length}" />
+            <xacro:motor number="4" angle="${-(pi/4+pi)}" side_length="${side_length}" />
+
+            <xacro:macro name="tof_link" params="name x y z r p ya">
+                <link name="${veh}/tof/${name}">
+                    <visual>
+                        <geometry>
+                            <box size="0.01 0.01 0.002"/>
+                        </geometry>
+                    </visual>
+                </link>
+                <joint name="${veh}_front_bumper_to_${name}_tof" type="fixed">
+                    <parent link="base_link"/>
+                    <child link="${veh}/tof/${name}"/>
+                    <origin xyz="${x} ${y} ${z}" rpy="${r} ${p} ${ya}"/>
+                </joint>
+            </xacro:macro>
+
+            <xacro:tof_link name="side_left" x="0.03465" y="0.0005" z="0.0175" r="0" p="${0.5*pi}" ya="0"/>
+            <xacro:tof_link name="side_right" x="-0.03465" y="0.0005" z="0.0175" r="0" p="${-0.5*pi}" ya="0"/>
+            <xacro:tof_link name="bottom" x="0.0055" y="0.07169" z="-0.00485" r="0" p="${pi}" ya="0"/>
+            <xacro:tof_link name="top" x="0.0055" y="0.07169" z="0.03985" r="0" p="0" ya="0"/>
+            <xacro:tof_link name="front" x="0" y="-0.130101" z="-0.009" r="${0.5*pi}" p="0" ya="0"/>
+        <!-- END: Duckiedrone: DD24 -->
+
+        </xacro:if>
+        
         <!-- END: Duckiedrone -->
 
     </xacro:macro>
