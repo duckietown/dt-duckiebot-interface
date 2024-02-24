@@ -146,7 +146,7 @@ class ToFNode(Node):
         await (self.switchboard / "sensors" / "time-of-flight" / self._sensor_name).expose(queue)
         # read and publish
         dt: float = 1.0 / self._frequency
-        while True:
+        while not self.is_shutdown:
             # detect range
             range_mm: float = self._sensor.get_distance()
             range_m: float = range_mm / 1000
