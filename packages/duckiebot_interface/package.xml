@@ -1,16 +1,15 @@
 <?xml version="1.0"?>
-<package>
-  <name>duckiebot_interface</name>
-  <version>1.0.0</version>
-  <description>The duckiebot_interface meta package</description>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+    <name>duckiebot_interface</name>
+    <version>1.0.0</version>
+    <description>The meta-package for this project</description>
+    <license>Duckietown License</license>
 
-  <license>GPLv3</license>
-<maintainer email="mack@duckietown.org">Mack</maintainer>
+    <author email="afdaniele@duckietown.com">Andrea F. Daniele</author>
+    <maintainer email="afdaniele@duckietown.com">Andrea F. Daniele</maintainer>
 
-  <buildtool_depend>catkin</buildtool_depend>
-  <build_depend>rospy</build_depend>
-
-  <run_depend>rospy</run_depend>
-
-
+    <export>
+        <build_type>ament_python</build_type>
+    </export>
 </package>
