@@ -25,13 +25,8 @@ fi
 # set module's health
 dt-set-module-healthy
 
-# launching app
-dt-exec roslaunch --wait \
-    duckiebot_interface all_drivers.launch \
-    veh:="$VEHICLE_NAME" \
-    robot_hardware:="$ROBOT_HARDWARE" \
-    robot_type:="$ROBOT_TYPE" \
-    robot_configuration:="$ROBOT_CONFIGURATION"
+# launch robot-type specific launcher
+dt-exec dt-launcher-default-${ROBOT_TYPE}
 
 
 # ----------------------------------------------------------------------------
