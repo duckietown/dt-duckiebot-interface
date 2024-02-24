@@ -2,9 +2,6 @@
 
 source /environment.sh
 
-# initialize launch file
-dt-launchfile-init
-
 # YOUR CODE BELOW THIS LINE
 # ----------------------------------------------------------------------------
 
@@ -26,11 +23,8 @@ fi
 dt-set-module-healthy
 
 # launch robot-type specific launcher
-dt-exec dt-launcher-default-${ROBOT_TYPE}
+exec dt-launcher-default-${ROBOT_TYPE}
 
 
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE
-
-# wait for app to end
-dt-launchfile-join

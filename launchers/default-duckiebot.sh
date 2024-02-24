@@ -12,7 +12,8 @@
 exec python3 -m duckiebot_interface.launch.main \
     --camera \
     --tof \
-    --wheels
+    --wheels \
+    --leds
 
 
 # ----------------------------------------------------------------------------

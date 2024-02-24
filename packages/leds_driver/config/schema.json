@@ -1,0 +1,22 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "initial_pattern": {
+            "type": "array",
+            "minLength": 5,
+            "maxLength": 5,
+            "items": {
+                "type": "array",
+                "minLength": 3,
+                "maxLength": 4,
+                "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 255
+                }
+            }
+        }
+    },
+    "additionalProperties": false
+}

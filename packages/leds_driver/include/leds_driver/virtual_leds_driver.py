@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 from typing import List, Optional
 
 from dt_duckiematrix_protocols.robot.features.lights import Lights
@@ -11,7 +9,10 @@ from dt_duckiematrix_protocols.robot.robots import DifferentialDriveRobot
 
 from dt_duckiematrix_protocols import Matrix
 
-class VirtualRGBLED(object):
+from .leds_driver_abs import LEDsDriverAbs
+
+
+class VirtualLEDsDriver(LEDsDriverAbs):
     """Object communicating to the LEDs.
 
     Low level class that creates the PWM messages that are sent to the
@@ -79,7 +80,7 @@ class VirtualRGBLED(object):
         print(f"[{class_name}] Connected to {link.entity}")
 
         # convert lights dictionary to an indexed list
-        self.lights_list : List = [
+        self.lights_list: List = [
             self._device.light0,
             self._device.light1,
             self._device.light2,
