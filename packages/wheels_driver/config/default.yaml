@@ -1,0 +1,9 @@
+pwm_left:
+  pwm_min: 60
+  pwm_max: 255
+  deadzone: 0.2
+pwm_right:
+  pwm_min: 60
+  pwm_max: 255
+  deadzone: 0.2
+safety_stop_timeout: 1

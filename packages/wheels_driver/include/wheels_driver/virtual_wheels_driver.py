@@ -10,19 +10,17 @@ from dt_duckiematrix_protocols.robot.robots import DifferentialDriveRobot
 from dt_duckiematrix_utils.ros import DuckiematrixLinkDescription, \
     on_duckiematrix_connection_request
 from dt_robot_utils import get_robot_configuration
+from wheels_driver.wheels_driver_abs import WheelsDriverAbs, WheelPWMConfiguration
 
 
-class VirtualWheelsDriver:
+class VirtualWheelsDriver(WheelsDriverAbs):
     """Class handling communication with virtual motors.
 
     """
-    LEFT_MOTOR_MIN_SPEED = 0.2  #: Minimum speed for left motor
-    LEFT_MOTOR_MAX_SPEED = 1.0  #: Maximum speed for left motor
-    RIGHT_MOTOR_MIN_SPEED = 0.2  #: Minimum speed for right motor
-    RIGHT_MOTOR_MAX_SPEED = 1.0  #: Maximum speed for right motor
-    SPEED_TOLERANCE = 1.e-2  #: Speed tolerance level
 
-    def __init__(self):
+    def __init__(self, left_config: WheelPWMConfiguration, right_config: WheelPWMConfiguration):
+        super(VirtualWheelsDriver, self).__init__(left_config, right_config)
+        # ---
         rcfg = get_robot_configuration()
         # initialize state
         self._wheels = {
@@ -99,13 +97,14 @@ class VirtualWheelsDriver:
         self.release()
 
     @property
-    def leftPWM(self):
+    def left_pwm(self):
         return self._wheels['left']
     
     @property
-    def rightPWM(self):
+    def right_pwm(self):
         return self._wheels['right']
-    
+
+
 def clamped_value(v, deadzone, min_v, max_v) -> float:
     """Transforms the requested speed into a clamped float number.
 
