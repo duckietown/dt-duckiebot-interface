@@ -1,4 +1,4 @@
-from typing import Callable, Optional
+from typing import Optional
 
 from dt_duckiematrix_messages.WheelEncoderTicks import WheelEncoderTicks
 from dt_duckiematrix_protocols import Matrix
@@ -7,7 +7,7 @@ from dt_duckiematrix_protocols.robot.features.sensors import WheelEncoder
 from dt_duckiematrix_utils.ros import DuckiematrixLinkDescription, \
     on_duckiematrix_connection_request
 from dt_robot_utils import get_robot_configuration
-from wheel_encoder.wheel_encoder_abs import WheelEncoderDriverAbs
+from wheel_encoder_driver.wheel_encoder_abs import WheelEncoderDriverAbs
 
 
 class VirtualWheelEncoderDriver(WheelEncoderDriverAbs):
@@ -23,8 +23,8 @@ class VirtualWheelEncoderDriver(WheelEncoderDriverAbs):
             callback (:obj:`callable`): callback function to receive new (unique) readings.
     """
 
-    def __init__(self, name: str, _: int, callback: Callable):
-        super(VirtualWheelEncoderDriver, self).__init__(name, callback)
+    def __init__(self, name: str, _: int):
+        super(VirtualWheelEncoderDriver, self).__init__(name)
         # prepare zmq pipeline
         self._reading: Optional[float] = None
         # register connection setup function

@@ -12,7 +12,7 @@ from .wheel_encoder_abs import WheelDirection
 
 if get_robot_hardware() != RobotHardware.VIRTUAL:
     # this breaks if imported when running on a virtual robot
-    from .wheel_encoder_driver import WheelEncoderDriver
-
-from .virtual_wheel_encoder_driver import VirtualWheelEncoderDriver
-
+    from .dagu_wheel_encoder_driver import DaguWheelEncoderDriver as WheelEncoderDriver
+else:
+    # this breaks if imported when running on a real robot
+    from .virtual_wheel_encoder_driver import VirtualWheelEncoderDriver as WheelEncoderDriver

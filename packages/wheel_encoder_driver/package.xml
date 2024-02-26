@@ -1,0 +1,15 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+    <name>wheel_encoder_driver</name>
+    <version>1.0.0</version>
+    <description>An interface to a wheel encoder sensor</description>
+    <license>Duckietown License</license>
+
+    <author email="afdaniele@duckietown.com">Andrea F. Daniele</author>
+    <maintainer email="afdaniele@duckietown.com">Andrea F. Daniele</maintainer>
+
+    <export>
+        <build_type>ament_python</build_type>
+    </export>
+</package>

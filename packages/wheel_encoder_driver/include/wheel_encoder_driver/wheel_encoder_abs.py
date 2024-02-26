@@ -1,5 +1,4 @@
 from abc import ABC
-from typing import Callable
 from enum import IntEnum
 
 
@@ -17,19 +16,23 @@ class WheelEncoderDriverAbs(ABC):
 
         Args:
             name (:obj:`str`): name of the encoder (e.g., left, right).
-            callback (:obj:`callable`): callback function to receive new (unique) readings.
     """
 
-    def __init__(self, name: str, callback: Callable):
-        # validate callback
-        if not callable(callback):
-            raise ValueError('The callback object must be a callable object')
-        # ---
-        self._name = name
-        self._callback = callback
-        self._ticks = 0
+    def __init__(self, name: str):
+        self._name: str = name
+        self._ticks: int = 0
         # wheel direction
-        self._direction = WheelDirection.FORWARD
+        self._direction: WheelDirection = WheelDirection.FORWARD
+
+    @property
+    def ticks(self) -> int:
+        return self._ticks
+
+    def _set_ticks(self, ticks: int):
+        self._ticks = ticks
+
+    def _bump_ticks(self, _):
+        self._ticks += self._direction.value
 
     def get_direction(self) -> WheelDirection:
         return self._direction
