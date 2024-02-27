@@ -1,6 +1,10 @@
 from enum import IntEnum
+from typing import Callable
 
 from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
+
+from .led import ButtonLED
+
 
 ROBOT_HARDWARE = get_device_hardware_brand()
 
@@ -12,8 +16,6 @@ elif ROBOT_HARDWARE in [DeviceHardwareBrand.RASPBERRY_PI, DeviceHardwareBrand.RA
 
 else:
     raise Exception("Undefined Hardware!")
-
-from .led import ButtonLED
 
 
 class ButtonEvent(IntEnum):
@@ -30,7 +32,7 @@ class ButtonDriver:
         callback (:obj:`callable`): callback function to receive signal events.
     """
 
-    def __init__(self, led_gpio_pin, signal_gpio_pin, callback):
+    def __init__(self, led_gpio_pin: int, signal_gpio_pin: int, callback: Callable[[ButtonEvent], None]):
         # valid gpio pin
         if not 1 <= signal_gpio_pin <= 40:
             raise ValueError("The pin number must be within the range [1, 40].")

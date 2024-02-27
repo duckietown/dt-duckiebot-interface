@@ -1,11 +1,22 @@
-## ! DO NOT MANUALLY INVOKE THIS setup.py, USE CATKIN INSTEAD
-from distutils.core import setup
-from catkin_pkg.python_setup import generate_distutils_setup
+from setuptools import setup
 
-# fetch values from package.xml
-setup_args = generate_distutils_setup(
-    packages=["button_driver"],
+package_name = 'button_driver'
+packages = ["button_driver", "button_driver_node"]
+
+setup(
+    name=package_name,
+    version='1.0.0',
+    packages=packages,
     package_dir={"": "include"},
+    data_files=[
+        ('share/ament_index/resource_index/packages', [f'resource/{package_name}']),
+        (f'share/{package_name}', ['package.xml']),
+    ],
+    install_requires=['setuptools'],
+    zip_safe=True,
+    maintainer='Andrea F. Daniele',
+    maintainer_email='afdaniele@duckietown.com',
+    tests_require=['pytest'],
+    entry_points={},
 )
 
-setup(**setup_args)

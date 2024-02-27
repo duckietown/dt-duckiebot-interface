@@ -40,17 +40,11 @@ class ButtonLED:
             raise ValueError("LED value can only be on of [0, 1]")
         GPIO.output(self._gpio_pin, value)
 
-    def confirm_shutdown(self):
-        # TODO: are these worth parameterizing?
-
-        # top button LED blinks for 3 seconds
-        secs_to_blink = 3
-        blink_freq_hz = 2
-
+    def blink(self, duration: int, frequency: int):
         # duration of an off-on or on-off transition
-        transition_duration_sec = 1.0 / (2 * blink_freq_hz)
-        for _ in range(secs_to_blink):
-            for _ in range(blink_freq_hz):
+        transition_duration_sec = 1.0 / (2 * frequency)
+        for _ in range(duration):
+            for _ in range(frequency):
                 self.off()
                 time.sleep(transition_duration_sec)
                 self.on()
