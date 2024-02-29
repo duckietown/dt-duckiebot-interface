@@ -92,6 +92,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         self._parameters_queue: Optional[DTPSContext] = None
         # data flow monitor
         self._last_image_published_time: float = 0
+        # TODO: use sidecar instead of a thread
         self._flow_monitor = Thread(target=self._flow_monitor_fcn, daemon=True)
         self._flow_monitor.start()
         # ---

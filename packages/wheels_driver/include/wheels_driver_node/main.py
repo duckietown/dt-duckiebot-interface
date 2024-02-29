@@ -6,6 +6,7 @@ import argparse
 import dataclasses
 from typing import Type, cast, Optional
 
+from dt_node_utils.decorators import sidecar
 from dtps_http import RawData
 
 from dtps import DTPSContext
@@ -131,7 +132,8 @@ class WheelsDriverNode(Node):
         # run forever
         await self.join()
 
-    async def sidecar(self):
+    @sidecar
+    async def safety_stop(self):
         holding: bool = False
         while not self.is_shutdown:
             # stop wheels if no commands are received for a while

@@ -9,6 +9,7 @@ from display_driver.luma.ssd1306 import SSD1306Display
 from display_driver.types.page import PAGE_SHUTDOWN
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
+from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
 from dtps import DTPSContext
 from dtps_http import RawData
@@ -104,12 +105,8 @@ class DisplayNode(Node):
         await self.dtps_init(self._configuration)
         # create fragments queue
         fragments: DTPSContext = await (self.context / "in" / "fragments").queue_create()
-        # create button event queue
-        button: DTPSContext = await (self.switchboard / "sensors" / "power-button").until_ready()
         # subscribe to fragments
         await fragments.subscribe(self.cb_fragments)
-        # subscribe to button events
-        await button.subscribe(self.cb_button_events)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
@@ -121,6 +118,14 @@ class DisplayNode(Node):
         ).to_rawdata())
         # run forever
         await self.join()
+
+    @sidecar
+    async def register_button_events(self):
+        await self.switchboard_ready.wait()
+        # create button event queue
+        button: DTPSContext = await (self.switchboard / "sensors" / "power-button").until_ready()
+        # subscribe to button events
+        await button.subscribe(self.cb_button_events)
 
 
 def main():
