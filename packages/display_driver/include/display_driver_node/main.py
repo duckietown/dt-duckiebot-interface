@@ -19,9 +19,6 @@ from duckietown_messages.sensors.button_event import ButtonEvent, InteractionEve
 from duckietown_messages.standard.header import Header
 
 
-# from duckietown.dtros import NodeType, TopicType
-
-
 @dataclasses.dataclass
 class DisplayNodeConfiguration(NodeConfiguration):
     bus: int
