@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-    <name>display_driver</name>
+    <name>display_renderer</name>
     <version>1.0.0</version>
-    <description>An interface to the LCD display on the robot</description>
+    <description>Basic renderers for the LCD display</description>
     <license>Duckietown License</license>
 
     <author email="afdaniele@duckietown.com">Andrea F. Daniele</author>

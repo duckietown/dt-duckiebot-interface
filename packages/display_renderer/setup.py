@@ -1,7 +1,7 @@
 from setuptools import setup
 
-package_name = 'display_driver'
-packages = ["display_driver", "display_driver_node"]
+package_name = 'display_renderer'
+packages = ["display_renderer", "display_renderer_node"]
 
 setup(
     name=package_name,

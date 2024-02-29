@@ -1,0 +1,5 @@
+renderers:
+  health:
+    frequency: 0.5
+  network:
+    frequency: 0.2
