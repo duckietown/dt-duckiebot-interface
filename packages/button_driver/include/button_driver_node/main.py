@@ -24,19 +24,13 @@ from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
 from dtps import DTPSContext
 from dtps_http import RawData
+from duckietown_messages.sensors.button_event import InteractionEvent
 
 
 @dataclasses.dataclass
 class ButtonDriverNodeConfiguration(NodeConfiguration):
     led_gpio_pin: int
     signal_gpio_pin: int
-
-
-class InteractionEvent(IntEnum):
-    EVENT_NOTHING = 1
-    EVENT_SINGLE_CLICK = 1
-    EVENT_HELD_3SEC = 3
-    EVENT_HELD_10SEC = 10
 
 
 class ButtonDriverNode(Node):
@@ -91,13 +85,13 @@ class ButtonDriverNode(Node):
         # analyze event
         # - single click
         if duration < 0.5:
-            self.call_soon(self._react, InteractionEvent.EVENT_SINGLE_CLICK)
+            self.call_soon(self._react, InteractionEvent.SINGLE_CLICK)
         # - held for 3 secs
         elif self._TIME_HOLD_3S < duration < 2 * self._TIME_HOLD_3S:
-            self.call_soon(self._react, InteractionEvent.EVENT_HELD_3SEC)
+            self.call_soon(self._react, InteractionEvent.HELD_3SEC)
         # - held for 10 secs
         elif self._TIME_HOLD_10S < duration:
-            self.call_soon(self._react, InteractionEvent.EVENT_HELD_10SEC)
+            self.call_soon(self._react, InteractionEvent.HELD_10SEC)
 
     async def _react(self, event: InteractionEvent):
         # publish
@@ -109,7 +103,7 @@ class ButtonDriverNode(Node):
         # return control to the event loop
         await asyncio.sleep(0.01)
         # react
-        if event in [InteractionEvent.EVENT_HELD_3SEC, InteractionEvent.EVENT_HELD_10SEC]:
+        if event in [InteractionEvent.HELD_3SEC, InteractionEvent.HELD_10SEC]:
             # blink top power button as a confirmation, too
             self._sensor.led.blink(duration=3, frequency=2)
 
@@ -131,7 +125,7 @@ class ButtonDriverNode(Node):
         await (self.switchboard / "sensors" / "power-button").expose(self._queue)
         # publish no event
         await self._queue.publish(RawData.cbor_from_native_object({
-            "data": InteractionEvent.EVENT_NOTHING.value,
+            "data": InteractionEvent.NOTHING.value,
         }))
         # sit and wait for the callbacks to come in
         while not self.is_shutdown:
