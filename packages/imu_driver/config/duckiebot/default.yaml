@@ -1,0 +1,18 @@
+frequency: 30
+display_fragment_frequency: 10
+connectors:
+    # MPU 6050
+    -   bus: 1
+        address: 0x68
+    # TODO: model 2
+    -   bus: 1
+        address: 0x71
+
+
+
+# TODO: this should be moved to a separate file
+#
+## Calibrations
+#ang_vel_offset: [ 0, 0, 0 ]
+#accel_offset: [ 0, 0, 0 ]
+#temp_offset: 0
