@@ -14,7 +14,11 @@ exec python3 -m duckiebot_interface.launch.main \
     --tof \
     --wheels \
     --wheel-encoders \
-    --leds
+    --leds \
+    --display \
+    --button \
+    --imu \
+    --display-renderer
 
 
 # ----------------------------------------------------------------------------
