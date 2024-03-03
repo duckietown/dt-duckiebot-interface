@@ -62,13 +62,13 @@ class AbsDisplayFragmentRenderer(ABC):
 
     @property
     def buffer(self) -> np.ndarray:
-        self.render()
         return self._buffer
 
     async def worker(self):
         if self._frequency is None:
             # one shot
-            await self.render()
+            await self.step()
+            self.render()
             # trigger callback (if given)
             if self._callback is not None:
                 await self._callback(self)
@@ -79,6 +79,7 @@ class AbsDisplayFragmentRenderer(ABC):
         while True:
             self._clear_buffer()
             await self.step()
+            self.render()
             # trigger callback (if given)
             if self._callback is not None:
                 await self._callback(self)
@@ -86,7 +87,7 @@ class AbsDisplayFragmentRenderer(ABC):
             await asyncio.sleep(dt)
 
     async def step(self):
-        self.render()
+        pass
 
     @abstractmethod
     def render(self):
@@ -128,9 +129,52 @@ class TextFragmentRenderer(AbsDisplayFragmentRenderer):
 
     def update(self, text: Union[Iterable[str], str]):
         self._text = text
+        self.render()
 
     def render(self):
         self._buffer = monospace_screen(self.shape, self._text, scale=self._scale)
+
+
+class MultipageTextFragmentRenderer(TextFragmentRenderer):
+
+    def __init__(
+        self,
+        name: str,
+        page: int,
+        region: DisplayRegion,
+        roi: DisplayROI,
+        lines_per_page: int,
+        scale: Union[str, float] = 1.0,
+        **kwargs
+    ):
+        self._lines_per_page = lines_per_page
+        super(MultipageTextFragmentRenderer, self).__init__(name, page, region, roi, scale, **kwargs)
+
+    @property
+    def fragments(self) -> List[DisplayFragment]:
+        lines: List[str] = self._text.split("\n")
+        # split text into pages
+        pages: List[List[str]] = [
+            lines[i:i + self._lines_per_page]
+            for i in range(0, len(lines), self._lines_per_page)
+        ]
+        # create fragments
+        return [
+            DisplayFragment(
+                header=Header(),
+                name=self._name + f"_{i}__",
+                region=self._region.id,
+                page=self._page + i,
+                content=Image.from_mono1(monospace_screen(self.shape, page, scale=self._scale), header=Header()),
+                location=self._roi.to_message(Header()),
+                ttl=self._ttl,
+                z=self._z,
+            )
+            for i, page in enumerate(pages)
+        ]
+
+    def render(self):
+        pass
 
 
 class NumpyArrayFragmentRenderer(AbsDisplayFragmentRenderer):

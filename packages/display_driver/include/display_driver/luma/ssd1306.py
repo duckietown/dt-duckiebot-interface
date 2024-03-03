@@ -14,7 +14,7 @@ from display_renderer import AbsDisplayFragmentRenderer
 from duckietown_messages.actuators.display_fragment import DisplayFragment as DisplayFragmentMsg
 from duckietown_messages.utils.image.pil import np_to_pil, pil_to_np
 from ..types.fragment import DisplayFragment
-from ..types.page import ALL_PAGES, PAGE_HOME
+from ..types.page import ALL_PAGES, PAGE_HOME, PAGE_INIT
 from ..types.regions import DisplayRegionID, DisplayRegion
 from ..types.regions import REGION_FULL, REGION_HEADER, REGION_BODY, REGION_FOOTER
 from ..types.roi import DisplayROI
@@ -34,12 +34,14 @@ class SSD1306Display:
         self._i2c_address: int = address
         self._frequency: float = frequency
         self._logger: Logger = logger
+        # INIT page only shown until HOME is available
+        self._inited: bool = False
         # create a display handler
         serial = i2c(port=self._i2c_bus, address=self._i2c_address)
         self._display = ssd1306(serial)
         # page selector
-        self._page = PAGE_HOME
-        self._pages = {PAGE_HOME}
+        self._page = PAGE_INIT
+        self._pages = {PAGE_INIT}
         # create buffers
         self._fragments = {k: dict() for k in self._REGIONS}
         self._buffer = np.zeros(
@@ -66,7 +68,7 @@ class SSD1306Display:
 
     def next_page(self):
         with self._fragments_lock:
-            pages = sorted(self._pages)
+            pages = sorted([p for p in self._pages if p != PAGE_INIT])
             # move to the next page
             try:
                 i = pages.index(self._page)
@@ -118,6 +120,12 @@ class SSD1306Display:
             self._fragments[region_id][fragment.name] = DisplayFragment(
                 data=img, roi=roi, page=fragment.page, z=fragment.z, _ttl=fragment.ttl, _time=time.time()
             )
+
+        # switch to HOME as soon as possible
+        if not self._inited and fragment.page == PAGE_HOME:
+            self._inited = True
+            self.page = PAGE_HOME
+
         # force refresh if this fragment is on the current page
         if fragment.page == self._page:
             self.render()
@@ -125,7 +133,7 @@ class SSD1306Display:
     def render(self):
         with self._fragments_lock:
             # clean pages
-            self._pages = {PAGE_HOME}
+            self._pages = {PAGE_HOME if self._inited else PAGE_INIT}
             # remove expired fragments and annotate how many pages we need
             for region, fragments in self._fragments.items():
                 for fragment_id in set(fragments.keys()):
@@ -141,8 +149,8 @@ class SSD1306Display:
                         self._pages.add(fragment.page)
             # sanitize page selector
             if self._page not in self._pages:
-                # go back to home
-                self._page = PAGE_HOME
+                # go back to a known page
+                self._page = PAGE_HOME if self._inited else PAGE_INIT
             # filter fragments by page
             data = {
                 region: [
@@ -155,7 +163,10 @@ class SSD1306Display:
         if self._pager_renderer.page in [ALL_PAGES, self._page]:
             data[self._pager_renderer.region.id].append(self._pager_renderer.as_fragment())
         # sort fragments by z-index
-        data = {region: sorted(fragments, key=lambda f: f.z) for region, fragments in data.items()}
+        data = {
+            region: sorted(fragments, key=lambda f: f.z)
+            for region, fragments in data.items()
+        }
         # clear buffer
         self._buffer.fill(0)
         # render fragments
@@ -222,8 +233,8 @@ class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
             region=REGION_FOOTER,
             roi=DisplayROI(0, 0, REGION_FOOTER.width, REGION_FOOTER.height),
         )
-        self._pages = {0}
-        self._selected = 0
+        self._pages = {}
+        self._selected = None
 
     def as_fragment(self):
         return DisplayFragment(
@@ -237,16 +248,20 @@ class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
 
     def update(self, pages: Iterable[int], page: int):
         self._pages = pages
-        self._selected = page if page in pages else 0
+        self._selected = page
+        self.render()
 
     def render(self):
+        self._clear_buffer()
+        # sort pages; exclude the INIT page
+        pages = [p for p in sorted(self._pages) if p != PAGE_INIT]
         # render dots
         ch, cw = self.shape
         _, sw = self.SELECTED_PAGE_ICON.shape
-        num_pages = len(self._pages)
+        num_pages = len(pages)
         expected_w = num_pages * sw + (num_pages - 1) * self.SPACING_PX
         offset = int(np.floor((cw - expected_w) * 0.5))
-        for page in sorted(self._pages):
+        for page in pages:
             icon = self.SELECTED_PAGE_ICON if page == self._selected else self.UNSELECTED_PAGE_ICON
             self._buffer[:, offset:offset + sw] = icon
             offset += sw + self.SPACING_PX

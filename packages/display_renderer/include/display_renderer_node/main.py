@@ -2,27 +2,29 @@
 
 import asyncio
 import dataclasses
-import time
-from asyncio import Task
+import os
 from pathlib import Path
-from threading import Thread
-from typing import Union, Optional, Dict, Awaitable, Callable
+from typing import Union, Optional, Dict, Awaitable, Callable, List
 
 import argparse
 import netifaces
 import requests
 from PIL import Image, ImageOps
-from dtps.ergo_ui import PublisherInterface
 
 from display_driver.types import Z_SYSTEM
-from display_driver.types.page import ALL_PAGES, PAGE_HOME
+from display_driver.types.page import ALL_PAGES, PAGE_HOME, PAGE_ROBOT_INFO
 from display_driver.types.regions import REGION_HEADER, REGION_BODY
 from display_driver.types.roi import DisplayROI
 from display_renderer import AbsDisplayFragmentRenderer, TextFragmentRenderer
+from display_renderer.renderer import MultipageTextFragmentRenderer
 from display_renderer.text import monospace_screen
 from dt_node_utils import NodeType
+from dt_node_utils.asyncio import create_task
 from dt_node_utils.config import NodeConfiguration
+from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
+from dt_robot_utils import get_robot_name, get_robot_configuration
+from dtps.ergo_ui import PublisherInterface
 from duckietown_messages.actuators.display_fragments import DisplayFragments
 from duckietown_messages.standard.header import Header
 from duckietown_messages.utils.image.pil import pil_to_np
@@ -50,25 +52,23 @@ class DisplayRendererNode(Node):
         self._configuration = DisplayRendererNodeConfiguration.from_name(self.package, config)
         # assets dir
         assets_dir: Path = self._package.assets_dir
+        # health data
+        self._health_data: Optional[dict] = None
         # queues
         self._fragments: Optional[PublisherInterface] = None
-        # data fetcher worker
-        self._fetcher: HealthDataFetcher = HealthDataFetcher(
-            url=f"http://{self._robot_name}.local/health/",
-            frequency=self._configuration.renderers["health"].frequency
-        )
-        self._fetcher.start()
         # create renderers
         self._battery_indicator = BatteryIndicatorFragmentRenderer(
             assets_dir,
-            self._fetcher,
             self.publish,
             frequency=self._configuration.renderers["health"].frequency
         )
         self._usage_renderer = UsageStatsFragmentRenderer(
-            self._fetcher,
             self.publish,
             frequency=self._configuration.renderers["health"].frequency
+        )
+        self._robot_info_renderer = RobotInfoRenderer(
+            self.publish,
+            frequency=self._configuration.renderers["robot_info"].frequency
         )
         self._wlan0_indicator = NetIFaceFragmentRenderer(
             assets_dir,
@@ -84,7 +84,13 @@ class DisplayRendererNode(Node):
             self.publish,
             frequency=self._configuration.renderers["network"].frequency
         )
-        self._renderers = [self._battery_indicator, self._usage_renderer, self._wlan0_indicator, self._eth0_indicator]
+        self._renderers: Dict[str, AbsDisplayFragmentRenderer] = {
+            "battery_indicator": self._battery_indicator,
+            "usage_renderer": self._usage_renderer,
+            "robot_info_renderer": self._robot_info_renderer,
+            "wlan0_indicator": self._wlan0_indicator,
+            "eth0_indicator": self._eth0_indicator
+        }
 
     async def worker(self):
         await self.dtps_init(self._configuration)
@@ -95,8 +101,25 @@ class DisplayRendererNode(Node):
         await self.dtps_expose()
         # run forever
         await asyncio.wait([
-            Task(renderer.worker()) for renderer in self._renderers
+            create_task(renderer.worker, name, self.logger) for name, renderer in self._renderers.items()
         ])
+
+    @sidecar
+    async def health_data_fetcher(self):
+        dt: float = 1.0 / self._configuration.renderers["health"].frequency
+        url: str = f"http://{self._robot_name}.local/health/"
+        while True:
+            # noinspection PyBroadException
+            try:
+                health_data = requests.get(url).json()
+            except BaseException:
+                await asyncio.sleep(dt)
+                continue
+            # update health renderers
+            for renderer in [self._battery_indicator, self._usage_renderer, self._robot_info_renderer]:
+                renderer.update(health_data)
+            # ---
+            await asyncio.sleep(dt)
 
     async def publish(self, renderer: AbsDisplayFragmentRenderer):
         await self._fragments.publish(DisplayFragments(
@@ -105,30 +128,10 @@ class DisplayRendererNode(Node):
         ).to_rawdata())
 
 
-class HealthDataFetcher(Thread):
-
-    def __init__(self, url: str, frequency: float):
-        super().__init__(daemon=True, name="health-data-fetcher")
-        self._url: str = url
-        self._frequency: float = frequency
-        self.data: Optional[dict] = None
-
-    def run(self):
-        dt: float = 1.0 / self._frequency
-        while True:
-            # noinspection PyBroadException
-            try:
-                self.data = requests.get(self._url).json()
-            except BaseException:
-                pass
-            time.sleep(dt)
-
-
 class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
 
     def __init__(self,
                  assets_dir: Path,
-                 fetcher: HealthDataFetcher,
                  callback: Callable[['AbsDisplayFragmentRenderer'], Awaitable],
                  frequency: float):
         super(BatteryIndicatorFragmentRenderer, self).__init__(
@@ -140,11 +143,10 @@ class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
             callback=callback,
             frequency=frequency
         )
-        self._fetcher = fetcher
         self._assets_dir = assets_dir
-        self._percentage = 0
-        self._charging = False
-        self._present = False
+        self._percentage: int = -1
+        self._charging: bool = False
+        self._present: bool = False
         # load assets
         self._assets = {
             asset: pil_to_np(ImageOps.grayscale(Image.open(self._assets_dir / "icons" / f"{asset}.png")))
@@ -177,26 +179,29 @@ class BatteryIndicatorFragmentRenderer(AbsDisplayFragmentRenderer):
         text_buf = monospace_screen((text_h, text_w), text, scale="fill")
         self._buffer[vshift_px:vshift_px + text_h, ico_w + ico_space:] = text_buf
 
+    def update(self, data: dict):
+        self._present: bool = data["battery"]["present"]
+        self._charging: bool = data["battery"]["charging"]
+        self._percentage: int = data["battery"]["percentage"]
+
     def render(self):
-        if self._fetcher.data is None:
+        # no data yet
+        if self._percentage < 0:
             return
-        # get data
-        data: dict = self._fetcher.data["battery"]
-        present: bool = data["present"]
-        charging: bool = data["charging"]
-        percentage: int = data["percentage"]
         # battery not found
-        if not present:
+        if not self._present:
             self._draw_indicator("battery_not_found", "NoBT")
             return
-        # battery charging
-        if charging:
+        # battery charging/discharging
+        if self._charging:
+            # battery charging
             _icon = "battery_charging"
         else:
-            dec = "%d" % (percentage / 10)
+            # battery discharging
+            dec = "%d" % (self._percentage / 10)
             _icon = f"battery_{dec}"
-        # battery discharging
-        self._draw_indicator(_icon, "%d%%" % percentage)
+        # draw icon
+        self._draw_indicator(_icon, "%d%%" % self._percentage)
 
 
 class UsageStatsFragmentRenderer(TextFragmentRenderer):
@@ -210,7 +215,6 @@ RAM |{pmem_bar}| {pmem}
 DSK |{pdsk_bar}| {pdsk}"""
 
     def __init__(self,
-                 fetcher: HealthDataFetcher,
                  callback: Callable[['AbsDisplayFragmentRenderer'], Awaitable],
                  frequency: float):
         super(UsageStatsFragmentRenderer, self).__init__(
@@ -222,38 +226,44 @@ DSK |{pdsk_bar}| {pdsk}"""
             callback=callback,
             frequency=frequency
         )
-        self._fetcher = fetcher
         self._min_ctmp = 20
         self._max_ctmp = 60
+        # data
+        self._ctmp: Union[None, str, int, float] = None
+        self._pcpu: Union[None, str, int] = None
+        self._pmem: Union[None, str, int] = None
+        self._pdsk: Union[None, str, int] = None
 
-    def render(self):
-        if self._fetcher.data is None:
-            return
-        # get data
-        data: dict = self._fetcher.data
-        ctmp: Union[str, int, float] = data["temperature"]
-        pcpu: Union[str, int] = data["cpu"]["percentage"]
-        pmem: Union[str, int] = data["memory"]["percentage"]
-        pdsk: Union[str, int] = data["disk"]["percentage"]
+    def update(self, data: dict):
+        self._ctmp = data["temperature"]
+        self._pcpu = data["cpu"]["percentage"]
+        self._pmem = data["memory"]["percentage"]
+        self._pdsk = data["disk"]["percentage"]
         # ---
         ptmp = (
-            int(100 * (max(0, ctmp - self._min_ctmp) / (self._max_ctmp - self._min_ctmp)))
-            if isinstance(ctmp, (int, float))
+            int(100 * (max(0, self._ctmp - self._min_ctmp) / (self._max_ctmp - self._min_ctmp)))
+            if isinstance(self._ctmp, (int, float))
             else 0
         )
         text = self.CANVAS.format(
             **{
-                "ctmp": self._fmt(ctmp, "C"),
-                "pcpu": self._fmt(pcpu, "%"),
-                "pmem": self._fmt(pmem, "%"),
-                "pdsk": self._fmt(pdsk, "%"),
+                "ctmp": self._fmt(self._ctmp, "C"),
+                "pcpu": self._fmt(self._pcpu, "%"),
+                "pmem": self._fmt(self._pmem, "%"),
+                "pdsk": self._fmt(self._pdsk, "%"),
                 "ctmp_bar": self._bar(ptmp),
-                "pcpu_bar": self._bar(pcpu),
-                "pmem_bar": self._bar(pmem),
-                "pdsk_bar": self._bar(pdsk),
+                "pcpu_bar": self._bar(self._pcpu),
+                "pmem_bar": self._bar(self._pmem),
+                "pdsk_bar": self._bar(self._pdsk),
             }
         )
-        self.update(text)
+        super().update(text)
+
+    def render(self):
+        # no data yet
+        if self._ctmp is None:
+            return
+        # render
         super().render()
 
     @staticmethod
@@ -306,6 +316,82 @@ class NetIFaceFragmentRenderer(AbsDisplayFragmentRenderer):
             connected = False
         icon = self._iface + ("" if connected else "_not") + "_connected"
         self._buffer[:, :] = self._assets[icon]
+
+
+class RobotInfoRenderer(MultipageTextFragmentRenderer):
+
+    def __init__(
+            self,
+            callback: Callable[['AbsDisplayFragmentRenderer'], Awaitable],
+            frequency: float
+    ):
+        super(RobotInfoRenderer, self).__init__(
+            name="__robot_info__",
+            page=PAGE_ROBOT_INFO,
+            region=REGION_BODY,
+            roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
+            scale="hfill",
+            lines_per_page=3,
+            ttl=-1,
+            callback=callback,
+            frequency=frequency
+        )
+        # data
+        self._data: Optional[dict] = None
+
+    @staticmethod
+    def _shorten_str(value):
+        """If the input is longer than the allowed, it's trimmed and '...' is added"""
+        # maximum length of the value
+        max_length: int = 8
+        output = value
+        if len(value) > max_length:
+            output = value[:(max_length - 3)] + "..."
+        return output
+
+    def _fmt(self, data: Dict[str, str]) -> str:
+        # length of the longest line
+        maxl: int = max([
+            len(k) + len(self._shorten_str(v)) + 1 for k, v in data.items()
+        ])
+        # compile text
+        text: str = ""
+        for k, v in data.items():
+            if len(k) > 0:
+                w = self._shorten_str(v)
+                text += f"{k}{' ' * (maxl - len(k) - len(w))}{w}\n"
+            else:
+                text += f"{v}\n"
+        return text.strip("\n")
+
+    def update(self, data: dict):
+        self._data = data
+
+    async def step(self):
+        if self._data is None:
+            return
+        firmware: str = f"v{self._data['software']['version']}"
+        distro: str = os.environ.get('DT_DISTRO', 'N.A.')
+        ip: str = self.get_local_ip_address_on_gateway_interface() or "N.A."
+        # format texts for the display
+        text: str = self._fmt({
+            "Name": get_robot_name(),
+            "Model": get_robot_configuration().name,
+            "Firmware": firmware,
+            "Distro": distro,
+            # NOTE: IP uses two lines
+            "IP": "", "": ip
+        })
+        # update the underlying text renderer
+        super().update(text)
+
+    @staticmethod
+    def get_local_ip_address_on_gateway_interface() -> Optional[str]:
+        gateway_iface = netifaces.gateways()['default'][netifaces.AF_INET][1]
+        ips: List[dict] = netifaces.ifaddresses(gateway_iface).get(netifaces.AF_INET)
+        if ips:
+            return ips[0]['addr']
+        return None
 
 
 def main():

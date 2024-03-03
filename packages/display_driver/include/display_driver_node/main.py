@@ -6,7 +6,9 @@ from typing import List
 import argparse
 
 from display_driver.luma.ssd1306 import SSD1306Display
-from display_driver.types.page import PAGE_SHUTDOWN
+from display_driver.types.page import PAGE_SHUTDOWN, PAGE_INIT
+from display_driver.types.regions import DisplayRegionID
+from display_renderer import monospace_screen
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.decorators import sidecar
@@ -16,7 +18,9 @@ from dtps_http import RawData
 from duckietown_messages.actuators.display_fragment import DisplayFragment
 from duckietown_messages.actuators.display_fragments import DisplayFragments
 from duckietown_messages.sensors.button_event import ButtonEvent, InteractionEvent
+from duckietown_messages.sensors.image import Image
 from duckietown_messages.standard.header import Header
+from duckietown_messages.standard.roi import ROI
 
 
 @dataclasses.dataclass
@@ -27,34 +31,20 @@ class DisplayNodeConfiguration(NodeConfiguration):
 
 
 BOOTING_SCREEN: List[DisplayFragment] = [
-    # DisplayFragment(
-    #     header=Header(),
-    #     name="__booting__",
-    #     region=DisplayRegionID.HEADER,
-    #     page=PAGE_HOME,
-    #     content=Image.from_np(
-    #         monospace_screen((16, 128), "   Duckietown", scale="fill"),
-    #         encoding="mono8",
-    #         header=Header()
-    #     ),
-    #     location=ROI(header=Header(), x=0, y=0, width=128, height=16),
-    #     z=0,
-    #     ttl=24,
-    # ),
-    # DisplayFragment(
-    #     header=Header(),
-    #     name="__booting__",
-    #     region=DisplayRegionID.BODY,
-    #     page=PAGE_HOME,
-    #     content=Image.from_np(
-    #         monospace_screen((32, 128), "  Loading...  ", scale="fill", align="center"),
-    #         encoding="mono8",
-    #         header=Header()
-    #     ),
-    #     location=ROI(header=Header(), x=0, y=8, width=128, height=32),
-    #     z=0,
-    #     ttl=24,
-    # ),
+    DisplayFragment(
+        header=Header(),
+        name="__booting__",
+        region=DisplayRegionID.BODY,
+        page=PAGE_INIT,
+        content=Image.from_np(
+            monospace_screen((32, 128), " Loading... ", scale="hfill"),
+            encoding="mono8",
+            header=Header()
+        ),
+        location=ROI(header=Header(), x=0, y=8, width=128, height=32),
+        z=0,
+        ttl=-1,
+    ),
 ]
 
 
