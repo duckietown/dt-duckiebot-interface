@@ -2,7 +2,7 @@
 The flight controller package contains a single class (i.e., FlightController) that is responsible
 for talking to a betaflight-based flight controller.
 
-.. autoclass:: fc_driver.FlightController
+.. autoclass:: flight_controller_driver.FlightController
 
 """
 

@@ -27,7 +27,7 @@ from std_srvs.srv import Trigger, TriggerResponse
 from dt_class_utils import DTReminder
 from duckietown.dtros import DTROS, NodeType, DTParam, ParamType
 from yamspy import MSPy
-from fc_driver import FlightController
+from flight_controller_driver import FlightController
 
 def main():
     # run flight controller driver communication loop

@@ -1,12 +1,21 @@
-## ! DO NOT MANUALLY INVOKE THIS setup.py, USE CATKIN INSTEAD
+from setuptools import setup
 
-from distutils.core import setup
-from catkin_pkg.python_setup import generate_distutils_setup
+package_name = 'flight_controller_driver'
 
-# fetch values from package.xml
-setup_args = generate_distutils_setup(
-    packages=['fc_driver'],
-    package_dir={'': 'include'},
+setup(
+    name=package_name,
+    version='1.0.0',
+    packages=[package_name],
+    package_dir={"": "include"},
+    data_files=[
+        ('share/ament_index/resource_index/packages', [f'resource/{package_name}']),
+        (f'share/{package_name}', ['package.xml']),
+    ],
+    install_requires=['setuptools'],
+    zip_safe=True,
+    maintainer='Andrea F. Daniele',
+    maintainer_email='afdaniele@duckietown.com',
+    tests_require=['pytest'],
+    entry_points={},
 )
 
-setup(**setup_args)
