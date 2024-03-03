@@ -4,4 +4,4 @@ renderers:
   network:
     frequency: 0.2
   robot_info:
-    frequency: 1.0
+    frequency: 0.05
