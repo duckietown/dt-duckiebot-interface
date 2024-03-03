@@ -1,29 +1,28 @@
 #!/usr/bin/env python3
+
+import asyncio
 import dataclasses
 import os
 import time
-import asyncio
 from typing import Optional, List
 
 import argparse
-import yaml
+from dtps import DTPSContext, PublisherInterface
 
-from dt_node_utils.config import NodeConfiguration
-# from display_renderer import (
-#     DisplayROI,
-#     PAGE_TOF,
-#     REGION_BODY,
-#     MonoImageFragmentRenderer,
-# )
-# from display_renderer.text import monospace_screen
-
-from dtps_http import RawData
-from tof_driver import ToFDriver, ToFAccuracy
-
-from dt_class_utils import DTReminder
+from display_driver.types.page import PAGE_TOF
+from display_driver.types.regions import REGION_BODY
+from display_driver.types.roi import DisplayROI
+from display_renderer import MonoImageFragmentRenderer, monospace_screen
 from dt_node_utils import NodeType
+from dt_node_utils.config import NodeConfiguration
+from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
 from dt_robot_utils import get_robot_hardware, RobotHardware
+from duckietown_messages.actuators.display_fragments import DisplayFragments
+from duckietown_messages.sensors.range import Range
+from duckietown_messages.sensors.range_finder import RangeFinder
+from duckietown_messages.standard.header import Header
+from tof_driver import ToFDriver, ToFAccuracy
 
 
 @dataclasses.dataclass
@@ -44,7 +43,7 @@ class ToFNodeConfiguration(NodeConfiguration):
 class ToFNode(Node):
     """
     This class implements the communication logic with a Time-of-Flight sensor on the i2c bus.
-    It publishes both range measurements as well as display fragments to show on an LCD screen.
+    It publishes both range measurements and display fragments to show on an LCD screen.
 
     NOTE: Out-of-range readings do not stop the stream of messages. Instead, a message with a
           range value well outside the domain [min_range, max_range] will be published.
@@ -91,11 +90,8 @@ class ToFNode(Node):
             self.logger.error(f"No ToF device found. These connectors were tested:\n{self.configuration.connectors}\n")
             exit(1)
 
-        # create screen renderer
-        # self._renderer = ToFSensorFragmentRenderer(self._sensor_name, self._accuracy)
-
-        # create reminders
-        self._fragment_reminder = DTReminder(frequency=self.configuration.display_fragment_frequency)
+        # screen renderer
+        self._renderer: Optional[ToFSensorFragmentRenderer] = None
 
     def _find_sensor(self) -> Optional[ToFDriver]:
         if get_robot_hardware() != RobotHardware.VIRTUAL:
@@ -138,36 +134,57 @@ class ToFNode(Node):
 
     async def worker(self):
         await self.dtps_init(self.configuration)
-        # create sensor queue
-        queue = await (self.context / "out" / "range").queue_create()
+        # create sensor queues
+        range_queue = await (self.context / "out" / "range").queue_create()
+        info_queue = await (self.context / "out" / "info").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensors" / "time-of-flight" / self._sensor_name).expose(queue)
+        await (self.switchboard / "sensors" / "time-of-flight" / self._sensor_name / "range").expose(range_queue)
+        await (self.switchboard / "sensors" / "time-of-flight" / self._sensor_name / "info").expose(info_queue)
+        # publish info about the sensor
+        msg = RangeFinder(
+            header=Header(),
+            fov=self._accuracy.fov,
+            minimum=self._accuracy.min_range,
+            maximum=self._accuracy.max_range,
+        )
+        await info_queue.publish(msg.to_rawdata())
         # read and publish
         dt: float = 1.0 / self._frequency
         while not self.is_shutdown:
             # detect range
             range_mm: float = self._sensor.get_distance()
             range_m: float = range_mm / 1000
+            data: float | None = range_m if range_m <= self._accuracy.max_range else None
             # pack observation into a message
-            data = {
-                'frame_id': self._frame_id,
-                'range': range_m,
-                'field_of_view': self._accuracy.fov,
-                'min_range': self._accuracy.min_range,
-                'max_range': self._accuracy.max_range,
-            }
-            rdata = RawData.cbor_from_native_object(data)
-            await queue.publish(rdata)
-
-            # publish display rendering (if it is a good time to do so)
-            # if self._fragment_reminder.is_time():
-            #     self._renderer.update(distance_mm)
-            #     msg = self._renderer.as_msg()
-            #     self._display_pub.publish(msg)
-
+            msg = Range(
+                header=Header(frame=self._frame_id),
+                data=data,
+            )
+            await range_queue.publish(msg.to_rawdata())
+            # update display
+            if self._renderer is not None:
+                self._renderer.update(range_mm)
+            # wait
             await asyncio.sleep(dt)
+
+    @sidecar
+    async def worker_display(self):
+        # wait for switchboard
+        await self.switchboard_ready.wait()
+        # wait for display
+        display: DTPSContext = await (self.switchboard / "actuator" / "display" / "fragments").until_ready()
+        publisher: PublisherInterface = await display.publisher()
+        # create screen renderer
+        self._renderer = ToFSensorFragmentRenderer(
+            self._sensor_name,
+            self._accuracy,
+            self.configuration.display_fragment_frequency,
+            publisher
+        )
+        # lauch display renderer
+        await self._renderer.worker()
 
     def on_shutdown(self):
         # noinspection PyBroadException
@@ -177,31 +194,49 @@ class ToFNode(Node):
             pass
 
 
-# class ToFSensorFragmentRenderer(MonoImageFragmentRenderer):
-#     def __init__(self, name: str, accuracy: ToFAccuracy):
-#         super(ToFSensorFragmentRenderer, self).__init__(
-#             f"__tof_{name}__",
-#             page=PAGE_TOF,
-#             region=REGION_BODY,
-#             roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
-#         )
-#         self._name = name
-#         self._accuracy = accuracy
-#         name = self._name.replace("_", " ").title()
-#         self._title_h = 12
-#         self._title = monospace_screen((self._title_h, self.roi.w), f"ToF / {name}:", scale="vfill")
-#
-#     def update(self, measurement_mm: float):
-#         pretty_measurement = (
-#             f" {(measurement_mm / 10):.1f}cm "
-#             if (measurement_mm / 1000) < self._accuracy.max_range
-#             else "Out-Of-Range"
-#         )
-#         reading = monospace_screen(
-#             (self.roi.h - self._title_h, self.roi.w), pretty_measurement, scale="hfill", align="center"
-#         )
-#         self.data[: self._title_h, :] = self._title
-#         self.data[self._title_h:, :] = reading
+class ToFSensorFragmentRenderer(MonoImageFragmentRenderer):
+
+    def __init__(self, name: str, accuracy: ToFAccuracy, frequency: float, publisher: PublisherInterface):
+        super(ToFSensorFragmentRenderer, self).__init__(
+            f"__tof_{name}__",
+            page=PAGE_TOF,
+            region=REGION_BODY,
+            roi=DisplayROI(0, 0, REGION_BODY.width, REGION_BODY.height),
+            callback=self.publish,
+            frequency=frequency
+        )
+        self._accuracy = accuracy
+        self._publisher: PublisherInterface = publisher
+        name = name.replace("_", " ").title()
+        self._range_mm: float | None = None
+        self._title_h = 12
+        self._title = monospace_screen((self._title_h, self.roi.w), f"ToF / {name}:", scale="vfill")
+
+    def update(self, range_mm: float):
+        self._range_mm = range_mm
+
+    async def step(self):
+        if self._range_mm is None:
+            return
+        # render title
+        pretty_range = (
+            f" {(self._range_mm / 10):.1f}cm "
+            if (self._range_mm / 1000) < self._accuracy.max_range
+            else "Out-Of-Range"
+        )
+        # render reading
+        reading = monospace_screen(
+            (self.roi.h - self._title_h, self.roi.w), pretty_range, scale="hfill", align="center"
+        )
+        # update buffer
+        self._buffer[: self._title_h, :] = self._title
+        self._buffer[self._title_h:, :] = reading
+
+    async def publish(self, _):
+        await self._publisher.publish(DisplayFragments(
+            header=Header(),
+            fragments=self.fragments
+        ).to_rawdata())
 
 
 def main():
@@ -213,12 +248,6 @@ def main():
     node: ToFNode = ToFNode(sensor_name=args.sensor_name, config=args.config)
     # launch the node
     node.spin()
-
-
-    # try:
-    #     asyncio.run(node.run)
-    # except KeyboardInterrupt:
-    #     pass
 
 
 if __name__ == "__main__":
