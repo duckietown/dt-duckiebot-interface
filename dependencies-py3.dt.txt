@@ -3,3 +3,6 @@
 
 # this is needed for the camera driver node
 lib-dt-computer-vision==0.1.6
+
+# messages
+duckietown-messages>=0.0.2,<2
