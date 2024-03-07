@@ -13,7 +13,6 @@ from dt_node_utils.node import Node
 from duckietown_messages.sensors.angular_velocities import AngularVelocities
 from duckietown_messages.sensors.linear_accelerations import LinearAccelerations
 from duckietown_messages.sensors.temperature import Temperature
-from duckietown_messages.standard.header import Header
 from imu_driver.exceptions import DeviceNotFound
 from imu_driver.mpu6050 import CalibratedMPU6050
 from imu_driver.types import I2CConnector
@@ -86,9 +85,11 @@ class IMUNode(Node):
         dt: float = 1.0 / self.configuration.frequency
         while not self.is_shutdown:
             # read data from the sensors and pack into messages
-            accelerations: LinearAccelerations = LinearAccelerations(Header(), *self._sensor.linear_accelerations)
-            velocities: AngularVelocities = AngularVelocities(Header(), *self._sensor.angular_velocities)
-            temperature: Temperature = Temperature(Header(), self._sensor.temperature)
+            acc: List[float] = self._sensor.linear_accelerations
+            accelerations: LinearAccelerations = LinearAccelerations(x=acc[0], y=acc[1], z=acc[2])
+            vel: List[float] = self._sensor.angular_velocities
+            velocities: AngularVelocities = AngularVelocities(x=vel[0], y=vel[1], z=vel[2])
+            temperature: Temperature = Temperature(data=self._sensor.temperature)
             # publish
             await accelerations_queue.publish(accelerations.to_rawdata())
             await velocities_queue.publish(velocities.to_rawdata())

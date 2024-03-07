@@ -11,7 +11,6 @@ import numpy as np
 
 from abc import abstractmethod, ABCMeta
 
-from dtps_http import RawData
 from turbojpeg import TurboJPEG
 
 from dtps import DTPSContext
@@ -20,6 +19,9 @@ from dt_computer_vision.camera import CameraModel
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
+from duckietown_messages.sensors.camera import Camera
+from duckietown_messages.sensors.compressed_image import CompressedImage
+from duckietown_messages.standard.header import Header
 
 
 @dataclasses.dataclass
@@ -121,20 +123,21 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
             time.sleep(1)
 
     async def publish(self, jpeg: bytes):
-        data: dict = {
-            "frame": self.frame_id,
-            "format": "jpeg",
-            "data": jpeg,
-        }
+        msg: CompressedImage = CompressedImage(
+            header=Header(
+                frame=self.frame_id,
+            ),
+            format="jpeg",
+            data=jpeg,
+        )
         # publish the compressed image
-        rdata = RawData.cbor_from_native_object(data)
-        await self._jpeg_queue.publish(rdata)
+        await self._jpeg_queue.publish(msg.to_rawdata())
         self._last_image_published_time = time.time()
         # ---
         if not self._has_published:
             # publish camera model
-            camera_model_rdata = RawData.cbor_from_native_object(self.camera_model.to_native_objects())
-            await self._parameters_queue.publish(camera_model_rdata)
+            msg: Camera = Camera.from_camera_model(self.camera_model)
+            await self._parameters_queue.publish(msg.to_rawdata())
             self.loginfo("Published camera model")
             # ---
             self.loginfo("Published the first image")

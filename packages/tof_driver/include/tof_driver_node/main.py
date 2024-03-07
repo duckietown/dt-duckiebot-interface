@@ -144,7 +144,6 @@ class ToFNode(Node):
         await (self.switchboard / "sensors" / "time-of-flight" / self._sensor_name / "info").expose(info_queue)
         # publish info about the sensor
         msg = RangeFinder(
-            header=Header(),
             fov=self._accuracy.fov,
             minimum=self._accuracy.min_range,
             maximum=self._accuracy.max_range,
@@ -234,7 +233,6 @@ class ToFSensorFragmentRenderer(MonoImageFragmentRenderer):
 
     async def publish(self, _):
         await self._publisher.publish(DisplayFragments(
-            header=Header(),
             fragments=self.fragments
         ).to_rawdata())
 

@@ -19,8 +19,7 @@ from duckietown_messages.actuators.display_fragment import DisplayFragment
 from duckietown_messages.actuators.display_fragments import DisplayFragments
 from duckietown_messages.sensors.button_event import ButtonEvent, InteractionEvent
 from duckietown_messages.sensors.image import Image
-from duckietown_messages.standard.header import Header
-from duckietown_messages.standard.roi import ROI
+from duckietown_messages.geometry_2d.roi import ROI
 
 
 @dataclasses.dataclass
@@ -32,16 +31,14 @@ class DisplayNodeConfiguration(NodeConfiguration):
 
 BOOTING_SCREEN: List[DisplayFragment] = [
     DisplayFragment(
-        header=Header(),
         name="__booting__",
         region=DisplayRegionID.BODY,
         page=PAGE_INIT,
         content=Image.from_np(
             monospace_screen((32, 128), " Loading... ", scale="hfill"),
             encoding="mono8",
-            header=Header()
         ),
-        location=ROI(header=Header(), x=0, y=8, width=128, height=32),
+        location=ROI(x=0, y=8, width=128, height=32),
         z=0,
         ttl=-1,
     ),
@@ -100,7 +97,6 @@ class DisplayNode(Node):
         await (self.switchboard / "actuator" / "display" / "fragments").expose(fragments)
         # publish the initial state
         await fragments.publish(DisplayFragments(
-            header=Header(),
             fragments=BOOTING_SCREEN
         ).to_rawdata())
         # run forever

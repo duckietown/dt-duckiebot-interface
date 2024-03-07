@@ -3,19 +3,50 @@
     "type": "object",
     "properties": {
         "initial_pattern": {
-            "type": "array",
-            "minLength": 5,
-            "maxLength": 5,
-            "items": {
-                "type": "array",
-                "minLength": 3,
-                "maxLength": 4,
-                "items": {
-                    "type": "integer",
-                    "minimum": 0,
-                    "maximum": 255
+            "type": "object",
+            "properties": {
+                "front_left": {
+                    "type": "array",
+                    "minLength": 3,
+                    "maxLength": 4,
+                    "items": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
+                "front_right": {
+                    "type": "array",
+                    "minLength": 3,
+                    "maxLength": 4,
+                    "items": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
+                "rear_left": {
+                    "type": "array",
+                    "minLength": 3,
+                    "maxLength": 4,
+                    "items": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
+                },
+                "rear_right": {
+                    "type": "array",
+                    "minLength": 3,
+                    "maxLength": 4,
+                    "items": {
+                        "type": "number",
+                        "minimum": 0,
+                        "maximum": 1
+                    }
                 }
-            }
+            },
+            "additionalProperties": false
         }
     },
     "additionalProperties": false

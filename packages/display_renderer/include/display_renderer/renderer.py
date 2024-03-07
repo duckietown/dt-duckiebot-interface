@@ -100,7 +100,6 @@ class AbsDisplayFragmentRenderer(ABC):
     def fragments(self) -> List[DisplayFragment]:
         return [
             DisplayFragment(
-                header=Header(),
                 name=self._name,
                 region=self._region.id,
                 page=self._page,
@@ -161,7 +160,6 @@ class MultipageTextFragmentRenderer(TextFragmentRenderer):
         # create fragments
         return [
             DisplayFragment(
-                header=Header(),
                 name=self._name + f"_{i}__",
                 region=self._region.id,
                 page=self._page + i,

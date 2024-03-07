@@ -6,7 +6,6 @@ import psutil
 import asyncio
 import argparse
 import numpy as np
-from threading import Thread
 
 from typing import Tuple, cast
 from collections import namedtuple

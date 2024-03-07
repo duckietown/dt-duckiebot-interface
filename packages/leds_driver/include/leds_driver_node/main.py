@@ -2,7 +2,7 @@
 
 import dataclasses
 import time
-from typing import Type, cast, List
+from typing import Type, cast, List, Dict
 
 import argparse
 
@@ -12,6 +12,8 @@ from dt_node_utils.node import Node
 from dt_robot_utils import RobotHardware, get_robot_hardware
 from dtps import DTPSContext
 from dtps_http import RawData
+from duckietown_messages.actuators.car_lights import CarLights
+from duckietown_messages.colors.rgba import RGBA
 from leds_driver.leds_driver_abs import LEDsDriverAbs
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
@@ -22,12 +24,9 @@ else:
     LEDsDriver: Type[LEDsDriverAbs] = PWMLEDsDriver
 
 
-uint8 = int
-
-
 @dataclasses.dataclass
 class LEDsDriverNodeConfiguration(NodeConfiguration):
-    initial_pattern: List[List[uint8]]
+    initial_pattern: Dict[str, List[float]]
 
 
 class LEDsDriverNode(Node):
@@ -54,21 +53,18 @@ class LEDsDriverNode(Node):
         """
         Callback that implements a given light pattern.
         """
-        lights: list = cast(list, data.get_as_native_object())
-        if not isinstance(lights, list):
-            self.logwarn("Received an invalid lights pattern. Expected a list of 5 RGB arrays, one for each light. "
-                         "Received '{lights}' instead.")
-            return
+        msg: CarLights = CarLights.from_rawdata(data)
+        lights: List[RGBA] = [
+            msg.front_left,
+            RGBA.zero(),
+            msg.front_right,
+            msg.rear_left,
+            msg.rear_right,
+        ]
         for i, color in enumerate(lights):
-            if not isinstance(color, list) or len(color) not in [3, 4]:
-                self.logwarn(f"Received an invalid RGB value for light ${i}. "
-                             f"Expected an RGB array (i.e., a list of 3 or 4 uint8 values). "
-                             f"Received '{color}' instead.")
-                return
             # apply alpha
-            if len(color) == 4:
-                alpha: float = color[3] / 255.
-                color = [int(v * alpha) for v in color[:3]]
+            alpha: float = color[3]
+            color: List[float] = [v * alpha for v in color[:3]]
             # realize RGB
             self.driver.set_rgb(i, color)
 
@@ -83,7 +79,13 @@ class LEDsDriverNode(Node):
         # expose queues to the switchboard
         await (self.switchboard / "actuator" / "leds" / "rgb").expose(rgb_in)
         # apply initial state
-        await rgb_in.publish(RawData.cbor_from_native_object(self.configuration.initial_pattern))
+        msg: CarLights = CarLights(
+            front_left=RGBA.from_list(self.configuration.initial_pattern["front_left"]),
+            front_right=RGBA.from_list(self.configuration.initial_pattern["front_right"]),
+            rear_left=RGBA.from_list(self.configuration.initial_pattern["rear_left"]),
+            rear_right=RGBA.from_list(self.configuration.initial_pattern["rear_right"]),
+        )
+        await rgb_in.publish(msg.to_rawdata())
         # run forever
         await self.join()
 

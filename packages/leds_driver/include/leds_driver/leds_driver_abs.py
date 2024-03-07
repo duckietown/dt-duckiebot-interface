@@ -25,14 +25,14 @@ class LEDsDriverAbs(ABC):
     +------------------+------------------------------------------+
 
     Setting the color of a single LED is done by setting the brightness of the
-    red, green, and blue channels to a value between 0 and 255. The communication
+    red, green, and blue channels to a value between 0 and 1. The communication
     with the hardware is abstracted through the :obj:`set_rgb` method. By
     using it, you can set directly set the desired color to any LED.
 
     """
 
     @abstractmethod
-    def set_channel_intensity(self, led: int, channel: int, intensity: uint8):
+    def set_channel_intensity(self, led: int, channel: int, intensity: float):
         """
         Sets value for brightness for a single channel out of the three making up an RGB LED.
 
@@ -41,20 +41,15 @@ class LEDsDriverAbs(ABC):
         Args:
             led (:obj:`int`): Index of specific LED (from the table above)
             channel (:obj:`int`): Channel number from [0, 1, 2] corresponding to [R, G, B]
-            intensity (:obj:`int8`): Intensity of brightness (between 0 and 255)
+            intensity (:obj:`float`): Intensity of brightness (between 0 and 1)
 
         """
         pass
 
     @abstractmethod
-    def set_rgb(self, led: int, color: List[uint8]):
+    def set_rgb(self, led: int, color: List[float]):
         """
         Sets value for brightness for all channels of one RGB LED.
-
-        Converts the input color brightness from [0,1] to [0,255] for all
-        channels, then calls self.setLEDBrightness with the right offset
-        corresponding to the color channel in the PWM signal and the color
-        value as int8.
 
         Args:
             led (:obj:`int`): Index of specific LED (from the table above)

@@ -10,13 +10,13 @@ import numpy as np
 
 from dt_node_utils.config import NodeConfiguration
 
-from dtps_http import RawData
-
 from dt_class_utils import DTReminder
 from dt_node_utils import NodeType
 from dt_node_utils.node import Node
+from duckietown_messages.geometry_3d.transformation import Transformation
+from duckietown_messages.standard.integer import Integer
 from wheel_encoder_driver.wheel_encoder_abs import WheelEncoderDriverAbs
-from pytransform3d import transformations, rotations
+from pytransform3d import rotations
 
 from wheel_encoder_driver import WheelEncoderDriver
 
@@ -74,26 +74,19 @@ class WheelEncoderNode(Node):
         # read and publish
         while not self.is_shutdown:
             # pack observation into a message
-            data = {
-                'data': self._sensor.ticks,
-            }
+            msg: Integer = Integer(data=self._sensor.ticks)
             # publish readings
-            rdata = RawData.cbor_from_native_object(data)
-            await queue.publish(rdata)
+            await queue.publish(msg.to_rawdata())
 
             # publish frame updates
             angle = (float(self._sensor.ticks) / float(self.configuration.resolution)) * 2 * math.pi
             quat: np.ndarray = rotations.quaternion_from_euler([0, angle, 0], 0, 1, 2, False)
-            tf: np.ndarray = transformations.transform_from_pq([0, 0, 0, *quat])
-            # TODO: we should make a common class for this
-            data = {
-                "origin": self._motor_frame_id,
-                "target": self._wheel_frame_id,
-                "transform": tf.tolist(),
-            }
-            # TODO: we should wrap this into a TF class
-            rdata = RawData.cbor_from_native_object(data)
-            await tf_queue.publish(rdata)
+            msg: Transformation = Transformation.from_pq(
+                pq=np.array([0, 0, 0, *quat]),
+                source=self._motor_frame_id,
+                target=self._wheel_frame_id,
+            )
+            await tf_queue.publish(msg.to_rawdata())
 
             # publish display rendering (if it is a good time to do so)
             if self._renderer_reminder.is_time():

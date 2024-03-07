@@ -46,7 +46,7 @@ class PWMLEDsDriver(LEDsDriverAbs):
         """
         self.pwm.setPWM(pwm, value, self.PWM_PERIOD)
 
-    def set_channel_intensity(self, led: int, channel: int, intensity: uint8):
+    def set_channel_intensity(self, led: int, channel: int, intensity: float):
         """
         Sets value for brightness for a single channel out of the three making up an RGB LED.
 
@@ -55,12 +55,12 @@ class PWMLEDsDriver(LEDsDriverAbs):
         Args:
             led (:obj:`int`): Index of specific LED (from the table above)
             channel (:obj:`int`): Channel number from [0, 1, 2] corresponding to [R, G, B]
-            intensity (:obj:`int8`): Intensity of brightness (between 0 and 255)
+            intensity (:obj:`float`): Intensity of brightness (between 0 and 1)
 
         """
-        self.pwm.setPWM(3 * led + channel, intensity << 4, self.PWM_PERIOD)
+        self.pwm.setPWM(3 * led + channel, int(255. * intensity) << 4, self.PWM_PERIOD)
 
-    def set_rgb(self, led: int, color: List[uint8]):
+    def set_rgb(self, led: int, color: List[float]):
         """
         Sets value for brightness for all channels of one RGB LED.
 
@@ -69,9 +69,9 @@ class PWMLEDsDriver(LEDsDriverAbs):
             color (:obj:`list` of :obj:`float`): Brightness for the three RGB channels, in interval [0,1]
         """
 
-        self.set_channel_intensity(led, self.CHANNEL_RED, int(color[0]))
-        self.set_channel_intensity(led, self.CHANNEL_GREEN, int(color[1]))
-        self.set_channel_intensity(led, self.CHANNEL_BLUE, int(color[2]))
+        self.set_channel_intensity(led, self.CHANNEL_RED, color[0])
+        self.set_channel_intensity(led, self.CHANNEL_GREEN, color[1])
+        self.set_channel_intensity(led, self.CHANNEL_BLUE, color[2])
 
     def release(self):
         """Destructur method.

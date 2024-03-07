@@ -4,7 +4,7 @@ import time
 
 import argparse
 import dataclasses
-from typing import Type, cast, Optional
+from typing import Type, Optional
 
 from dt_node_utils.decorators import sidecar
 from dtps_http import RawData
@@ -15,6 +15,8 @@ from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
 from dt_robot_utils import RobotHardware, get_robot_hardware
+from duckietown_messages.actuators.differential_pwm import DifferentialPWM
+from duckietown_messages.standard.boolean import Boolean
 from wheels_driver.wheels_driver_abs import WheelsDriverAbs, WheelPWMConfiguration
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
@@ -72,35 +74,28 @@ class WheelsDriverNode(Node):
         """
         Callback that sets wheels' PWM signals.
         """
-        pwms: dict = cast(dict, data.get_as_native_object())
+        pwms: DifferentialPWM = DifferentialPWM.from_rawdata(data)
         pwm_left: float = 0.0
         pwm_right: float = 0.0
         self.last_command_time = time.time()
         if not self.estop:
-            try:
-                pwm_left = pwms["left"]
-                pwm_right = pwms["right"]
-            except KeyError:
-                self.logwarn(f"Invalid PWM data. Expected a two-key ('left', 'right') dict. Got '{pwms}' instead.")
-                return
+            pwm_left = pwms.left
+            pwm_right = pwms.right
 
         self.driver.set_wheels_speed(left=pwm_left, right=pwm_right)
         # publish out the filtered signals
-        filtered: dict = {"left": pwm_left, "right": pwm_right}
-        await self._pwm_filtered_out.publish(RawData.cbor_from_native_object(filtered))
+        filtered: DifferentialPWM = DifferentialPWM(left=pwm_left, right=pwm_right)
+        await self._pwm_filtered_out.publish(filtered.to_rawdata())
         # publish out the executed signals
-        executed: dict = {"left": self.driver.left_pwm, "right": self.driver.right_pwm}
-        await self._pwm_executed_out.publish(RawData.cbor_from_native_object(executed))
+        executed: DifferentialPWM = DifferentialPWM(left=self.driver.left_pwm, right=self.driver.right_pwm)
+        await self._pwm_executed_out.publish(executed.to_rawdata())
 
     async def cb_estop(self, data: RawData):
         """
         Callback that enables/disables emergency stop.
         """
-        estop: object = data.get_as_native_object()
-        if not isinstance(estop, bool):
-            self.logwarn(f"Invalid emergency stop data. Expected a boolean. Got '{estop}' instead.")
-            return
-        self.estop = estop
+        msg: Boolean = Boolean.from_rawdata(data)
+        self.estop = msg.data
         if self.estop:
             self.loginfo("Emergency Stop Activated")
         else:
@@ -127,8 +122,8 @@ class WheelsDriverNode(Node):
         await (self.switchboard / "actuator" / "wheels" / "pwm_filtered").expose(self._pwm_filtered_out)
         await (self.switchboard / "actuator" / "wheels" / "pwm_executed").expose(self._pwm_executed_out)
         # publish the initial state
-        await pwm_in.publish(RawData.cbor_from_native_object({"left": 0.0, "right": 0.0}))
-        await estop_queue.publish(RawData.cbor_from_native_object(False))
+        await pwm_in.publish(DifferentialPWM(left=0, right=0).to_rawdata())
+        await estop_queue.publish(Boolean(data=False).to_rawdata())
         # run forever
         await self.join()
 

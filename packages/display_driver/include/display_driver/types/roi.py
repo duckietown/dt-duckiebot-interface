@@ -1,7 +1,7 @@
 import dataclasses
 
 from duckietown_messages.standard.header import Header
-from duckietown_messages.standard.roi import ROI
+from duckietown_messages.geometry_2d.roi import ROI
 
 
 @dataclasses.dataclass

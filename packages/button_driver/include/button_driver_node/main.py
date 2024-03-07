@@ -24,7 +24,6 @@ from dt_node_utils.node import Node
 from dtps import DTPSContext
 from dtps_http import RawData
 from duckietown_messages.sensors.button_event import InteractionEvent, ButtonEvent as ButtonEventMsg
-from duckietown_messages.standard.header import Header
 
 
 @dataclasses.dataclass
@@ -96,7 +95,6 @@ class ButtonDriverNode(Node):
     async def _react(self, event: InteractionEvent):
         # publish
         rdata: RawData = ButtonEventMsg(
-            header=Header(),
             type=event,
         ).to_rawdata()
         await self._queue.publish(rdata)
@@ -125,7 +123,6 @@ class ButtonDriverNode(Node):
         await (self.switchboard / "sensors" / "power-button").expose(self._queue)
         # publish no event
         await self._queue.publish(ButtonEventMsg(
-            header=Header(),
             type=InteractionEvent.NOTHING,
         ).to_rawdata())
         # sit and wait for the callbacks to come in
