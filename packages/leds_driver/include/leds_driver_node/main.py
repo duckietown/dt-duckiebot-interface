@@ -37,15 +37,16 @@ class LEDsDriverNode(Node):
     """
 
     def __init__(self, config: str):
+        node_name: str = "leds-driver"
         super(LEDsDriverNode, self).__init__(
-            name="leds",
+            name=node_name,
             kind=NodeType.DRIVER,
             description="Robot lights driver",
         )
 
         # load configuration
         self.configuration: LEDsDriverNodeConfiguration = (LEDsDriverNodeConfiguration.
-                                                           from_name(self.package, config))
+                                                           from_name(self.package, node_name, config))
         # setup the driver
         self.driver: LEDsDriverAbs = LEDsDriver(debug=False)
 
@@ -58,8 +59,8 @@ class LEDsDriverNode(Node):
             msg.front_left,
             RGBA.zero(),
             msg.front_right,
-            msg.rear_left,
             msg.rear_right,
+            msg.rear_left,
         ]
         for i, color in enumerate(lights):
             # apply alpha
@@ -71,13 +72,13 @@ class LEDsDriverNode(Node):
     async def worker(self):
         await self.dtps_init(self.configuration)
         # create RGB queue IN
-        rgb_in: DTPSContext = await (self.context / "in" / "rgb").queue_create()
+        rgb_in: DTPSContext = await (self.context / "in" / "rgba").queue_create()
         # subscribe to RGB patterns
         await rgb_in.subscribe(self.cb_pattern)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "actuator" / "leds" / "rgb").expose(rgb_in)
+        await (self.switchboard / "actuator" / "leds" / "rgba").expose(rgb_in)
         # apply initial state
         msg: CarLights = CarLights(
             front_left=RGBA.from_list(self.configuration.initial_pattern["front_left"]),

@@ -33,7 +33,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="camera_driver",
             module=f"camera_driver_node.{robot_hardware}",
-            name="camera_driver",
+            name="camera-driver",
             config=config
         ))
     # tof node
@@ -46,7 +46,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="wheels_driver",
             module="wheels_driver_node.main",
-            name="wheels_driver",
+            name="wheels-driver",
             config=config
         ))
     # display node
@@ -55,7 +55,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="display_driver",
             module="display_driver_node.main",
-            name="display_driver",
+            name="display-driver",
             config=config
         ))
     # wheel encoder nodes
@@ -76,7 +76,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="leds_driver",
             module="leds_driver_node.main",
-            name="leds_driver",
+            name="leds-driver",
             config=config
         ))
     # button node
@@ -85,7 +85,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="button_driver",
             module="button_driver_node.main",
-            name="button_driver",
+            name="button-driver",
             config=config
         ))
     # imu node
@@ -94,7 +94,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="imu_driver",
             module="imu_driver_node.main",
-            name="imu_driver",
+            name="imu-driver",
             config=config
         ))
     # display renderer node
@@ -103,7 +103,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="display_renderer",
             module="display_renderer_node.main",
-            name="display_renderer",
+            name="display-renderer",
             config=config
         ))
     # ---

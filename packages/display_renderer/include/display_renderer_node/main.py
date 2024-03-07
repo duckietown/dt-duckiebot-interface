@@ -42,13 +42,14 @@ class DisplayRendererNodeConfiguration(NodeConfiguration):
 class DisplayRendererNode(Node):
 
     def __init__(self, config: str):
+        node_name: str = "display-renderer"
         super().__init__(
-            name="display-renderer",
+            name=node_name,
             kind=NodeType.VISUALIZATION,
             description="Display renderers node",
         )
         # configuration
-        self._configuration = DisplayRendererNodeConfiguration.from_name(self.package, config)
+        self.configuration = DisplayRendererNodeConfiguration.from_name(self.package, node_name, config)
         # assets dir
         assets_dir: Path = self._package.assets_dir
         # health data
@@ -59,29 +60,29 @@ class DisplayRendererNode(Node):
         self._battery_indicator = BatteryIndicatorFragmentRenderer(
             assets_dir,
             self.publish,
-            frequency=self._configuration.renderers["health"].frequency
+            frequency=self.configuration.renderers["health"].frequency
         )
         self._usage_renderer = UsageStatsFragmentRenderer(
             self.publish,
-            frequency=self._configuration.renderers["health"].frequency
+            frequency=self.configuration.renderers["health"].frequency
         )
         self._robot_info_renderer = RobotInfoRenderer(
             self.publish,
-            frequency=self._configuration.renderers["robot_info"].frequency
+            frequency=self.configuration.renderers["robot_info"].frequency
         )
         self._wlan0_indicator = NetIFaceFragmentRenderer(
             assets_dir,
             "wlan0",
             DisplayROI(0, 0, 11, 16),
             self.publish,
-            frequency=self._configuration.renderers["network"].frequency
+            frequency=self.configuration.renderers["network"].frequency
         )
         self._eth0_indicator = NetIFaceFragmentRenderer(
             assets_dir,
             "eth0",
             DisplayROI(14, 0, 11, 16),
             self.publish,
-            frequency=self._configuration.renderers["network"].frequency
+            frequency=self.configuration.renderers["network"].frequency
         )
         self._renderers: Dict[str, AbsDisplayFragmentRenderer] = {
             "battery_indicator": self._battery_indicator,
@@ -92,7 +93,7 @@ class DisplayRendererNode(Node):
         }
 
     async def worker(self):
-        await self.dtps_init(self._configuration)
+        await self.dtps_init(self.configuration)
         # create fragments queue
         queue = await (self.switchboard / "actuator" / "display" / "fragments").until_ready()
         self._fragments = await queue.publisher()
@@ -105,7 +106,7 @@ class DisplayRendererNode(Node):
 
     @sidecar
     async def health_data_fetcher(self):
-        dt: float = 1.0 / self._configuration.renderers["health"].frequency
+        dt: float = 1.0 / self.configuration.renderers["health"].frequency
         url: str = f"http://{self._robot_name}.local/health/"
         while True:
             # noinspection PyBroadException

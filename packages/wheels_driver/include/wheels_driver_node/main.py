@@ -48,15 +48,16 @@ class WheelsDriverNode(Node):
     """
 
     def __init__(self, config: str):
+        node_name: str = "wheels-driver"
         super(WheelsDriverNode, self).__init__(
-            name="wheels",
+            name=node_name,
             kind=NodeType.DRIVER,
             description="Robot wheels motor driver",
         )
 
         # load configuration
         self.configuration: WheelsDriverNodeConfiguration = (WheelsDriverNodeConfiguration.
-                                                             from_name(self.package, config))
+                                                             from_name(self.package, node_name, config))
         # emergency stop
         self.estop: bool = False
         # keep track of when the last command was received

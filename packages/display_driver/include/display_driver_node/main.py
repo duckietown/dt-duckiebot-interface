@@ -48,18 +48,20 @@ BOOTING_SCREEN: List[DisplayFragment] = [
 class DisplayNode(Node):
 
     def __init__(self, config: str):
+        node_name: str = "display-driver"
         super().__init__(
-            name="display-driver",
+            name=node_name,
             kind=NodeType.DRIVER,
             description="LCD display driver",
         )
         # configuration
-        self._configuration: DisplayNodeConfiguration = DisplayNodeConfiguration.from_name(self.package, config)
+        self.configuration: DisplayNodeConfiguration = DisplayNodeConfiguration.from_name(
+            self.package, node_name, config)
         # create display driver
         self._display = SSD1306Display(
-            self._configuration.bus,
-            self._configuration.address,
-            self._configuration.frequency,
+            self.configuration.bus,
+            self.configuration.address,
+            self.configuration.frequency,
             self.logger
         )
 
@@ -86,7 +88,7 @@ class DisplayNode(Node):
             self._display.page = PAGE_SHUTDOWN
 
     async def worker(self):
-        await self.dtps_init(self._configuration)
+        await self.dtps_init(self.configuration)
         # create fragments queue
         fragments: DTPSContext = await (self.context / "in" / "fragments").queue_create()
         # subscribe to fragments

@@ -56,15 +56,16 @@ class ToFNode(Node):
     """
 
     def __init__(self, sensor_name: str, config: str):
+        node_name = f"tof-driver-{sensor_name}"
         super().__init__(
-            name=f"tof-{sensor_name}",
+            name=node_name,
             kind=NodeType.DRIVER,
             description="Time-of-Flight sensor driver",
         )
         self._sensor_name: str = sensor_name
 
         # load configuration
-        self.configuration: ToFNodeConfiguration = ToFNodeConfiguration.from_name(self.package, config)
+        self.configuration: ToFNodeConfiguration = ToFNodeConfiguration.from_name(self.package, node_name, config)
 
         # load accuracy profile
         self._accuracy: ToFAccuracy = ToFAccuracy.from_string(self.configuration.mode)

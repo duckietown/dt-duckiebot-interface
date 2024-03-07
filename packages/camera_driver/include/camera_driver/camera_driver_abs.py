@@ -1,24 +1,21 @@
 import asyncio
+import copy
 import dataclasses
 import os
 import time
-from threading import Thread
+from abc import abstractmethod, ABCMeta
 from typing import Optional
 
-import yaml
-import copy
 import numpy as np
-
-from abc import abstractmethod, ABCMeta
-
+import yaml
 from turbojpeg import TurboJPEG
-
-from dtps import DTPSContext
 
 from dt_computer_vision.camera import CameraModel
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
+from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
+from dtps import DTPSContext
 from duckietown_messages.sensors.camera import Camera
 from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
@@ -55,14 +52,15 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
     """
 
     def __init__(self, config: str):
+        node_name: str = "camera-driver"
         super().__init__(
-            name=f"camera",
+            name=node_name,
             kind=NodeType.DRIVER,
             description="Reads a stream of images from a camera and publishes the frames over DTPS",
         )
 
         # load configuration
-        self.configuration: CameraNodeConfiguration = CameraNodeConfiguration.from_name(self.package, config)
+        self.configuration: CameraNodeConfiguration = CameraNodeConfiguration.from_name(self.package, node_name, config)
 
         # intrinsic calibration
         # TODO: take common part out
@@ -93,34 +91,12 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         self._jpeg_queue: Optional[DTPSContext] = None
         self._parameters_queue: Optional[DTPSContext] = None
         # data flow monitor
-        self._last_image_published_time: float = 0
-        # TODO: use sidecar instead of a thread
-        self._flow_monitor = Thread(target=self._flow_monitor_fcn, daemon=True)
-        self._flow_monitor.start()
+        self._last_image_published_time: float = time.time()
         # ---
         self.loginfo("[CameraNodeAbs]: Initialized.")
 
     def _stale_stream_reset(self):
         self.shutdown("Data flow monitor has closed the node because of stale stream.")
-
-    def _flow_monitor_fcn(self):
-        i = 0
-        failure_timeout = 20
-        while not self.is_shutdown:
-            # do nothing for the first `sleep_until` seconds, then check every 5 seconds
-            if (self._has_published or i > failure_timeout) and i % 5 == 0:
-                elapsed_since_last = time.time() - self._last_image_published_time
-                # reset nvargus if no images were received within the last 10 secs
-                if elapsed_since_last >= 10:
-                    self.loginfo(
-                        f"[data-flow-monitor]: Detected a period of "
-                        f"{int(elapsed_since_last)} seconds during which no "
-                        f"images were produced, restarting camera process."
-                    )
-                    self._stale_stream_reset()
-            # ---
-            i += 1
-            time.sleep(1)
 
     async def publish(self, jpeg: bytes):
         msg: CompressedImage = CompressedImage(
@@ -155,7 +131,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         await (self.switchboard / "sensors" / "camera" / "jpeg").expose(self._jpeg_queue)
         await (self.switchboard / "sensors" / "camera" / "parameters").expose(self._parameters_queue)
 
-    async def __worker(self):
+    async def _worker(self):
         """
         Begins the camera capturing.
         """
@@ -174,16 +150,33 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         except StopIteration:
             self.logerr("Exception thrown.")
 
+    @sidecar
+    async def flow_monitor(self):
+        i = 0
+        failure_timeout = 20
+        while not self.is_shutdown:
+            # do nothing for the first `failure_timeout` seconds, then check every 5 seconds, but only if we were
+            # ever able to use the camera
+            if self._has_published and i > failure_timeout and i % 5 == 0:
+                elapsed_since_last = time.time() - self._last_image_published_time
+                # reset nvargus if no images were received within the last 10 secs
+                if elapsed_since_last >= 10:
+                    self.loginfo(
+                        f"[data-flow-monitor]: Detected a period of "
+                        f"{int(elapsed_since_last)} seconds during which no "
+                        f"images were produced, restarting camera process."
+                    )
+                    self._stale_stream_reset()
+            # ---
+            i += 1
+            await asyncio.sleep(1)
+
     @abstractmethod
     def setup(self):
         raise NotImplementedError("Child classes should implement this method.")
 
-    def spin(self):
-        try:
-            asyncio.run(self.__worker())
-        except (KeyboardInterrupt, asyncio.CancelledError):
-            self.__on_shutdown()
-
+    # TODO: we should use a shared dict with YAML file backend with default fallback and a schema instead of a
+    #  service-like function
     def save_camera_info(self, camera_model: CameraModel, filename):
         """Saves intrinsic calibration to file.
 

@@ -35,8 +35,9 @@ class WheelEncoderNode(Node):
     """
 
     def __init__(self, side: str, config: str):
+        node_name: str = f"wheel-encoder-driver-{side}"
         super().__init__(
-            name=f"wheel-encoder-{side}",
+            name=node_name,
             kind=NodeType.DRIVER,
             description="Wheel encoder sensor driver",
         )
@@ -44,7 +45,7 @@ class WheelEncoderNode(Node):
 
         # load configuration
         self.configuration: WheelEncoderNodeConfiguration = (WheelEncoderNodeConfiguration.
-                                                             from_name(self.package, config))
+                                                             from_name(self.package, node_name, config))
 
         # frames
         self._motor_frame_id: str = f"{self._robot_name}/motor/{self._side}"

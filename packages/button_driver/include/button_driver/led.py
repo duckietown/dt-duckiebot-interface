@@ -51,5 +51,5 @@ class ButtonLED:
                 time.sleep(transition_duration_sec)
 
     def shutdown(self):
-        self._is_shutdown = True
         self.off()
+        self._is_shutdown = True

@@ -42,14 +42,15 @@ class IMUNode(Node):
     """
 
     def __init__(self, config: str):
+        node_name: str = "imu-driver"
         super().__init__(
-            name=f"imu",
+            name=node_name,
             kind=NodeType.DRIVER,
             description="IMU (Inertia Measurement Unit) sensor driver",
         )
 
         # load configuration
-        self.configuration: IMUNodeConfiguration = IMUNodeConfiguration.from_name(self.package, config)
+        self.configuration: IMUNodeConfiguration = IMUNodeConfiguration.from_name(self.package, node_name, config)
 
         # frame
         self._frame_id: str = f"{self._robot_name}/imu"

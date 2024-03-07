@@ -41,14 +41,15 @@ class ButtonDriverNode(Node):
     _TIME_HOLD_10S = 10
 
     def __init__(self, config: str):
+        node_name: str = "power-button-driver"
         super().__init__(
-            name="power-button",
+            name=node_name,
             kind=NodeType.DRIVER,
             description="Power button driver",
         )
         # load configuration
         self.configuration: ButtonDriverNodeConfiguration = (ButtonDriverNodeConfiguration.
-                                                             from_name(self.package, config))
+                                                             from_name(self.package, node_name, config))
         # queues
         self._queue: Optional[DTPSContext] = None
         # create a ButtonDriver sensor handler

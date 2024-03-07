@@ -1,0 +1,50 @@
+{
+    "type": "object",
+    "properties": {
+        "sensor_name": {
+            "type": "string"
+        },
+        "frequency": {
+            "type": "number"
+        },
+        "mode": {
+            "type": "string",
+            "enum": [
+                "BETTER",
+                "GOOD",
+                "BETTER",
+                "BEST",
+                "LONG_RANGE",
+                "HIGH_SPEED"
+            ]
+        },
+        "display_fragment_frequency": {
+            "type": "number"
+        },
+        "connectors": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "bus": {
+                        "type": "integer"
+                    },
+                    "address": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "bus",
+                    "address"
+                ]
+            }
+        }
+    },
+    "required": [
+        "sensor_name",
+        "frequency",
+        "mode",
+        "display_fragment_frequency",
+        "connectors"
+    ]
+}
