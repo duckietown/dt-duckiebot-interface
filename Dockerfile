@@ -132,7 +132,3 @@ COPY assets/usr/share/fonts/*.ttf /usr/share/fonts/
 # copy betaflight sitl binary and config files
 COPY assets/usr/bin/betaflight /usr/bin/betaflight
 RUN chown -R duckie:duckie /usr/bin/betaflight/ && chmod +x /usr/bin/betaflight/launch_betaflight.sh
-
-
-# TODO: remove this once we gain access to the pypi project
-RUN pip3 install git+https://github.com/duckietown/lib-dtps-http.git@ente-staging
