@@ -56,6 +56,9 @@ class DisplayRendererNode(Node):
         self._health_data: Optional[dict] = None
         # queues
         self._fragments: Optional[PublisherInterface] = None
+        # health API url (use mDNS only if we are not deployed onboard)
+        self._health_api_url: str = "http://localhost/health/" if os.environ.get("DT_DEPLOYED_ONBOARD", "0") == "1" \
+            else f"http://{self._robot_name}.local/health/"
         # create renderers
         self._battery_indicator = BatteryIndicatorFragmentRenderer(
             assets_dir,
@@ -107,11 +110,11 @@ class DisplayRendererNode(Node):
     @sidecar
     async def health_data_fetcher(self):
         dt: float = 1.0 / self.configuration.renderers["health"].frequency
-        url: str = f"http://{self._robot_name}.local/health/"
         while True:
             # noinspection PyBroadException
             try:
-                health_data = requests.get(url).json()
+                # TODO: the health API should expose a DTPS queue with customizable frequency
+                health_data = requests.get(self._health_api_url).json()
             except BaseException:
                 await asyncio.sleep(dt)
                 continue
