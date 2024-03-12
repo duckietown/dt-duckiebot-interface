@@ -189,6 +189,11 @@ class CameraNode(CameraNodeAbs):
         }.union({self.CAMERA_MODES[0]})
         return sorted(candidates, key=lambda m: m.id)[-1]
 
+    def on_shutdown(self):
+        if self._device is not None:
+            self._device.release()
+        self.loginfo("OpenCV device released.")
+
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
