@@ -85,18 +85,23 @@ class IMUNode(Node):
         # read and publish
         dt: float = 1.0 / self.configuration.frequency
         while not self.is_shutdown:
-            # read data from the sensors and pack into messages
-            acc: List[float] = self._sensor.linear_accelerations
-            accelerations: LinearAccelerations = LinearAccelerations(x=acc[0], y=acc[1], z=acc[2])
-            vel: List[float] = self._sensor.angular_velocities
-            velocities: AngularVelocities = AngularVelocities(x=vel[0], y=vel[1], z=vel[2])
-            temperature: Temperature = Temperature(data=self._sensor.temperature)
-            # publish
-            await accelerations_queue.publish(accelerations.to_rawdata())
-            await velocities_queue.publish(velocities.to_rawdata())
-            await temperature_queue.publish(temperature.to_rawdata())
-            # wait
-            await asyncio.sleep(dt)
+            try:
+                # read data from the sensors and pack into messages
+                acc: List[float] = self._sensor.linear_accelerations
+                accelerations: LinearAccelerations = LinearAccelerations(x=acc[0], y=acc[1], z=acc[2])
+                vel: List[float] = self._sensor.angular_velocities
+                velocities: AngularVelocities = AngularVelocities(x=vel[0], y=vel[1], z=vel[2])
+                temperature: Temperature = Temperature(data=self._sensor.temperature)
+            except Exception as e:
+                self.logwarn(f"IMU Comm Loss: {e}")
+            else:
+                # publish
+                await accelerations_queue.publish(accelerations.to_rawdata())
+                await velocities_queue.publish(velocities.to_rawdata())
+                await temperature_queue.publish(temperature.to_rawdata())
+            finally:
+                # wait
+                await asyncio.sleep(dt)
 
     @sidecar
     async def display_worker(self):
