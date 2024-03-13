@@ -112,7 +112,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         # ---
         if not self._has_published:
             # publish camera model
-            msg: Camera = Camera.from_camera_model(self.camera_model)
+            msg: Camera = self.camera_model_to_camera_message(self.camera_model)
             await self._parameters_queue.publish(msg.to_rawdata())
             self.loginfo("Published camera model")
             # ---
@@ -274,3 +274,16 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
             P=calibration["projection_matrix"]["data"],
         )
         return camera
+
+    @staticmethod
+    def camera_model_to_camera_message(camera: CameraModel, header: Header = None) -> Camera:
+        return Camera(
+            header=header or Header(),
+            width=camera.width,
+            height=camera.height,
+            K=camera.K.tolist(),
+            D=camera.D.tolist(),
+            P=camera.P.tolist(),
+            R=camera.R.tolist() if camera.R is not None else None,
+            H=camera.H.tolist() if camera.H is not None else None,
+        )
