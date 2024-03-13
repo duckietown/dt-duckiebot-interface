@@ -122,7 +122,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
     async def dtps_init_queues(self):
         await self.dtps_init(self.configuration)
         # create sensor queue
-        self._jpeg_queue = await (self.context / "out" / "jpeg").queue_create()
+        self._jpeg_queue = await (self.context / "out" / "jpeg").queue_create(max_history=3)
         # create model queue
         self._parameters_queue = await (self.context / "out" / "parameters").queue_create()
         # expose node to the switchboard
