@@ -4,6 +4,7 @@ import dataclasses
 from typing import Optional, List
 
 import argparse
+from dtps_http import RawData
 
 from dt_class_utils import DTReminder
 from dt_node_utils import NodeType
@@ -76,12 +77,14 @@ class IMUNode(Node):
         accelerations_queue = await (self.context / "out" / "acceleration" / "linear").queue_create()
         velocities_queue = await (self.context / "out" / "velocity" / "angular").queue_create()
         temperature_queue = await (self.context / "out" / "temperature").queue_create()
+        raw_queue = await (self.context / "out" / "raw").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
         await (self.switchboard / "sensors" / "imu" / "accelerometer").expose(accelerations_queue)
         await (self.switchboard / "sensors" / "imu" / "gyroscope").expose(velocities_queue)
         await (self.switchboard / "sensors" / "imu" / "temperature").expose(temperature_queue)
+        await (self.switchboard / "sensors" / "imu" / "raw").expose(raw_queue)
         # read and publish
         dt: float = 1.0 / self.configuration.frequency
         while not self.is_shutdown:
@@ -91,14 +94,22 @@ class IMUNode(Node):
                 accelerations: LinearAccelerations = LinearAccelerations(x=acc[0], y=acc[1], z=acc[2])
                 vel: List[float] = self._sensor.angular_velocities
                 velocities: AngularVelocities = AngularVelocities(x=vel[0], y=vel[1], z=vel[2])
-                temperature: Temperature = Temperature(data=self._sensor.temperature)
+                temp: float = self._sensor.temperature
+                temperature: Temperature = Temperature(data=temp)
             except Exception as e:
                 self.logwarn(f"IMU Comm Loss: {e}")
             else:
+                # pack raw data
+                raw: dict = {
+                    "linear_accelerations": acc,
+                    "angular_velocities": vel,
+                    "temperature": temp,
+                }
                 # publish
                 await accelerations_queue.publish(accelerations.to_rawdata())
                 await velocities_queue.publish(velocities.to_rawdata())
                 await temperature_queue.publish(temperature.to_rawdata())
+                await raw_queue.publish(RawData.cbor_from_native_object(raw))
             finally:
                 # wait
                 await asyncio.sleep(dt)
