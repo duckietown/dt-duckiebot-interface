@@ -4,7 +4,6 @@ import dataclasses
 from typing import Optional, List
 
 import argparse
-from dtps_http import RawData
 
 from dt_class_utils import DTReminder
 from dt_node_utils import NodeType
@@ -14,6 +13,7 @@ from dt_node_utils.node import Node
 from duckietown_messages.sensors.angular_velocities import AngularVelocities
 from duckietown_messages.sensors.linear_accelerations import LinearAccelerations
 from duckietown_messages.sensors.temperature import Temperature
+from duckietown_messages.standard.dictionary import Dictionary
 from imu_driver.exceptions import DeviceNotFound
 from imu_driver.mpu6050 import CalibratedMPU6050
 from imu_driver.types import I2CConnector
@@ -100,16 +100,16 @@ class IMUNode(Node):
                 self.logwarn(f"IMU Comm Loss: {e}")
             else:
                 # pack raw data
-                raw: dict = {
+                raw: Dictionary = Dictionary(data={
                     "linear_accelerations": acc,
                     "angular_velocities": vel,
                     "temperature": temp,
-                }
+                })
                 # publish
                 await accelerations_queue.publish(accelerations.to_rawdata())
                 await velocities_queue.publish(velocities.to_rawdata())
                 await temperature_queue.publish(temperature.to_rawdata())
-                await raw_queue.publish(RawData.cbor_from_native_object(raw))
+                await raw_queue.publish(raw.to_rawdata())
             finally:
                 # wait
                 await asyncio.sleep(dt)
