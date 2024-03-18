@@ -81,10 +81,10 @@ class IMUNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensors" / "imu" / "accelerometer").expose(accelerations_queue)
-        await (self.switchboard / "sensors" / "imu" / "gyroscope").expose(velocities_queue)
-        await (self.switchboard / "sensors" / "imu" / "temperature").expose(temperature_queue)
-        await (self.switchboard / "sensors" / "imu" / "raw").expose(raw_queue)
+        await (self.switchboard / "sensor" / "imu" / "accelerometer").expose(accelerations_queue)
+        await (self.switchboard / "sensor" / "imu" / "gyroscope").expose(velocities_queue)
+        await (self.switchboard / "sensor" / "imu" / "temperature").expose(temperature_queue)
+        await (self.switchboard / "sensor" / "imu" / "raw").expose(raw_queue)
         # read and publish
         dt: float = 1.0 / self.configuration.frequency
         while not self.is_shutdown:

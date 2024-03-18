@@ -128,8 +128,8 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensors" / "camera" / "jpeg").expose(self._jpeg_queue)
-        await (self.switchboard / "sensors" / "camera" / "parameters").expose(self._parameters_queue)
+        await (self.switchboard / "sensor" / "camera" / "jpeg").expose(self._jpeg_queue)
+        await (self.switchboard / "sensor" / "camera" / "parameters").expose(self._parameters_queue)
 
     async def _worker(self):
         """

@@ -121,7 +121,7 @@ class ButtonDriverNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensors" / "power-button").expose(self._queue)
+        await (self.switchboard / "sensor" / "power-button").expose(self._queue)
         # publish no event
         await self._queue.publish(ButtonEventMsg(
             type=InteractionEvent.NOTHING,

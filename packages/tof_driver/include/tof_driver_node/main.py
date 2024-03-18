@@ -141,8 +141,8 @@ class ToFNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensors" / "time-of-flight" / self._sensor_name / "range").expose(range_queue)
-        await (self.switchboard / "sensors" / "time-of-flight" / self._sensor_name / "info").expose(info_queue)
+        await (self.switchboard / "sensor" / "time-of-flight" / self._sensor_name / "range").expose(range_queue)
+        await (self.switchboard / "sensor" / "time-of-flight" / self._sensor_name / "info").expose(info_queue)
         # publish info about the sensor
         msg = RangeFinder(
             fov=self._accuracy.fov,

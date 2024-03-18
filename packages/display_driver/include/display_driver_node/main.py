@@ -108,7 +108,7 @@ class DisplayNode(Node):
     async def register_button_events(self):
         await self.switchboard_ready.wait()
         # create button event queue
-        button: DTPSContext = await (self.switchboard / "sensors" / "power-button").until_ready()
+        button: DTPSContext = await (self.switchboard / "sensor" / "power-button").until_ready()
         # subscribe to button events
         await button.subscribe(self.cb_button_events)
 

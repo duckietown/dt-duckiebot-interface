@@ -71,7 +71,7 @@ class WheelEncoderNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensors" / "wheel-encoder" / self._side).expose(queue)
+        await (self.switchboard / "sensor" / "wheel-encoder" / self._side).expose(queue)
         # read and publish
         while not self.is_shutdown:
             # pack observation into a message
