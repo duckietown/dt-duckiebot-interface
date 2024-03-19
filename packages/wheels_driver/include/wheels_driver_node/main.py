@@ -17,6 +17,7 @@ from dt_node_utils.node import Node
 from dt_robot_utils import RobotHardware, get_robot_hardware
 from duckietown_messages.actuators.differential_pwm import DifferentialPWM
 from duckietown_messages.standard.boolean import Boolean
+from duckietown_messages.utils.exceptions import DataDecodingError
 from wheels_driver.wheels_driver_abs import WheelsDriverAbs, WheelPWMConfiguration
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
@@ -75,7 +76,11 @@ class WheelsDriverNode(Node):
         """
         Callback that sets wheels' PWM signals.
         """
-        pwms: DifferentialPWM = DifferentialPWM.from_rawdata(data)
+        try:
+            pwms: DifferentialPWM = DifferentialPWM.from_rawdata(data)
+        except DataDecodingError as e:
+            self.logerr(f"Failed to decode an incoming message: {e.message}")
+            return
         pwm_left: float = 0.0
         pwm_right: float = 0.0
         self.last_command_time = time.time()
@@ -95,7 +100,12 @@ class WheelsDriverNode(Node):
         """
         Callback that enables/disables emergency stop.
         """
-        msg: Boolean = Boolean.from_rawdata(data)
+        try:
+            msg: Boolean = Boolean.from_rawdata(data)
+        except DataDecodingError as e:
+            self.logerr(f"Failed to decode an incoming message: {e.message}")
+            return
+        # ---
         self.estop = msg.data
         if self.estop:
             self.loginfo("Emergency Stop Activated")

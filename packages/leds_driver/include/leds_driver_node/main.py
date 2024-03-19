@@ -14,6 +14,7 @@ from dtps import DTPSContext
 from dtps_http import RawData
 from duckietown_messages.actuators.car_lights import CarLights
 from duckietown_messages.colors.rgba import RGBA
+from duckietown_messages.utils.exceptions import DataDecodingError
 from leds_driver.leds_driver_abs import LEDsDriverAbs
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
@@ -54,7 +55,12 @@ class LEDsDriverNode(Node):
         """
         Callback that implements a given light pattern.
         """
-        msg: CarLights = CarLights.from_rawdata(data)
+        try:
+            msg: CarLights = CarLights.from_rawdata(data)
+        except DataDecodingError as e:
+            self.logerr(f"Failed to decode an incoming message: {e.message}")
+            return
+        # ---
         lights: List[RGBA] = [
             msg.front_left,
             RGBA.zero(),

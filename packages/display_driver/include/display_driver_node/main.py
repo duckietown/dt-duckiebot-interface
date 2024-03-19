@@ -20,6 +20,7 @@ from duckietown_messages.actuators.display_fragments import DisplayFragments
 from duckietown_messages.sensors.button_event import ButtonEvent, InteractionEvent
 from duckietown_messages.sensors.image import Image
 from duckietown_messages.geometry_2d.roi import ROI
+from duckietown_messages.utils.exceptions import DataDecodingError
 
 
 @dataclasses.dataclass
@@ -69,7 +70,11 @@ class DisplayNode(Node):
         """
         Callback processing incoming fragments.
         """
-        fragments: DisplayFragments = DisplayFragments.from_rawdata(data)
+        try:
+            fragments: DisplayFragments = DisplayFragments.from_rawdata(data)
+        except DataDecodingError as e:
+            self.logerr(f"Failed to decode an incoming message: {e.message}")
+            return
         # update the display
         for fragment in fragments.fragments:
             self._display.add_fragment(fragment)
@@ -78,7 +83,12 @@ class DisplayNode(Node):
         """
         Callback processing incoming button events.
         """
-        event: ButtonEvent = ButtonEvent.from_rawdata(data)
+        try:
+            event: ButtonEvent = ButtonEvent.from_rawdata(data)
+        except DataDecodingError as e:
+            self.logerr(f"Failed to decode an incoming message: {e.message}")
+            return
+        # ---
         if event.type == InteractionEvent.SINGLE_CLICK:
             # switch to the next page
             self._display.next_page()
