@@ -153,8 +153,14 @@ class ToFNode(Node):
         # read and publish
         dt: float = 1.0 / self._frequency
         while not self.is_shutdown:
-            # detect range
-            range_mm: float = self._sensor.get_distance()
+            try:
+                # detect range
+                range_mm: float = self._sensor.get_distance()
+            except OSError:
+                self.logger.error("I2C error. The sensor is not responding.")
+                await asyncio.sleep(dt)
+                continue
+            # convert to meters, check for out-of-range
             range_m: float = range_mm / 1000
             data: float | None = range_m if range_m <= self._accuracy.max_range else None
             # pack observation into a message
