@@ -14,10 +14,15 @@ dt-launchfile-init
 
 CONFIG_FILE="default"
 
+# display driver
 dt-exec python3 \
   -m display_driver_node.main \
     --config ${CONFIG_FILE}
 
+# default renderers
+dt-exec python3 \
+  -m display_renderer_node.main \
+    --config ${CONFIG_FILE}
 
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE
