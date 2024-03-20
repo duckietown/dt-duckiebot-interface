@@ -16,6 +16,7 @@ from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
 from dtps import DTPSContext
+from dtps_http.structures import Bounds
 from duckietown_messages.sensors.camera import Camera
 from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
@@ -122,7 +123,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
     async def dtps_init_queues(self):
         await self.dtps_init(self.configuration)
         # create sensor queue
-        self._jpeg_queue = await (self.context / "out" / "jpeg").queue_create(max_history=3)
+        self._jpeg_queue = await (self.context / "out" / "jpeg").queue_create(bounds=Bounds.max_length(3))
         # create model queue
         self._parameters_queue = await (self.context / "out" / "parameters").queue_create()
         # expose node to the switchboard
