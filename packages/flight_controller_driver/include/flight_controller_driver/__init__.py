@@ -7,10 +7,11 @@ for talking to a betaflight-based flight controller.
 """
 
 from dt_robot_utils import get_robot_hardware, RobotHardware
+from .flight_controller_abs import Mode2RC,AttitudePidGains
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
     # this breaks if imported when running on a virtual robot
-    from .flight_controller_virtual import FlightControllerSITL as FlightController
+    from .flight_controller_virtual import FlightControllerVirtual as FlightController
 else:
-    from .flight_controller_physical import FlightController
+    from .flight_controller_physical import FlightControllerPhysical as FlightController
 

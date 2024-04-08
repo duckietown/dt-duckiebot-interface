@@ -1,11 +1,12 @@
 from setuptools import setup
 
 package_name = 'flight_controller_driver'
+packages = ["flight_controller_driver", "flight_controller_node"]
 
 setup(
     name=package_name,
     version='1.0.0',
-    packages=[package_name],
+    packages=packages,
     package_dir={"": "include"},
     data_files=[
         ('share/ament_index/resource_index/packages', [f'resource/{package_name}']),
