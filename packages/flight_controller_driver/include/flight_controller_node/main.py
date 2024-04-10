@@ -6,7 +6,6 @@ import traceback
 from collections import defaultdict
 from typing import Optional, Union
 
-from dt_class_utils import DTReminder
 from dt_node_utils import NodeType
 from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
@@ -145,11 +144,6 @@ class FlightControllerNode(Node):
         #                             param_type=ParamType.INT)
         # self._param_yaw_D.register_update_callback(
         #     lambda: self._board.set_pids_rpy(yaw_d=self._param_yaw_D.value))
-        
-        # reminders
-        self._motors_reminder = DTReminder(frequency=self.configuration.frequency.motors)
-        self._imu_reminder = DTReminder(frequency=self.configuration.frequency.imu)
-        self._battery_reminder = DTReminder(frequency=self.configuration.frequency.battery)
 
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self._board.mode_to_rc_command(DroneMode.DISARMED)
