@@ -4,7 +4,7 @@ import sys
 import time
 import traceback
 from collections import defaultdict
-from typing import Optional, Union
+from typing import List, Optional, Union
 
 from dt_node_utils import NodeType
 from dt_node_utils.decorators import sidecar
@@ -15,11 +15,14 @@ from dtps.ergo_ui import DTPSContext
 from dtps_http.object_queue import TransformError
 from dtps_http.structures import RawData
 from duckietown_messages.actuators.drone_control import DroneControl
-from duckietown_messages.actuators.drone_mode import DroneModeMsg, DroneModeResponse
+from duckietown_messages.actuators.drone_mode import DroneModeMsg, DroneModeResponse, Mode
 from duckietown_messages.actuators.drone_motor_command import DroneMotorCommand
 from duckietown_messages.sensors.attitude import Attitude
 from duckietown_messages.sensors.battery import BatteryState
 from duckietown_messages.sensors.linear_accelerations import LinearAccelerations
+from duckietown_messages.sensors.angular_velocities import AngularVelocities
+from duckietown_messages.standard.dictionary import Dictionary
+from duckietown_messages.standard.header import Header
 from flight_controller_driver.flight_controller_abs import DroneMode, FCError
 
 from tiny_tf.tf import Transform
@@ -28,7 +31,6 @@ from tiny_tf.transformations import euler_from_quaternion
 from flight_controller_node.types import FlightControllerConfiguration
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
-    # this breaks if imported when running on a virtual robot
     from flight_controller_driver.flight_controller_virtual import (
         FlightControllerVirtual,
     )
@@ -60,6 +62,9 @@ class FlightControllerNode(Node):
                                                description="Flight controller driver")
 
         self.configuration: FlightControllerConfiguration = FlightControllerConfiguration.from_name(self.package, node_name, config)
+
+        # IMU reference frame id
+        self._imu_frame_id: str = f"{self._robot_name}/imu"
 
         # internal state
         self._last_imu_msg = None
@@ -97,6 +102,8 @@ class FlightControllerNode(Node):
 
         except Exception as e:
             raise e
+
+        self.current_mode_queue : Optional[DTPSContext] = None
 
         # TODO: if update PID param failed with FC, ros param and FC PIDs are inconsistent
         # low priority. the params will be of the true values on next container start-up
@@ -160,9 +167,9 @@ class FlightControllerNode(Node):
         if not quiet:
             self._compute_flight_commands()
 
-    async def set_mode_transform(self, rd : RawData, current_mode_queue : DTPSContext) -> Union[RawData, TransformError]:
+    async def set_mode_transform(self, rd : RawData,) -> Union[RawData, TransformError]:
         """ Update desired mode """
-        mode = DroneMode(DroneModeMsg.from_rawdata(rd))
+        mode = DroneMode(DroneModeMsg.from_rawdata(rd).mode.value)
         do_switch = True
         # the user can only request to DISARM, ARM, and FLY
         if mode not in [DroneMode.DISARMED, DroneMode.ARMED, DroneMode.FLYING]:
@@ -174,12 +181,13 @@ class FlightControllerNode(Node):
         if do_switch:
             self._switch_to_mode(mode)
         
-        current_mode_queue.publish(self._requested_mode)
-        # return DroneModeMsg(self._requested_mode).to_rawdata()
-        # # respond
+        await self.current_mode_queue.publish(
+            DroneModeMsg(mode=Mode(self._requested_mode.value)).to_rawdata()
+            )
+        # respond
         return DroneModeResponse(
-                previous_mode=DroneModeMsg(mode=self._current_mode.value),
-                current_mode=DroneModeMsg(mode=self._requested_mode.value),
+                previous_mode=Mode(self._current_mode.value),
+                current_mode=Mode(self._requested_mode.value),
             ).to_rawdata()
 
     async def _srv_zero_yaw_cb(self, _):
@@ -244,10 +252,10 @@ class FlightControllerNode(Node):
         await self.dtps_init(self.configuration)
         # Create queues OUT
         executed_commands_queue: DTPSContext = await (self.context / "out" / "commands" / "executed").queue_create()
-        current_mode_queue: DTPSContext = await (self.context / "out" / "mode" / "current").queue_create()
+        self.current_mode_queue: DTPSContext = await (self.context / "out" / "mode" / "current").queue_create()
 
         # Expose queues to the switchboard
-        await (self.switchboard / "flight_controller" / "mode" / "current").expose(current_mode_queue)
+        await (self.switchboard / "flight_controller" / "mode" / "current").expose(self.current_mode_queue)
         await (self.switchboard / "flight_controller" / "commands" / "executed").expose(executed_commands_queue)
 
         # Create queues IN
@@ -257,10 +265,7 @@ class FlightControllerNode(Node):
         heartbeat_state_estimator: DTPSContext = await (self.context / 'in' / 'heartbeat' / 'state_estimator').queue_create()
         commands_queue: DTPSContext = await (self.context / "in" / "commands").queue_create()
         
-        # Create services queues and add transforms
-        await (self.context / "in" / "set_mode").queue_create(transform= lambda x, _ : self.set_mode_transform(x, ))
-        await (self.context / "in" / "imu" / "zero_yaw").queue_create(transform=self._srv_zero_yaw_cb)
-        await (self.context / "in" / "calibrate_imu").queue_create(transform=self._srv_calibrate_imu_cb)
+
 
         # Subscribe heartbeat callbacks
         await heartbeat_altitude.subscribe(self._heartbeat_altitude_cb)
@@ -270,7 +275,26 @@ class FlightControllerNode(Node):
         
         # Subscribe to commands queue
         await commands_queue.subscribe(self._flight_commands_cb)
+
+        # Create services queues and add transforms
+        zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create(transform=self._srv_zero_yaw_cb)
+        calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create(transform=self._srv_calibrate_imu_cb)
+        set_mode_queue = await (self.context / "in" / "set_mode").queue_create(
+            transform= self.set_mode_transform
+            )
  
+        # Expose queues to the switchboard
+        await (self.switchboard / "flight_controller" / "commands").expose(commands_queue)
+        await (self.switchboard / "flight_controller" / "mode" / "set").expose(set_mode_queue)
+        await (self.switchboard / "imu" / "zero_yaw").expose(zero_yaw_queue)
+        await (self.switchboard / "imu" / "calibrate").expose(calibrate_imu_queue)
+
+        # Expose heartbeat queues to the switchboard
+        await (self.switchboard / "heartbeat" / "altitude").expose(heartbeat_altitude)
+        await (self.switchboard / "heartbeat" / "joystick").expose(heartbeat_joystick)
+        await (self.switchboard / "heartbeat" / "pid").expose(heartbeat_pid)
+        await (self.switchboard / "heartbeat" / "state_estimator").expose(heartbeat_state_estimator)
+        
 
         # Expose node to the switchboard
         await self.dtps_expose()
@@ -297,7 +321,7 @@ class FlightControllerNode(Node):
 
                     # publish the current mode
                     if self._last_published_mode != self._requested_mode:
-                        await current_mode_queue.publish(DroneModeMsg(mode=self._requested_mode.value).to_rawdata())
+                        await self.current_mode_queue.publish(DroneModeMsg(mode=self._requested_mode.value).to_rawdata())
                         self._last_published_mode = self._requested_mode
 
                 except FCError:
@@ -338,7 +362,7 @@ class FlightControllerNode(Node):
         await self.switchboard_ready.wait()
 
         motors_queue = await (self.context / "out" / "motors").queue_create()
-        await (self.switchboard / "sensor" / "motors").expose(motors_queue)
+        await (self.switchboard / "actuator" / "motors").expose(motors_queue)
 
         dt = 1.0 / self.configuration.frequency.motors        
 
@@ -357,10 +381,18 @@ class FlightControllerNode(Node):
         await self.switchboard_ready.wait()
 
         accelerations_queue = await (self.context / "out" / "acceleration" / "linear").queue_create()
-        attitude_queue = await (self.context / "out" / "attitude").queue_create()
+        velocities_queue = await (self.context / "out" / "velocity" / "angular").queue_create()
+        orientation_queue = await (self.context / "out" / "attitude").queue_create()
+        # TODO: is raw the appropriate name here? In the context of IMUs a raw value is 
+        #       typically one that is specified in the IMU's own measurement units, which are
+        #       then converted to SI measurement units (m/s, rad/s, etc.) through an IMU-specific
+        #       conversion factor. Is this the case here?
+        raw_queue = await (self.context / "out" / "raw").queue_create()
 
         await (self.switchboard / "sensor" / "imu" / "accelerometer").expose(accelerations_queue)
-        await (self.switchboard / "sensor" / "imu" / "gyroscope").expose(attitude_queue)
+        await (self.switchboard / "sensor" / "imu" / "gyroscope"/ "velocity").expose(velocities_queue)
+        await (self.switchboard / "sensor" / "imu" / "gyroscope"/ "orientation").expose(orientation_queue)
+        await (self.switchboard / "sensor" / "imu" / "raw").expose(raw_queue)
 
         dt = 1.0 / self.configuration.frequency.imu
 
@@ -368,23 +400,44 @@ class FlightControllerNode(Node):
             try:
                 # process acceleration data
                 a_x, a_y, a_z = self._board.acceleration
+                acc : List[float] = [a_x, a_y, a_z]
                 acceleration_message = LinearAccelerations(
                     x=near_zero(a_x),
                     y=near_zero(a_y),
                     z=near_zero(a_z),
                 )
+                # TODO: obtain angular velocity data from FC
+                omega_x, omega_y, omega_z = 0, 0, 0
                 
+                angular_velocity_message = AngularVelocities(
+                    x=omega_x,
+                    y=omega_y,
+                    z=omega_z
+                )
+                vel : List[float] = [omega_x, omega_y, omega_z]
                 # process attitude data
                 roll, pitch, yaw = self._board.attitude
-                imu_msg = Attitude(
+                orientation : List[float] = [roll, pitch, yaw]
+                orientation_msg = Attitude(
                     roll=near_zero(roll),
                     pitch=near_zero(pitch),
                     yaw=near_zero(yaw),
                 )
-                await accelerations_queue.publish(acceleration_message.to_rawdata())
-                await attitude_queue.publish(imu_msg.to_rawdata())
-            except Exception:
+            except Exception as e:
                 traceback.print_exc()
+                self.logwarn(f"IMU Comm Loss: {e}")
+            else:
+                # pack raw data
+                raw: Dictionary = Dictionary(data={
+                    "header": Header(frame=self._imu_frame_id),
+                    "linear_accelerations": acc,
+                    "angular_velocities": vel,
+                    "orientation": orientation
+                })
+                await accelerations_queue.publish(acceleration_message.to_rawdata())
+                await orientation_queue.publish(orientation_msg.to_rawdata())
+                await velocities_queue.publish(angular_velocity_message.to_rawdata())
+                await raw_queue.publish(raw.to_rawdata())
             finally:
                 await asyncio.sleep(dt)
 
@@ -405,14 +458,8 @@ class FlightControllerNode(Node):
 
             elif self._current_mode is DroneMode.ARMED:
                 # already armed
-                if self._mode_change_counter < self._mode_change_cycles:
-                    self._command = self._board.mode_to_rc_command(DroneMode.ARMED)
-                    self._mode_change_counter += 1
-                else:
-                    self._command = self._board.mode_to_rc_command(DroneMode.IDLE)
+                self._command = self._board.mode_to_rc_command(DroneMode.ARMED)
 
-        if self._requested_mode is not DroneMode.ARMED:
-            self._mode_change_counter = 0
  
     
     async def _send_flight_commands(self, queue : DTPSContext):
@@ -486,7 +533,7 @@ class FlightControllerNode(Node):
 
         return disarm
 
-    def _read_motor_pwm_signals(self):
+    def _read_motor_pwm_signals(self) -> DroneMotorCommand:
         """
         Reads the motor signals sent by the flight controller to the ESCs.
         """

@@ -260,6 +260,9 @@ class FlightControllerAbs(ABC):
         pitch = np.deg2rad(self._board.SENSOR_DATA['kinematics'][1])
         yaw = np.deg2rad(self._board.SENSOR_DATA['kinematics'][2])
         
+        # TODO: check if the negative sign is correct
+        yaw = (-yaw) % (2 * np.pi) - self.yaw_offset
+
         return roll, pitch, yaw
     
     @property
@@ -285,6 +288,29 @@ class FlightControllerAbs(ABC):
         
         else:
             raise FCError("Unable to connect to the flight controller board, retry...")
+
+        # TODO: we should revisit this and use ROS' frames
+        # Rotate the IMU frame to align with our convention for the drone's body
+        # frame. IMU: x is forward, y is left, z is up. We want: x is right,
+        # y is forward, z is up.
+        lin_acc_x_drone_body = -a_y
+        lin_acc_y_drone_body = a_x
+        lin_acc_z_drone_body = a_z
+
+        roll, pitch, _ = self.attitude
+
+        # Account for gravity's affect on linear acceleration values when roll
+        # and pitch are nonzero. When the drone is pitched at 90 degrees, for
+        # example, the z acceleration reads out as -9.8 m/s^2. This makes sense,
+        # as the IMU, when powered up / when the calibration script is called,
+        # zeros the body-frame z-axis acceleration to 0, but when it's pitched
+        # 90 degrees, the body-frame z-axis is perpendicular to the force of
+        # gravity, so, as if the drone were in free-fall (which was roughly
+        # confirmed experimentally), the IMU reads -9.8 m/s^2 along the z-axis.
+        g = 9.8
+        lin_acc_x_drone_body = lin_acc_x_drone_body + g * np.sin(roll) * np.cos(pitch)
+        lin_acc_y_drone_body = lin_acc_y_drone_body + g * np.cos(roll) * (-np.sin(pitch))
+        lin_acc_z_drone_body = lin_acc_z_drone_body + g * (1 - np.cos(roll) * np.cos(pitch))
 
         return a_x, a_y, a_z
 
