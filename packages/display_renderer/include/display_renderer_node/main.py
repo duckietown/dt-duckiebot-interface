@@ -229,7 +229,7 @@ DSK |{pdsk_bar}| {pdsk}"""
             frequency=frequency
         )
         self._min_ctmp = 20
-        self._max_ctmp = 60
+        self._max_ctmp = 80
         # data
         self._ctmp: Union[None, str, int, float] = None
         self._pcpu: Union[None, str, int] = None
