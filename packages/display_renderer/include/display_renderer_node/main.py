@@ -250,9 +250,9 @@ DSK |{pdsk_bar}| {pdsk}"""
         text = self.CANVAS.format(
             **{
                 "ctmp": self._fmt(self._ctmp, "C"),
-                "pcpu": self._fmt(self._pcpu, "%"),
-                "pmem": self._fmt(self._pmem, "%"),
-                "pdsk": self._fmt(self._pdsk, "%"),
+                "pcpu": self._fmt(min(self._pcpu, 99), "%"),
+                "pmem": self._fmt(min(self._pmem, 99), "%"),
+                "pdsk": self._fmt(min(self._pdsk, 99), "%"),
                 "ctmp_bar": self._bar(ptmp),
                 "pcpu_bar": self._bar(self._pcpu),
                 "pmem_bar": self._bar(self._pmem),
