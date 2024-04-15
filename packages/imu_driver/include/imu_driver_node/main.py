@@ -14,6 +14,7 @@ from duckietown_messages.sensors.angular_velocities import AngularVelocities
 from duckietown_messages.sensors.linear_accelerations import LinearAccelerations
 from duckietown_messages.sensors.temperature import Temperature
 from duckietown_messages.standard.dictionary import Dictionary
+from duckietown_messages.standard.header import Header
 from imu_driver.exceptions import DeviceNotFound
 from imu_driver.mpu6050 import CalibratedMPU6050
 from imu_driver.types import I2CConnector
@@ -77,12 +78,18 @@ class IMUNode(Node):
         accelerations_queue = await (self.context / "out" / "acceleration" / "linear").queue_create()
         velocities_queue = await (self.context / "out" / "velocity" / "angular").queue_create()
         temperature_queue = await (self.context / "out" / "temperature").queue_create()
+        # TODO: is raw the appropriate name here? In the context of IMUs a raw value is 
+        #       typically one that is specified in the IMU's own measurement units, which are
+        #       then converted to SI measurement units (m/s, rad/s, etc.) through an IMU-specific
+        #       conversion factor. Is this the case here?
         raw_queue = await (self.context / "out" / "raw").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
         await (self.switchboard / "sensor" / "imu" / "accelerometer").expose(accelerations_queue)
-        await (self.switchboard / "sensor" / "imu" / "gyroscope").expose(velocities_queue)
+        await (self.switchboard / "sensor" / "imu" / "gyroscope"/ "velocity").expose(velocities_queue)
+        # TODO: retrieve orientation data from BNO055
+        # await (self.switchboard / "sensor" / "imu" / "gyroscope"/ "orientation").expose(orientation_queue)
         await (self.switchboard / "sensor" / "imu" / "temperature").expose(temperature_queue)
         await (self.switchboard / "sensor" / "imu" / "raw").expose(raw_queue)
         # read and publish
@@ -101,6 +108,7 @@ class IMUNode(Node):
             else:
                 # pack raw data
                 raw: Dictionary = Dictionary(data={
+                    "header": Header(frame=self._frame_id),
                     "linear_accelerations": acc,
                     "angular_velocities": vel,
                     "temperature": temp,
@@ -108,6 +116,7 @@ class IMUNode(Node):
                 # publish
                 await accelerations_queue.publish(accelerations.to_rawdata())
                 await velocities_queue.publish(velocities.to_rawdata())
+                # await orientation_queue.publish(orientation.to_rawdata())
                 await temperature_queue.publish(temperature.to_rawdata())
                 await raw_queue.publish(raw.to_rawdata())
             finally:
