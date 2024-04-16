@@ -406,8 +406,7 @@ class FlightControllerNode(Node):
                     y=near_zero(a_y),
                     z=near_zero(a_z),
                 )
-                # TODO: obtain angular velocity data from FC
-                omega_x, omega_y, omega_z = 0, 0, 0
+                omega_x, omega_y, omega_z = self._board.gyro
                 
                 angular_velocity_message = AngularVelocities(
                     x=omega_x,
