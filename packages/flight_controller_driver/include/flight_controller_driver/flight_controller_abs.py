@@ -13,6 +13,8 @@ from serial import SerialException
 
 from yamspy import MSPy
 
+RAW_GYRO_TO_DEG_S = 1 / 16.4
+
 class DroneMode(IntEnum):
     DISARMED = 0
     ARMED = 1
@@ -94,7 +96,7 @@ class FlightControllerAbs(ABC):
         if self._board is None:
             return
 
-        # Accelerometer scaling (from IMU values to m/s)
+        # Accelerometer scaling (from IMU values to m/s, IMU are in [g/512], 1g = 9.81 m/s^2)
         self.accRawToMss = 9.81/512
         
         # yaw offset
@@ -241,7 +243,7 @@ class FlightControllerAbs(ABC):
         return ret
     
     @property
-    def attitude(self):
+    def attitude(self) -> Tuple[float, float, float]:
         """
         Attitude values of the drone. In degrees.
         
@@ -263,7 +265,7 @@ class FlightControllerAbs(ABC):
         return roll, pitch, yaw
     
     @property
-    def acceleration(self):
+    def acceleration(self) -> Tuple[float, float, float]:
         """
         Acceleration values of the drone. In [m/s].
         
@@ -287,6 +289,36 @@ class FlightControllerAbs(ABC):
             raise FCError("Unable to connect to the flight controller board, retry...")
 
         return a_x, a_y, a_z
+
+    @property
+    def gyro(self) -> Tuple[float, float, float]:
+        """
+        Angular velocities measured by the gyroscope of the drone. In [deg/s].
+        
+        Note: this function converts from raw values to degrees per second,
+        the scaling factor is `RAW_GYRO_TO_DEG_S`, which is 1/16.4 for the MPU6050 and BMI270.
+        If the flight controller uses a different IMU, this value should be updated.
+
+        Returns:
+            omega_x, omega_y, omega_z
+        """
+        if self._board is not None:
+            try:
+                # read IMU RAW data
+                self._board.fast_read_imu()
+            except Exception as e:
+                logging.warning(f"Unable to get IMU data {e}, retry...")
+                raise FCError(f"Unable to get IMU data {e}, retry...")
+
+            # calculate the linear accelerations
+            omega_x = self._board.SENSOR_DATA['gyroscope'][0] * RAW_GYRO_TO_DEG_S
+            omega_y = self._board.SENSOR_DATA['gyroscope'][1] * RAW_GYRO_TO_DEG_S
+            omega_z = self._board.SENSOR_DATA['gyroscope'][2] * RAW_GYRO_TO_DEG_S
+            
+            return omega_x, omega_y, omega_z
+        
+        else:
+            raise FCError("Unable to connect to the flight controller board, retry...")
 
     def connect(self):
         """ Connect to the flight controller board """
