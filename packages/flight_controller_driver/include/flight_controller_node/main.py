@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from math import pi
 import sys
 import time
 import traceback
@@ -17,7 +18,8 @@ from dtps_http.structures import RawData
 from duckietown_messages.actuators.drone_control import DroneControl
 from duckietown_messages.actuators.drone_mode import DroneModeMsg, DroneModeResponse, Mode
 from duckietown_messages.actuators.drone_motor_command import DroneMotorCommand
-from duckietown_messages.sensors.attitude import Attitude
+from duckietown_messages.geometry_3d.quaternion import Quaternion
+from duckietown_messages.sensors.imu import Imu
 from duckietown_messages.sensors.battery import BatteryState
 from duckietown_messages.sensors.linear_accelerations import LinearAccelerations
 from duckietown_messages.sensors.angular_velocities import AngularVelocities
@@ -41,6 +43,7 @@ else:
     
 from flight_controller_driver import AttitudePidGains, Mode2RC
 
+DEG2RAD = pi / 180.0
 
 def near_zero(n):
     """ Set a number to zero if it is below a threshold value """
@@ -64,7 +67,7 @@ class FlightControllerNode(Node):
         self.configuration: FlightControllerConfiguration = FlightControllerConfiguration.from_name(self.package, node_name, config)
 
         # IMU reference frame id
-        self._imu_frame_id: str = f"{self._robot_name}/imu"
+        self._imu_frame_id: str = f"{self._robot_name}/imu_link"
 
         # internal state
         self._last_imu_msg = None
@@ -200,7 +203,7 @@ class FlightControllerNode(Node):
                 {"success":False, "message":"No IMU data received yet"}
                 )
         
-        self._update_yaw_offset(last_imu_msg.orientation)
+        self._update_yaw_offset(Transform.from_euler_deg(*self._board.attitude))
 
         # respond
         return RawData.cbor_from_native_object(
@@ -383,16 +386,12 @@ class FlightControllerNode(Node):
         accelerations_queue = await (self.context / "out" / "acceleration" / "linear").queue_create()
         velocities_queue = await (self.context / "out" / "velocity" / "angular").queue_create()
         orientation_queue = await (self.context / "out" / "attitude").queue_create()
-        # TODO: is raw the appropriate name here? In the context of IMUs a raw value is 
-        #       typically one that is specified in the IMU's own measurement units, which are
-        #       then converted to SI measurement units (m/s, rad/s, etc.) through an IMU-specific
-        #       conversion factor. Is this the case here?
         raw_queue = await (self.context / "out" / "raw").queue_create()
 
         await (self.switchboard / "sensor" / "imu" / "accelerometer").expose(accelerations_queue)
-        await (self.switchboard / "sensor" / "imu" / "gyroscope"/ "velocity").expose(velocities_queue)
-        await (self.switchboard / "sensor" / "imu" / "gyroscope"/ "orientation").expose(orientation_queue)
-        await (self.switchboard / "sensor" / "imu" / "raw").expose(raw_queue)
+        await (self.switchboard / "sensor" / "imu" / "gyroscope").expose(velocities_queue)
+        await (self.switchboard / "sensor" / "imu" / "orientation").expose(orientation_queue)
+        await (self.switchboard / "sensor" / "imu" / "data").expose(raw_queue)
 
         dt = 1.0 / self.configuration.frequency.imu
 
@@ -400,7 +399,6 @@ class FlightControllerNode(Node):
             try:
                 # process acceleration data
                 a_x, a_y, a_z = self._board.acceleration
-                acc : List[float] = [a_x, a_y, a_z]
                 acceleration_message = LinearAccelerations(
                     x=near_zero(a_x),
                     y=near_zero(a_y),
@@ -409,34 +407,38 @@ class FlightControllerNode(Node):
                 omega_x, omega_y, omega_z = self._board.gyro
                 
                 angular_velocity_message = AngularVelocities(
-                    x=omega_x,
-                    y=omega_y,
-                    z=omega_z
+                    x=omega_x*DEG2RAD,
+                    y=omega_y*DEG2RAD,
+                    z=omega_z*DEG2RAD
                 )
-                vel : List[float] = [omega_x, omega_y, omega_z]
+
                 # process attitude data
                 roll, pitch, yaw = self._board.attitude
-                orientation : List[float] = [roll, pitch, yaw]
-                orientation_msg = Attitude(
-                    roll=near_zero(roll),
-                    pitch=near_zero(pitch),
-                    yaw=near_zero(yaw),
+                orientation = Transform.from_euler_deg(roll, pitch, yaw)
+                qx, qy, qz, qw, = orientation.quaternion
+
+                orientation_msg = Quaternion(
+                    x=qx,
+                    y=qy,
+                    z=qz,
+                    w=qw
                 )
+
             except Exception as e:
                 traceback.print_exc()
                 self.logwarn(f"IMU Comm Loss: {e}")
             else:
-                # pack raw data
-                raw: Dictionary = Dictionary(data={
-                    "header": Header(frame=self._imu_frame_id),
-                    "linear_accelerations": acc,
-                    "angular_velocities": vel,
-                    "orientation": orientation
-                })
+                # pack Imu data
+                imu_message = Imu(
+                        header=Header(frame=self._imu_frame_id),
+                        angular_velocity=angular_velocity_message,
+                        linear_acceleration=acceleration_message,
+                    )
+
                 await accelerations_queue.publish(acceleration_message.to_rawdata())
                 await orientation_queue.publish(orientation_msg.to_rawdata())
                 await velocities_queue.publish(angular_velocity_message.to_rawdata())
-                await raw_queue.publish(raw.to_rawdata())
+                await raw_queue.publish(imu_message.to_rawdata())
             finally:
                 await asyncio.sleep(dt)
 
