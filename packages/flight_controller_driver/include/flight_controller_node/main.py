@@ -386,12 +386,12 @@ class FlightControllerNode(Node):
         accelerations_queue = await (self.context / "out" / "acceleration" / "linear").queue_create()
         velocities_queue = await (self.context / "out" / "velocity" / "angular").queue_create()
         orientation_queue = await (self.context / "out" / "attitude").queue_create()
-        raw_queue = await (self.context / "out" / "raw").queue_create()
+        data_queue = await (self.context / "out" / "data").queue_create()
 
         await (self.switchboard / "sensor" / "imu" / "accelerometer").expose(accelerations_queue)
         await (self.switchboard / "sensor" / "imu" / "gyroscope").expose(velocities_queue)
         await (self.switchboard / "sensor" / "imu" / "orientation").expose(orientation_queue)
-        await (self.switchboard / "sensor" / "imu" / "data").expose(raw_queue)
+        await (self.switchboard / "sensor" / "imu" / "data").expose(data_queue)
 
         dt = 1.0 / self.configuration.frequency.imu
 
@@ -433,12 +433,13 @@ class FlightControllerNode(Node):
                         header=Header(frame=self._imu_frame_id),
                         angular_velocity=angular_velocity_message,
                         linear_acceleration=acceleration_message,
+                        orientation=orientation_msg
                     )
 
                 await accelerations_queue.publish(acceleration_message.to_rawdata())
                 await orientation_queue.publish(orientation_msg.to_rawdata())
                 await velocities_queue.publish(angular_velocity_message.to_rawdata())
-                await raw_queue.publish(imu_message.to_rawdata())
+                await data_queue.publish(imu_message.to_rawdata())
             finally:
                 await asyncio.sleep(dt)
 
