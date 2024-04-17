@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
+import json
 import traceback
 from enum import IntEnum
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
 
 from dataclasses import dataclass
 
@@ -88,6 +89,9 @@ class FlightControllerAbs(ABC):
 
         self._mode_to_rc_commands = mode_to_rc_commands
 
+        self.pids = {}
+        self._desired_pids = {}
+
         # (try to) connect to the flight controller board
         self._board: Optional[MSPy] = None
         self.setup()
@@ -95,7 +99,7 @@ class FlightControllerAbs(ABC):
 
         if self._board is None:
             return
-
+        
         # Accelerometer scaling (from IMU values to m/s, IMU are in [g/512], 1g = 9.81 m/s^2)
         self.accRawToMss = 9.81/512
         
@@ -225,6 +229,7 @@ class FlightControllerAbs(ABC):
             logging.info(f'Received PID values from FC: {self._board.PIDs}')
 
         for name, pid_values in zip(self._board.PIDNAMES, self._board.PIDs):
+            self.pids[name] = {}
             self.pids[name]['p'] = pid_values[0]
             self.pids[name]['i'] = pid_values[1]
             self.pids[name]['d'] = pid_values[2]
@@ -369,4 +374,87 @@ class FlightControllerAbs(ABC):
     @abstractmethod
     def _get_board_device(self) -> str:
         pass
+
+
+    def _update_buffer_desired_pids(
+        self,
+        axis_name: Literal['ROLL', 'PITCH', 'YAW', 'ALT', 'Pos', 'PosR', 'NavR', 'LEVEL', 'MAG', 'VEL'],
+        component_name: Literal['p', 'i', 'd'],
+        coefficient_value: int,
+    ):
+        """ Before sending all desired PIDs to the FC, buffer locally in this python obj """
+        if len(self.pids) == 0:
+            _ = self.attitude_pid_gains
+
+        if len(self._desired_pids) == 0 and len(self.pids) != 0:
+            self._desired_pids = self.pids.copy()
+
+        if len(self._desired_pids) == 0:
+            print("Not updating desired PIDs because the original values have not been obtained")
+            return
+
+        self._desired_pids[axis_name][component_name] = coefficient_value
+
+    def _update_pids(self):
+        if len(self._desired_pids) == 0:
+            print("Not sending desired PIDs to the FC. The desired PIDs are empty")
+            return False
+
+        try:
+            desired = []
+            for per_item_pid in self._desired_pids.values():
+                for k in ['p', 'i', 'd']:
+                    desired.append(per_item_pid[k])
+
+            if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_SET_PID'], data=desired):
+                dataHandler = self._board.receive_msg()
+                self._board.process_recv_data(dataHandler)
+                logging.info(f'Received PID values from FC: {self._board.PIDs}')
+
+            # update self.pids
+            _ = self.attitude_pid_gains
+
+            for key_name, per_item_pid in self.pids.items():
+                assert self._desired_pids[key_name]['p'] == per_item_pid['p']
+                assert self._desired_pids[key_name]['i'] == per_item_pid['i']
+                assert self._desired_pids[key_name]['d'] == per_item_pid['d']
+
+            print("================================================================")
+            print("PID update successful. After setting desired PIDs, the new PIDs are:")
+            print(json.dumps(self.pids, indent=2))
+            print("================================================================")
+
+            return True
+        except Exception as e:
+            print(f"Failed to update PIDs to desired. Error: {e}")
+            return False
+
+    def set_pids_rpy(
+        self,
+        roll_p: Optional[int] = None, roll_i: Optional[int] = None, roll_d: Optional[int] = None,
+        pitch_p: Optional[int] = None, pitch_i: Optional[int] = None, pitch_d: Optional[int] = None,
+        yaw_p: Optional[int] = None, yaw_i: Optional[int] = None, yaw_d: Optional[int] = None,
+    ):
+        if roll_p is not None:
+            self._update_buffer_desired_pids('ROLL', 'p', roll_p)
+        if roll_i is not None:
+            self._update_buffer_desired_pids('ROLL', 'i', roll_i)
+        if roll_d is not None:
+            self._update_buffer_desired_pids('ROLL', 'd', roll_d)
+
+        if pitch_p is not None:
+            self._update_buffer_desired_pids('PITCH', 'p', pitch_p)
+        if pitch_i is not None:
+            self._update_buffer_desired_pids('PITCH', 'i', pitch_i)
+        if pitch_d is not None:
+            self._update_buffer_desired_pids('PITCH', 'd', pitch_d)
+
+        if yaw_p is not None:
+            self._update_buffer_desired_pids('YAW', 'p', yaw_p)
+        if yaw_i is not None:
+            self._update_buffer_desired_pids('YAW', 'i', yaw_i)
+        if yaw_d is not None:
+            self._update_buffer_desired_pids('YAW', 'd', yaw_d)
+
+        return self._update_pids()
 
