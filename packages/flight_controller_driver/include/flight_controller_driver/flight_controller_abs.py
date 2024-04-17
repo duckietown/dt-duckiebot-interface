@@ -100,7 +100,7 @@ class FlightControllerAbs(ABC):
         self.accRawToMss = 9.81/512
         
         # yaw offset
-        self.yaw_offset = 0.0
+        self.yaw_offset_degrees = 0.0
 
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self.mode_to_rc_command(DroneMode.DISARMED)
@@ -263,7 +263,7 @@ class FlightControllerAbs(ABC):
         yaw = self._board.SENSOR_DATA['kinematics'][2]
         
         # TODO: check if the negative sign is correct
-        yaw -= self.yaw_offset
+        yaw -= self.yaw_offset_degrees
 
         return roll, pitch, yaw
     
@@ -322,6 +322,12 @@ class FlightControllerAbs(ABC):
         
         else:
             raise FCError("Unable to connect to the flight controller board, retry...")
+
+    def zero_yaw(self):
+        """
+        Zero the yaw angle of the drone.
+        """
+        self.yaw_offset_degrees = self.attitude[2]
 
     def connect(self):
         """ Connect to the flight controller board """

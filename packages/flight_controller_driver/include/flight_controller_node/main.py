@@ -193,31 +193,18 @@ class FlightControllerNode(Node):
                 current_mode=Mode(self._requested_mode.value),
             ).to_rawdata()
 
-    async def _srv_zero_yaw_cb(self, _):
+    async def _srv_zero_yaw_cb(self, _) -> Union[RawData, TransformError]:
         """ Zero yaw """
-        
-        # Read the current yaw value
-        last_imu_msg = self._last_imu_msg
-        if last_imu_msg is None:
-            return RawData.cbor_from_native_object(
-                {"success":False, "message":"No IMU data received yet"}
-                )
-        
-        self._update_yaw_offset(Transform.from_euler_deg(*self._board.attitude))
+
+        try:
+            self._board.zero_yaw()
+        except Exception as e:
+            return TransformError(400, str(e))
 
         # respond
         return RawData.cbor_from_native_object(
-            {"success": True, "message": f"Yaw zeroed to {self.yaw_offset}"}
+            {"success": True, "message": f"Yaw zeroed to {self._board.yaw_offset_degrees} degrees"}
             )
-
-    async def _update_yaw_offset(self, orientation : Transform) -> Union[RawData, TransformError]:
-        """ Update the yaw offset based on the given orientation """
-        _, _, yaw = euler_from_quaternion(orientation.quaternion)
-        self._board.yaw_offset += yaw 
-
-        self.loginfo(f"Yaw offset set to {yaw}")
-        return TransformError("Not implemented")
-    
 
     async def _srv_calibrate_imu_cb(self, _):
         """ Calibrate IMU """
