@@ -100,7 +100,7 @@ class FlightControllerAbs(ABC):
         self.accRawToMss = 9.81/512
         
         # yaw offset
-        self.yaw_offset = 0.0
+        self.yaw_offset_degrees = 0.0
 
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self.mode_to_rc_command(DroneMode.DISARMED)
@@ -258,19 +258,19 @@ class FlightControllerAbs(ABC):
             raise FCError(f"Unable to get attitude data {e}, retry...")
         
         # calculate values to update imu_message:
-        roll = np.deg2rad(self._board.SENSOR_DATA['kinematics'][0])
-        pitch = np.deg2rad(self._board.SENSOR_DATA['kinematics'][1])
-        yaw = np.deg2rad(self._board.SENSOR_DATA['kinematics'][2])
+        roll = self._board.SENSOR_DATA['kinematics'][0]
+        pitch = self._board.SENSOR_DATA['kinematics'][1]
+        yaw = self._board.SENSOR_DATA['kinematics'][2]
         
         # TODO: check if the negative sign is correct
-        yaw = (-yaw) % (2 * np.pi) - self.yaw_offset
+        yaw -= self.yaw_offset_degrees
 
         return roll, pitch, yaw
     
     @property
     def acceleration(self) -> Tuple[float, float, float]:
         """
-        Acceleration values of the drone. In [m/s].
+        Acceleration values of the drone. In [m/s^2].
         
         Returns:
             a_x, a_y, a_z
@@ -290,29 +290,6 @@ class FlightControllerAbs(ABC):
         
         else:
             raise FCError("Unable to connect to the flight controller board, retry...")
-
-        # TODO: we should revisit this and use ROS' frames
-        # Rotate the IMU frame to align with our convention for the drone's body
-        # frame. IMU: x is forward, y is left, z is up. We want: x is right,
-        # y is forward, z is up.
-        lin_acc_x_drone_body = -a_y
-        lin_acc_y_drone_body = a_x
-        lin_acc_z_drone_body = a_z
-
-        roll, pitch, _ = self.attitude
-
-        # Account for gravity's affect on linear acceleration values when roll
-        # and pitch are nonzero. When the drone is pitched at 90 degrees, for
-        # example, the z acceleration reads out as -9.8 m/s^2. This makes sense,
-        # as the IMU, when powered up / when the calibration script is called,
-        # zeros the body-frame z-axis acceleration to 0, but when it's pitched
-        # 90 degrees, the body-frame z-axis is perpendicular to the force of
-        # gravity, so, as if the drone were in free-fall (which was roughly
-        # confirmed experimentally), the IMU reads -9.8 m/s^2 along the z-axis.
-        g = 9.8
-        lin_acc_x_drone_body = lin_acc_x_drone_body + g * np.sin(roll) * np.cos(pitch)
-        lin_acc_y_drone_body = lin_acc_y_drone_body + g * np.cos(roll) * (-np.sin(pitch))
-        lin_acc_z_drone_body = lin_acc_z_drone_body + g * (1 - np.cos(roll) * np.cos(pitch))
 
         return a_x, a_y, a_z
 
@@ -345,6 +322,12 @@ class FlightControllerAbs(ABC):
         
         else:
             raise FCError("Unable to connect to the flight controller board, retry...")
+
+    def zero_yaw(self):
+        """
+        Zero the yaw angle of the drone.
+        """
+        self.yaw_offset_degrees = self.attitude[2]
 
     def connect(self):
         """ Connect to the flight controller board """
