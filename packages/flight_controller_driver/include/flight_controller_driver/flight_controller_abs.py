@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 import json
 import traceback
 from enum import IntEnum
@@ -89,7 +90,7 @@ class FlightControllerAbs(ABC):
 
         self._mode_to_rc_commands = mode_to_rc_commands
 
-        self.pids = {}
+        self.pids = defaultdict(dict)
         self._desired_pids = {}
 
         # (try to) connect to the flight controller board
@@ -229,7 +230,6 @@ class FlightControllerAbs(ABC):
             logging.info(f'Received PID values from FC: {self._board.PIDs}')
 
         for name, pid_values in zip(self._board.PIDNAMES, self._board.PIDs):
-            self.pids[name] = {}
             self.pids[name]['p'] = pid_values[0]
             self.pids[name]['i'] = pid_values[1]
             self.pids[name]['d'] = pid_values[2]

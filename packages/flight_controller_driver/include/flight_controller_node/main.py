@@ -111,7 +111,7 @@ class FlightControllerNode(Node):
         # obtain default PID values
         
         # TODO: reimplement updating PID values
-        self.pids = defaultdict(dict)
+
         #initial_rpy_pids: AttitudePidGains = self._get_pid_values_board()
         # self._param_roll_P = DTParam('~roll_P', default=initial_rpy_pids.roll_p,
         #                              param_type=ParamType.INT)
