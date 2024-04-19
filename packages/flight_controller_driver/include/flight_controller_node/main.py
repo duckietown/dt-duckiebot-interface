@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from dataclasses import asdict
 import sys
 import time
 import traceback
@@ -17,6 +18,7 @@ from dtps_http.structures import RawData
 from duckietown_messages.actuators.drone_control import DroneControl
 from duckietown_messages.actuators.drone_mode import DroneModeMsg, DroneModeResponse, Mode
 from duckietown_messages.actuators.drone_motor_command import DroneMotorCommand
+from duckietown_messages.actuators.drone_parameters import FlightControllerParameters
 from duckietown_messages.sensors.attitude import Attitude
 from duckietown_messages.sensors.battery import BatteryState
 from duckietown_messages.sensors.linear_accelerations import LinearAccelerations
@@ -167,7 +169,7 @@ class FlightControllerNode(Node):
         if not quiet:
             self._compute_flight_commands()
 
-    async def set_mode_transform(self, rd : RawData,) -> Union[RawData, TransformError]:
+    async def _transform_set_mode(self, rd : RawData,) -> Union[RawData, TransformError]:
         """ Update desired mode """
         mode = DroneMode(DroneModeMsg.from_rawdata(rd).mode.value)
         do_switch = True
@@ -190,7 +192,22 @@ class FlightControllerNode(Node):
                 current_mode=Mode(self._requested_mode.value),
             ).to_rawdata()
 
-    async def _srv_zero_yaw_cb(self, _):
+    async def _transform_update_pids(self, rd : RawData) -> RawData | TransformError:
+        """ Update PID values """
+        try:
+            msg : FlightControllerParameters = FlightControllerParameters.from_rawdata(rd)
+            pids = AttitudePidGains.from_parameters_message(msg)
+            
+            if self._board.set_pids_rpy(**asdict(pids)) is False:
+                return TransformError(400, "Failed to update PID values")
+
+            # respond
+            return AttitudePidGains.to_parameters_message(pids).to_rawdata()
+
+        except Exception as e:
+            return TransformError(400, f"Failed to update PID values, the following exception occurred: {e}")
+
+    async def _transform_zero_yaw(self, _) -> Union[RawData, TransformError]:
         """ Zero yaw """
         
         # Read the current yaw value
@@ -216,7 +233,7 @@ class FlightControllerNode(Node):
         return TransformError("Not implemented")
     
 
-    async def _srv_calibrate_imu_cb(self, _):
+    async def _transform_calibrate_imu(self, _):
         """ Calibrate IMU """
         try:
             self._board.calibrate_imu()
@@ -247,6 +264,16 @@ class FlightControllerNode(Node):
                 voltage = voltage,
                 present = True if voltage > 6.0 else False,  # ~5V: power from Pi | 7V to 12.6V: power from battery
             )
+        
+    @sidecar
+    async def worker_parameters(self):
+        await self.switchboard_ready.wait()
+        # Create parameters queue
+        self._parameters_queue = await (self.context / "parameters").queue_create(transform=self._transform_update_pids)
+        await (self.switchboard / "flight_controller" / "parameters").expose(self._parameters_queue)
+        
+        # Expose parameters queue to the switchboard
+        await self._parameters_queue.publish(AttitudePidGains.to_parameters_message(self._board.get_pids_rpy()).to_rawdata())
 
     async def worker(self):
         await self.dtps_init(self.configuration)
@@ -264,8 +291,6 @@ class FlightControllerNode(Node):
         heartbeat_pid: DTPSContext = await (self.context / 'in' / 'heartbeat' / 'pid').queue_create() 
         heartbeat_state_estimator: DTPSContext = await (self.context / 'in' / 'heartbeat' / 'state_estimator').queue_create()
         commands_queue: DTPSContext = await (self.context / "in" / "commands").queue_create()
-        
-
 
         # Subscribe heartbeat callbacks
         await heartbeat_altitude.subscribe(self._heartbeat_altitude_cb)
@@ -277,10 +302,10 @@ class FlightControllerNode(Node):
         await commands_queue.subscribe(self._flight_commands_cb)
 
         # Create services queues and add transforms
-        zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create(transform=self._srv_zero_yaw_cb)
-        calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create(transform=self._srv_calibrate_imu_cb)
+        zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create(transform=self._transform_zero_yaw)
+        calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create(transform=self._transform_calibrate_imu)
         set_mode_queue = await (self.context / "in" / "set_mode").queue_create(
-            transform= self.set_mode_transform
+            transform= self._transform_set_mode
             )
  
         # Expose queues to the switchboard
@@ -496,6 +521,7 @@ class FlightControllerNode(Node):
     async def _heartbeat_state_estimator_cb(self, _):
         """ Update state_estimator heartbeat """
         self._heartbeat_state_estimator = time.time()
+        
 
     def _should_disarm(self):
         """

@@ -7,6 +7,7 @@ from typing import List, Literal, Optional, Tuple
 
 from dataclasses import dataclass
 
+from duckietown_messages.actuators.drone_parameters import FlightControllerParameters
 import numpy as np
 import sys
 import logging
@@ -44,6 +45,39 @@ class AttitudePidGains:
     yaw_p: int
     yaw_i: int
     yaw_d: int
+    
+    @staticmethod
+    def from_parameters_message(msg : FlightControllerParameters):
+        """
+        Convert a DroneMotorCommand message to an AttitudePidGains object.
+        """
+        return AttitudePidGains(
+            roll_p=msg.roll_pid_kp,
+            roll_i=msg.roll_pid_ki,
+            roll_d=msg.roll_pid_kd,
+            pitch_p=msg.pitch_pid_kp,
+            pitch_i=msg.pitch_pid_ki,
+            pitch_d=msg.pitch_pid_kd,
+            yaw_p=msg.yaw_pid_kp,
+            yaw_i=msg.yaw_pid_ki,
+            yaw_d=msg.yaw_pid_kd
+        )
+        
+    def to_parameters_message(self):
+        """
+        Convert the AttitudePidGains object to a DroneMotorCommand message.
+        """
+        return FlightControllerParameters(
+            roll_pid_kp=self.roll_p,
+            roll_pid_ki=self.roll_i,
+            roll_pid_kd=self.roll_d,
+            pitch_pid_kp=self.pitch_p,
+            pitch_pid_ki=self.pitch_i,
+            pitch_pid_kd=self.pitch_d,
+            yaw_pid_kp=self.yaw_p,
+            yaw_pid_ki=self.yaw_i,
+            yaw_pid_kd=self.yaw_d
+        )
 
 @dataclass
 class SerialConfig:
@@ -102,7 +136,7 @@ class FlightControllerAbs(ABC):
             return
         
         # Accelerometer scaling (from IMU values to m/s, IMU are in [g/512], 1g = 9.81 m/s^2)
-        self.accRawToMss = 9.81/512
+        self.ACCELEROMETER_SCALING_FACTOR = 9.81/512
         
         # yaw offset
         self.yaw_offset = 0.0
@@ -289,9 +323,9 @@ class FlightControllerAbs(ABC):
                 raise FCError(f"Unable to get IMU data {e}, retry...")
 
             # calculate the linear accelerations
-            a_x = self._board.SENSOR_DATA['accelerometer'][0] * self.accRawToMss
-            a_y = self._board.SENSOR_DATA['accelerometer'][1] * self.accRawToMss
-            a_z = self._board.SENSOR_DATA['accelerometer'][2] * self.accRawToMss
+            a_x = self._board.SENSOR_DATA['accelerometer'][0] * self.ACCELEROMETER_SCALING_FACTOR
+            a_y = self._board.SENSOR_DATA['accelerometer'][1] * self.ACCELEROMETER_SCALING_FACTOR
+            a_z = self._board.SENSOR_DATA['accelerometer'][2] * self.ACCELEROMETER_SCALING_FACTOR
         
         else:
             raise FCError("Unable to connect to the flight controller board, retry...")
@@ -375,7 +409,6 @@ class FlightControllerAbs(ABC):
     def _get_board_device(self) -> str:
         pass
 
-
     def _update_buffer_desired_pids(
         self,
         axis_name: Literal['ROLL', 'PITCH', 'YAW', 'ALT', 'Pos', 'PosR', 'NavR', 'LEVEL', 'MAG', 'VEL'],
@@ -425,6 +458,7 @@ class FlightControllerAbs(ABC):
             print("================================================================")
 
             return True
+        
         except Exception as e:
             print(f"Failed to update PIDs to desired. Error: {e}")
             return False
@@ -434,7 +468,14 @@ class FlightControllerAbs(ABC):
         roll_p: Optional[int] = None, roll_i: Optional[int] = None, roll_d: Optional[int] = None,
         pitch_p: Optional[int] = None, pitch_i: Optional[int] = None, pitch_d: Optional[int] = None,
         yaw_p: Optional[int] = None, yaw_i: Optional[int] = None, yaw_d: Optional[int] = None,
-    ):
+    ) -> bool:
+        """
+        Set the PID values for the roll, pitch, and yaw axes.
+        
+        Returns:
+            True if the PID values were successfully updated, False otherwise.    
+        """
+
         if roll_p is not None:
             self._update_buffer_desired_pids('ROLL', 'p', roll_p)
         if roll_i is not None:
