@@ -1,6 +1,7 @@
 import asyncio
 import copy
 import dataclasses
+import math
 import os
 import time
 from abc import abstractmethod, ABCMeta
@@ -17,6 +18,9 @@ from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
 from dtps import DTPSContext
 from dtps_http.structures import Bounds
+from duckietown_messages.calibrations.camera_extrinsic import CameraExtrinsicCalibration
+from duckietown_messages.calibrations.camera_intrinsic import CameraIntrinsicCalibration
+from duckietown_messages.geometry_2d.homography import Homography
 from duckietown_messages.sensors.camera import Camera
 from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
@@ -31,7 +35,10 @@ class CameraNodeConfiguration(NodeConfiguration):
     exposure_mode (:obj:`str`): exposure mode, one of
         `these <https://picamera.readthedocs.io/en/latest/api_camera.html?highlight=sport#picamera.PiCamera.exposure_mode>`_, default is `sports`
     """
+    maker: str
+    model: str
     framerate: int
+    fov: int
     res_w: int
     res_h: int
     exposure_mode: str
@@ -52,13 +59,14 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
 
     """
 
-    def __init__(self, config: str):
-        node_name: str = "camera-driver"
+    def __init__(self, config: str, name: str):
+        node_name: str = f"camera-driver-{name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
             description="Reads a stream of images from a camera and publishes the frames over DTPS",
         )
+        self.sensor_name: str = name
 
         # load configuration
         self.configuration: CameraNodeConfiguration = CameraNodeConfiguration.from_name(self.package, node_name, config)
@@ -66,7 +74,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         # intrinsic calibration
         # TODO: take common part out
         self.cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
-        self.frame_id = f"/{self._robot_name}/camera_optical_frame"
+        self.frame_id = f"/{self._robot_name}/camera/{self.sensor_name}/optical-frame"
         # TODO: this needs to be adjusted location
         self.cali_file = os.path.join(self.cali_file_folder, f"{self._robot_name}.yaml")
 
@@ -91,6 +99,8 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         self._has_published: bool = False
         self._jpeg_queue: Optional[DTPSContext] = None
         self._parameters_queue: Optional[DTPSContext] = None
+        self._homographies_queue: Optional[DTPSContext] = None
+        self._info_queue: Optional[DTPSContext] = None
         # data flow monitor
         self._last_image_published_time: float = time.time()
         # ---
@@ -112,25 +122,63 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         self._last_image_published_time = time.time()
         # ---
         if not self._has_published:
-            # publish camera model
-            msg: Camera = self.camera_model_to_camera_message(self.camera_model)
+            # publish camera intrinsics
+            msg: CameraIntrinsicCalibration = CameraIntrinsicCalibration(
+                K=self.camera_model.K.tolist(),
+                D=self.camera_model.D.tolist(),
+                P=self.camera_model.P.tolist(),
+                R=self.camera_model.R.tolist() if self.camera_model.R is not None else None,
+            )
             await self._parameters_queue.publish(msg.to_rawdata())
-            self.loginfo("Published camera model")
+            self.loginfo("Published camera intrinsics")
+            # publish camera extrinsics
+            msg: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
+                homographies={
+                    f"/{self._robot_name}/base-footprint": Homography(data=self.camera_model.H.tolist())
+                } if self.camera_model.H is not None else {},
+            )
+            await self._homographies_queue.publish(msg.to_rawdata())
+            self.loginfo(f"Published {len(msg.homographies)} known camera homographies")
+            # publish camera info
+            msg: Camera = Camera(
+                # -- base
+                header=Header(),
+                # -- sensor
+                name=self.sensor_name,
+                type="camera",
+                simulated=False,
+                description="RGB8/JPEG Camera",
+                frame_id=self.frame_id,
+                frequency=self.configuration.framerate,
+                maker=self.configuration.maker,
+                model=self.configuration.model,
+                # -- camera
+                width=self.camera_model.width,
+                height=self.camera_model.height,
+                fov=math.radians(self.configuration.fov),
+            )
+            await self._info_queue.publish(msg.to_rawdata())
+            self.loginfo("Published camera info")
             # ---
             self.loginfo("Published the first image")
             self._has_published = True
 
     async def dtps_init_queues(self):
         await self.dtps_init(self.configuration)
-        # create sensor queue
-        self._jpeg_queue = await (self.context / "out" / "jpeg").queue_create(bounds=Bounds.max_length(3))
-        # create model queue
-        self._parameters_queue = await (self.context / "out" / "parameters").queue_create()
+        # create local queues
+        out: DTPSContext = self.context / "out"
+        self._jpeg_queue = await (out / "jpeg").queue_create(bounds=Bounds.max_length(3))
+        self._parameters_queue = await (out / "parameters").queue_create()
+        self._homographies_queue = await (out / "homographies").queue_create()
+        self._info_queue = await (out / "info").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "camera" / "jpeg").expose(self._jpeg_queue)
-        await (self.switchboard / "sensor" / "camera" / "parameters").expose(self._parameters_queue)
+        sensor: DTPSContext = self.switchboard / "sensor" / "camera" / self.sensor_name
+        await (sensor / "jpeg").expose(self._jpeg_queue)
+        await (sensor / "parameters").expose(self._parameters_queue)
+        await (sensor / "homographies").expose(self._homographies_queue)
+        await (sensor / "info").expose(self._info_queue)
 
     async def _worker(self):
         """
@@ -275,16 +323,3 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
             P=calibration["projection_matrix"]["data"],
         )
         return camera
-
-    @staticmethod
-    def camera_model_to_camera_message(camera: CameraModel, header: Header = None) -> Camera:
-        return Camera(
-            header=header or Header(),
-            width=camera.width,
-            height=camera.height,
-            K=camera.K.tolist(),
-            D=camera.D.tolist(),
-            P=camera.P.tolist(),
-            R=camera.R.tolist() if camera.R is not None else None,
-            H=camera.H.tolist() if camera.H is not None else None,
-        )
