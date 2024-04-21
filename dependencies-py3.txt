@@ -33,4 +33,4 @@ tiny-tf==1.2.0
 # -- Duckietown --
 
 # this is needed for the camera driver node
-lib-dt-computer-vision==0.1.8
+lib-dt-computer-vision==0.1.9
