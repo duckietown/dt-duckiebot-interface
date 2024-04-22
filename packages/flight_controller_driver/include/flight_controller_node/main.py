@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+from dataclasses import asdict
 from math import pi
 import sys
 import time
@@ -108,53 +109,6 @@ class FlightControllerNode(Node):
 
         self.current_mode_queue : Optional[DTPSContext] = None
 
-        # TODO: if update PID param failed with FC, ros param and FC PIDs are inconsistent
-        # low priority. the params will be of the true values on next container start-up
-
-        # obtain default PID values
-        
-        # TODO: reimplement updating PID values
-        self.pids = defaultdict(dict)
-        #initial_rpy_pids: AttitudePidGains = self._get_pid_values_board()
-        # self._param_roll_P = DTParam('~roll_P', default=initial_rpy_pids.roll_p,
-        #                              param_type=ParamType.INT)
-        # self._param_roll_P.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(roll_p=self._param_roll_P.value))
-        # self._param_roll_I = DTParam('~roll_I', default=initial_rpy_pids.roll_i,
-        #                              param_type=ParamType.INT)
-        # self._param_roll_I.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(roll_i=self._param_roll_I.value))
-        # self._param_roll_D = DTParam('~roll_D', default=initial_rpy_pids.roll_d,
-        #                              param_type=ParamType.INT)
-        # self._param_roll_D.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(roll_d=self._param_roll_D.value))
-
-        # self._param_pitch_P = DTParam('~pitch_P', default=initial_rpy_pids.pitch_p,
-        #                               param_type=ParamType.INT)
-        # self._param_pitch_P.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(pitch_p=self._param_pitch_P.value))
-        # self._param_pitch_I = DTParam('~pitch_I', default=initial_rpy_pids.pitch_i,
-        #                               param_type=ParamType.INT)
-        # self._param_pitch_I.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(pitch_i=self._param_pitch_I.value))
-        # self._param_pitch_D = DTParam('~pitch_D', default=initial_rpy_pids.pitch_d,
-        #                               param_type=ParamType.INT)
-        # self._param_pitch_D.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(pitch_d=self._param_pitch_D.value))
-
-        # self._param_yaw_P = DTParam('~yaw_P', default=initial_rpy_pids.yaw_p,
-        #                             param_type=ParamType.INT)
-        # self._param_yaw_P.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(yaw_p=self._param_yaw_P.value))
-        # self._param_yaw_I = DTParam('~yaw_I', default=initial_rpy_pids.yaw_i,
-        #                             param_type=ParamType.INT)
-        # self._param_yaw_I.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(yaw_i=self._param_yaw_I.value))
-        # self._param_yaw_D = DTParam('~yaw_D', default=initial_rpy_pids.yaw_d,
-        #                             param_type=ParamType.INT)
-        # self._param_yaw_D.register_update_callback(
-        #     lambda: self._board.set_pids_rpy(yaw_d=self._param_yaw_D.value))
-
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self._board.mode_to_rc_command(DroneMode.DISARMED)
         self._last_command = self._board.mode_to_rc_command(DroneMode.DISARMED)
@@ -170,7 +124,7 @@ class FlightControllerNode(Node):
         if not quiet:
             self._compute_flight_commands()
 
-    async def set_mode_transform(self, rd : RawData,) -> Union[RawData, TransformError]:
+    async def _transform_set_mode(self, rd : RawData,) -> Union[RawData, TransformError]:
         """ Update desired mode """
         mode = DroneMode(DroneModeMsg.from_rawdata(rd).mode.value)
         do_switch = True
@@ -192,6 +146,21 @@ class FlightControllerNode(Node):
                 previous_mode=Mode(self._current_mode.value),
                 current_mode=Mode(self._requested_mode.value),
             ).to_rawdata()
+
+    async def _transform_update_pids(self, rd : RawData) -> RawData | TransformError:
+        """ Update PID values """
+        try:
+            msg : FlightControllerParameters = FlightControllerParameters.from_rawdata(rd)
+            pids = AttitudePidGains.from_parameters_message(msg)
+            
+            if self._board.set_pids_rpy(**asdict(pids)) is False:
+                return TransformError(400, "Failed to update PID values")
+
+            # respond
+            return pids.to_parameters_message().to_rawdata()
+
+        except Exception as e:
+            return TransformError(400, f"Failed to update PID values, the following exception occurred: {e}")
 
     async def _srv_zero_yaw_cb(self, _) -> Union[RawData, TransformError]:
         """ Zero yaw """
@@ -236,6 +205,16 @@ class FlightControllerNode(Node):
                 voltage = voltage,
                 present = True if voltage > 6.0 else False,  # ~5V: power from Pi | 7V to 12.6V: power from battery
             )
+        
+    @sidecar
+    async def worker_parameters(self):
+        await self.switchboard_ready.wait()
+        # Create parameters queue
+        self._parameters_queue = await (self.context / "parameters").queue_create(transform=self._transform_update_pids)
+        await (self.switchboard / "flight_controller" / "parameters").expose(self._parameters_queue)
+        
+        # Expose parameters queue to the switchboard
+        await self._parameters_queue.publish(AttitudePidGains.to_parameters_message(self._board.get_pids_rpy()).to_rawdata())
 
     async def worker(self):
         await self.dtps_init(self.configuration)
@@ -253,8 +232,6 @@ class FlightControllerNode(Node):
         heartbeat_pid: DTPSContext = await (self.context / 'in' / 'heartbeat' / 'pid').queue_create() 
         heartbeat_state_estimator: DTPSContext = await (self.context / 'in' / 'heartbeat' / 'state_estimator').queue_create()
         commands_queue: DTPSContext = await (self.context / "in" / "commands").queue_create()
-        
-
 
         # Subscribe heartbeat callbacks
         await heartbeat_altitude.subscribe(self._heartbeat_altitude_cb)
@@ -269,7 +246,7 @@ class FlightControllerNode(Node):
         zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create(transform=self._srv_zero_yaw_cb)
         calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create(transform=self._srv_calibrate_imu_cb)
         set_mode_queue = await (self.context / "in" / "set_mode").queue_create(
-            transform= self.set_mode_transform
+            transform= self._transform_set_mode
             )
  
         # Expose queues to the switchboard
@@ -485,6 +462,7 @@ class FlightControllerNode(Node):
     async def _heartbeat_state_estimator_cb(self, _):
         """ Update state_estimator heartbeat """
         self._heartbeat_state_estimator = time.time()
+        
 
     def _should_disarm(self):
         """
