@@ -170,7 +170,7 @@ class FlightControllerNode(Node):
                 {"success":False, "message":"No IMU data received yet"}
                 )
         
-        self._update_yaw_offset(last_imu_msg.orientation)
+        await self._update_yaw_offset(last_imu_msg.orientation)
 
         # respond
         return RawData.cbor_from_native_object(
@@ -181,9 +181,8 @@ class FlightControllerNode(Node):
         """ Update the yaw offset based on the given orientation """
         _, _, yaw = euler_from_quaternion(orientation.quaternion)
         self._board.yaw_offset += yaw 
-
-        self.loginfo(f"Yaw offset set to {yaw}")
-        return TransformError("Not implemented")
+        self.logger.info(f"Yaw offset set to {yaw}")
+        return TransformError(404, "Not implemented")
     
 
     async def _transform_calibrate_imu(self, _):

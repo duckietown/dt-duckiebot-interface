@@ -128,9 +128,8 @@ class FlightControllerAbs(ABC):
         self._desired_pids = {}
 
         # (try to) connect to the flight controller board
-        self._board: Optional[MSPy] = None
         self.setup()
-        self.connect()
+        self._board: MSPy = self.connect()
 
         if self._board is None:
             return
@@ -146,7 +145,7 @@ class FlightControllerAbs(ABC):
         self._last_command = self.mode_to_rc_command(DroneMode.DISARMED)
 
 
-    def mode_to_rc_command(self, mode: DroneMode) -> Optional[List[int]]:
+    def mode_to_rc_command(self, mode: DroneMode) -> List[int]:
         """
         Provides the raw RC commands for a given mode.
 
@@ -160,7 +159,7 @@ class FlightControllerAbs(ABC):
         return self._mode_to_rc_commands.from_mode(mode)
 
 
-    def calibrate_imu(self, _):
+    def calibrate_imu(self,):
         """ Calibrate IMU """
         logging.info("Calibrating IMU...")
         if self._board is not None:
@@ -385,7 +384,7 @@ class FlightControllerAbs(ABC):
         else:
             raise FCError("Unable to connect to the flight controller board, retry...")
 
-    def connect(self):
+    def connect(self) -> MSPy:
         """ Connect to the flight controller board """
         dev = self._get_board_device()
 
@@ -403,7 +402,7 @@ class FlightControllerAbs(ABC):
             logging.critical(f"The flight controller board could not be found at '{dev}'")
             sys.exit(4)
         # ---
-        self._board = board
+        return board
 
     @abstractmethod
     def _get_board_device(self) -> str:
