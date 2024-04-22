@@ -1,3 +1,0 @@
-[submodule "libraries/duckietown-messages"]
-	path = libraries/duckietown-messages
-	url = git@github.com:duckietown/duckietown-messages.git

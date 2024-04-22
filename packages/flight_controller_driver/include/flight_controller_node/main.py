@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 from dataclasses import asdict
+from math import pi
 import sys
 import time
 import traceback
@@ -18,8 +19,8 @@ from dtps_http.structures import RawData
 from duckietown_messages.actuators.drone_control import DroneControl
 from duckietown_messages.actuators.drone_mode import DroneModeMsg, DroneModeResponse, Mode
 from duckietown_messages.actuators.drone_motor_command import DroneMotorCommand
-from duckietown_messages.actuators.drone_parameters import FlightControllerParameters
-from duckietown_messages.sensors.attitude import Attitude
+from duckietown_messages.geometry_3d.quaternion import Quaternion
+from duckietown_messages.sensors.imu import Imu
 from duckietown_messages.sensors.battery import BatteryState
 from duckietown_messages.sensors.linear_accelerations import LinearAccelerations
 from duckietown_messages.sensors.angular_velocities import AngularVelocities
@@ -43,6 +44,7 @@ else:
     
 from flight_controller_driver import AttitudePidGains, Mode2RC
 
+DEG2RAD = pi / 180.0
 
 def near_zero(n):
     """ Set a number to zero if it is below a threshold value """
@@ -66,7 +68,7 @@ class FlightControllerNode(Node):
         self.configuration: FlightControllerConfiguration = FlightControllerConfiguration.from_name(self.package, node_name, config)
 
         # IMU reference frame id
-        self._imu_frame_id: str = f"{self._robot_name}/imu"
+        self._imu_frame_id: str = f"{self._robot_name}/imu_link"
 
         # internal state
         self._last_imu_msg = None
@@ -160,32 +162,20 @@ class FlightControllerNode(Node):
         except Exception as e:
             return TransformError(400, f"Failed to update PID values, the following exception occurred: {e}")
 
-    async def _transform_zero_yaw(self, _) -> Union[RawData, TransformError]:
+    async def _srv_zero_yaw_cb(self, _) -> Union[RawData, TransformError]:
         """ Zero yaw """
-        
-        # Read the current yaw value
-        last_imu_msg = self._last_imu_msg
-        if last_imu_msg is None:
-            return RawData.cbor_from_native_object(
-                {"success":False, "message":"No IMU data received yet"}
-                )
-        
-        await self._update_yaw_offset(last_imu_msg.orientation)
+
+        try:
+            self._board.zero_yaw()
+        except Exception as e:
+            return TransformError(400, str(e))
 
         # respond
         return RawData.cbor_from_native_object(
-            {"success": True, "message": f"Yaw zeroed to {self.yaw_offset}"}
+            {"success": True, "message": f"Yaw zeroed to {self._board.yaw_offset_degrees} degrees"}
             )
 
-    async def _update_yaw_offset(self, orientation : Transform) -> Union[RawData, TransformError]:
-        """ Update the yaw offset based on the given orientation """
-        _, _, yaw = euler_from_quaternion(orientation.quaternion)
-        self._board.yaw_offset += yaw 
-        self.logger.info(f"Yaw offset set to {yaw}")
-        return TransformError(404, "Not implemented")
-    
-
-    async def _transform_calibrate_imu(self, _):
+    async def _srv_calibrate_imu_cb(self, _):
         """ Calibrate IMU """
         try:
             self._board.calibrate_imu()
@@ -203,8 +193,7 @@ class FlightControllerNode(Node):
         msg = DroneControl.from_rawdata(rd)
         """ Store and send the flight commands if the current mode is FLYING """
         if self._requested_mode is DroneMode.FLYING:
-            aux1 = self._board.mode_to_rc_command(DroneMode.IDLE)[4]
-            aux2 = self._board.mode_to_rc_command(DroneMode.IDLE)[5]
+            aux1, aux2 = self._board.mode_to_rc_command(DroneMode.FLYING)[4:6]
 
             # compile command to be sent to the flight controller board
             self._command = [int(msg.roll), int(msg.pitch), int(msg.yaw), int(msg.throttle), int(aux1), int(aux2)]
@@ -254,8 +243,8 @@ class FlightControllerNode(Node):
         await commands_queue.subscribe(self._flight_commands_cb)
 
         # Create services queues and add transforms
-        zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create(transform=self._transform_zero_yaw)
-        calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create(transform=self._transform_calibrate_imu)
+        zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create(transform=self._srv_zero_yaw_cb)
+        calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create(transform=self._srv_calibrate_imu_cb)
         set_mode_queue = await (self.context / "in" / "set_mode").queue_create(
             transform= self._transform_set_mode
             )
@@ -360,16 +349,12 @@ class FlightControllerNode(Node):
         accelerations_queue = await (self.context / "out" / "acceleration" / "linear").queue_create()
         velocities_queue = await (self.context / "out" / "velocity" / "angular").queue_create()
         orientation_queue = await (self.context / "out" / "attitude").queue_create()
-        # TODO: is raw the appropriate name here? In the context of IMUs a raw value is 
-        #       typically one that is specified in the IMU's own measurement units, which are
-        #       then converted to SI measurement units (m/s, rad/s, etc.) through an IMU-specific
-        #       conversion factor. Is this the case here?
-        raw_queue = await (self.context / "out" / "raw").queue_create()
+        data_queue = await (self.context / "out" / "data").queue_create()
 
         await (self.switchboard / "sensor" / "imu" / "accelerometer").expose(accelerations_queue)
-        await (self.switchboard / "sensor" / "imu" / "gyroscope"/ "velocity").expose(velocities_queue)
-        await (self.switchboard / "sensor" / "imu" / "gyroscope"/ "orientation").expose(orientation_queue)
-        await (self.switchboard / "sensor" / "imu" / "raw").expose(raw_queue)
+        await (self.switchboard / "sensor" / "imu" / "gyroscope").expose(velocities_queue)
+        await (self.switchboard / "sensor" / "imu" / "orientation").expose(orientation_queue)
+        await (self.switchboard / "sensor" / "imu" / "data").expose(data_queue)
 
         dt = 1.0 / self.configuration.frequency.imu
 
@@ -377,7 +362,6 @@ class FlightControllerNode(Node):
             try:
                 # process acceleration data
                 a_x, a_y, a_z = self._board.acceleration
-                acc : List[float] = [a_x, a_y, a_z]
                 acceleration_message = LinearAccelerations(
                     x=near_zero(a_x),
                     y=near_zero(a_y),
@@ -386,34 +370,39 @@ class FlightControllerNode(Node):
                 omega_x, omega_y, omega_z = self._board.gyro
                 
                 angular_velocity_message = AngularVelocities(
-                    x=omega_x,
-                    y=omega_y,
-                    z=omega_z
+                    x=omega_x*DEG2RAD,
+                    y=omega_y*DEG2RAD,
+                    z=omega_z*DEG2RAD
                 )
-                vel : List[float] = [omega_x, omega_y, omega_z]
+
                 # process attitude data
                 roll, pitch, yaw = self._board.attitude
-                orientation : List[float] = [roll, pitch, yaw]
-                orientation_msg = Attitude(
-                    roll=near_zero(roll),
-                    pitch=near_zero(pitch),
-                    yaw=near_zero(yaw),
+                orientation = Transform.from_euler_deg(roll, pitch, yaw)
+                qx, qy, qz, qw, = orientation.quaternion
+
+                orientation_msg = Quaternion(
+                    x=qx,
+                    y=qy,
+                    z=qz,
+                    w=qw
                 )
+
             except Exception as e:
                 traceback.print_exc()
                 self.logwarn(f"IMU Comm Loss: {e}")
             else:
-                # pack raw data
-                raw: Dictionary = Dictionary(data={
-                    "header": Header(frame=self._imu_frame_id),
-                    "linear_accelerations": acc,
-                    "angular_velocities": vel,
-                    "orientation": orientation
-                })
+                # pack Imu data
+                imu_message = Imu(
+                        header=Header(frame=self._imu_frame_id),
+                        angular_velocity=angular_velocity_message,
+                        linear_acceleration=acceleration_message,
+                        orientation=orientation_msg
+                    )
+
                 await accelerations_queue.publish(acceleration_message.to_rawdata())
                 await orientation_queue.publish(orientation_msg.to_rawdata())
                 await velocities_queue.publish(angular_velocity_message.to_rawdata())
-                await raw_queue.publish(raw.to_rawdata())
+                await data_queue.publish(imu_message.to_rawdata())
             finally:
                 await asyncio.sleep(dt)
 
