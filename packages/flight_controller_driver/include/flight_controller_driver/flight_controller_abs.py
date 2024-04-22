@@ -19,7 +19,6 @@ class DroneMode(IntEnum):
     DISARMED = 0
     ARMED = 1
     FLYING = 2
-    IDLE = 3
 
 # read m1, m2, m3, m4
 @dataclass
@@ -65,7 +64,6 @@ class Mode2RC:
             DroneMode.DISARMED: self.disarm,
             DroneMode.ARMED: self.arm,
             DroneMode.FLYING: self.flying,
-            DroneMode.IDLE: self.idle
         }
         return mode_to_rc[mode]
 
@@ -152,10 +150,6 @@ class FlightControllerAbs(ABC):
     def arm(self):
         """ Arm the drone """
         self.send_command(self.mode_to_rc_command(DroneMode.ARMED))
-
-    def idle(self):
-        """ Put the drone in idle mode """
-        self.send_command(self.mode_to_rc_command(DroneMode.IDLE))
     
     def fly(self):
         """ Put the drone in flying mode """
