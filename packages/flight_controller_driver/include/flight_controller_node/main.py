@@ -224,8 +224,7 @@ class FlightControllerNode(Node):
         msg = DroneControl.from_rawdata(rd)
         """ Store and send the flight commands if the current mode is FLYING """
         if self._requested_mode is DroneMode.FLYING:
-            aux1 = self._board.mode_to_rc_command(DroneMode.IDLE)[4]
-            aux2 = self._board.mode_to_rc_command(DroneMode.IDLE)[5]
+            aux1, aux2 = self._board.mode_to_rc_command(DroneMode.FLYING)[4:6]
 
             # compile command to be sent to the flight controller board
             self._command = [int(msg.roll), int(msg.pitch), int(msg.yaw), int(msg.throttle), int(aux1), int(aux2)]
