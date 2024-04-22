@@ -34,17 +34,17 @@ class MotorState:
 
 @dataclass
 class AttitudePidGains:
-    roll_p: int
-    roll_i: int
-    roll_d: int
+    roll_p: float
+    roll_i: float
+    roll_d: float
 
-    pitch_p: int
-    pitch_i: int
-    pitch_d: int
+    pitch_p: float
+    pitch_i: float
+    pitch_d: float
 
-    yaw_p: int
-    yaw_i: int
-    yaw_d: int
+    yaw_p: float
+    yaw_i: float
+    yaw_d: float
     
     @staticmethod
     def from_parameters_message(msg : FlightControllerParameters):
@@ -62,7 +62,7 @@ class AttitudePidGains:
             yaw_i=msg.yaw_pid_ki,
             yaw_d=msg.yaw_pid_kd
         )
-        
+
     def to_parameters_message(self):
         """
         Convert the AttitudePidGains object to a DroneMotorCommand message.
