@@ -40,13 +40,14 @@ class ButtonDriverNode(Node):
     _TIME_HOLD_3S = 3
     _TIME_HOLD_10S = 10
 
-    def __init__(self, config: str):
-        node_name: str = "power-button-driver"
+    def __init__(self, config: str, sensor_name: str):
+        node_name: str = f"power-button-driver-{sensor_name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
             description="Power button driver",
         )
+        self.sensor_name: str = sensor_name
         # load configuration
         self.configuration: ButtonDriverNodeConfiguration = (ButtonDriverNodeConfiguration.
                                                              from_name(self.package, node_name, config))
@@ -121,7 +122,7 @@ class ButtonDriverNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "power-button").expose(self._queue)
+        await (self.switchboard / "sensor" / "power-button" / self.sensor_name / "event").expose(self._queue)
         # publish no event
         await self._queue.publish(ButtonEventMsg(
             type=InteractionEvent.NOTHING,
@@ -156,10 +157,11 @@ class ButtonDriverNode(Node):
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    parser.add_argument("--sensor-name", type=str, required=True, help="Name of the sensor")
     parser.add_argument("--config", type=str, required=True, help="Name of the configuration")
     args: argparse.Namespace = parser.parse_args()
     # create node
-    node: ButtonDriverNode = ButtonDriverNode(config=args.config)
+    node: ButtonDriverNode = ButtonDriverNode(config=args.config, sensor_name=args.sensor_name)
     # launch the node
     node.spin()
 

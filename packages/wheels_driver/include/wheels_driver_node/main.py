@@ -48,13 +48,14 @@ class WheelsDriverNode(Node):
 
     """
 
-    def __init__(self, config: str):
-        node_name: str = "wheels-driver"
+    def __init__(self, config: str, actuator_name: str):
+        node_name: str = f"wheels-driver-{actuator_name}"
         super(WheelsDriverNode, self).__init__(
             name=node_name,
             kind=NodeType.DRIVER,
             description="Robot wheels motor driver",
         )
+        self.actuator_name: str = actuator_name
 
         # load configuration
         self.configuration: WheelsDriverNodeConfiguration = (WheelsDriverNodeConfiguration.
@@ -128,10 +129,11 @@ class WheelsDriverNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "actuator" / "wheels" / "pwm").expose(pwm_in)
-        await (self.switchboard / "actuator" / "wheels" / "estop").expose(estop_queue)
-        await (self.switchboard / "actuator" / "wheels" / "pwm_filtered").expose(self._pwm_filtered_out)
-        await (self.switchboard / "actuator" / "wheels" / "pwm_executed").expose(self._pwm_executed_out)
+        actuator: DTPSContext = self.switchboard / "actuator" / "wheels" / self.actuator_name
+        await (actuator / "pwm").expose(pwm_in)
+        await (actuator / "estop").expose(estop_queue)
+        await (actuator / "pwm_filtered").expose(self._pwm_filtered_out)
+        await (actuator / "pwm_executed").expose(self._pwm_executed_out)
         # publish the initial state
         await pwm_in.publish(DifferentialPWM(left=0, right=0).to_rawdata())
         await estop_queue.publish(Boolean(data=False).to_rawdata())
@@ -162,10 +164,11 @@ class WheelsDriverNode(Node):
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    parser.add_argument("--actuator-name", type=str, required=True, help="Name of the actuator")
     parser.add_argument("--config", type=str, required=True, help="Name of the configuration")
     args: argparse.Namespace = parser.parse_args()
     # create node
-    node: WheelsDriverNode = WheelsDriverNode(config=args.config)
+    node: WheelsDriverNode = WheelsDriverNode(config=args.config, actuator_name=args.actuator_name)
     # launch the node
     node.spin()
 

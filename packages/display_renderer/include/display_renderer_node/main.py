@@ -98,7 +98,7 @@ class DisplayRendererNode(Node):
     async def worker(self):
         await self.dtps_init(self.configuration)
         # create fragments queue
-        queue = await (self.switchboard / "actuator" / "display" / "fragments").until_ready()
+        queue = await (self.switchboard / "actuator" / "display" / "interaction-plate" / "fragments").until_ready()
         self._fragments = await queue.publisher()
         # expose node to the switchboard
         await self.dtps_expose()

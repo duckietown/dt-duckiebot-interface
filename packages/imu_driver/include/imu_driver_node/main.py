@@ -47,19 +47,20 @@ class IMUNode(Node):
 
     """
 
-    def __init__(self, config: str):
-        node_name: str = "imu-driver"
+    def __init__(self, config: str, sensor_name: str):
+        node_name: str = f"imu-driver-{sensor_name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
             description="IMU (Inertia Measurement Unit) sensor driver",
         )
+        self.senor_name: str = sensor_name
 
         # load configuration
         self.configuration: IMUNodeConfiguration = IMUNodeConfiguration.from_name(self.package, node_name, config)
 
         # frame
-        self._frame_id: str = f"{self._robot_name}/imu_link"
+        self._frame_id: str = f"{self._robot_name}/imu/{self.senor_name}"
 
         # create a IMU sensor handler
         try:
@@ -86,14 +87,14 @@ class IMUNode(Node):
         #       typically one that is specified in the IMU's own measurement units, which are
         #       then converted to SI measurement units (m/s, rad/s, etc.) through an IMU-specific
         #       conversion factor. Is this the case here?
-        raw_queue = await (self.context / "out" / "raw").queue_create()
+        all_queue = await (self.context / "out" / "all").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "imu" / "accelerometer").expose(accelerations_queue)
-        await (self.switchboard / "sensor" / "imu" / "gyroscope").expose(velocities_queue)
-        await (self.switchboard / "sensor" / "imu" / "data_raw").expose(raw_queue)
-        await (self.switchboard / "sensor" / "imu" / "temperature").expose(temperature_queue)
+        await (self.switchboard / "sensor" / "imu" / self.senor_name / "accelerometer").expose(accelerations_queue)
+        await (self.switchboard / "sensor" / "imu" / self.senor_name / "gyroscope").expose(velocities_queue)
+        await (self.switchboard / "sensor" / "imu" / self.senor_name / "all").expose(all_queue)
+        await (self.switchboard / "sensor" / "imu" / self.senor_name / "temperature").expose(temperature_queue)
         # read and publish
         dt: float = 1.0 / self.configuration.frequency
         while not self.is_shutdown:
@@ -120,7 +121,7 @@ class IMUNode(Node):
                 await velocities_queue.publish(velocities.to_rawdata())
                 # await orientation_queue.publish(orientation.to_rawdata())
                 await temperature_queue.publish(temperature.to_rawdata())
-                await raw_queue.publish(imu_message.to_rawdata())
+                await all_queue.publish(imu_message.to_rawdata())
             finally:
                 # wait
                 await asyncio.sleep(dt)
@@ -136,10 +137,11 @@ class IMUNode(Node):
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    parser.add_argument("--sensor-name", type=str, required=True, help="Name of the sensor")
     parser.add_argument("--config", type=str, required=True, help="Name of the configuration")
     args: argparse.Namespace = parser.parse_args()
     # create node
-    node: IMUNode = IMUNode(config=args.config)
+    node: IMUNode = IMUNode(config=args.config, sensor_name=args.sensor_name)
     # launch the node
     node.spin()
 

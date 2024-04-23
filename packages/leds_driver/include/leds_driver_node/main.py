@@ -37,13 +37,14 @@ class LEDsDriverNode(Node):
     Subscribes to a stream of light patterns and implements them.
     """
 
-    def __init__(self, config: str):
-        node_name: str = "leds-driver"
+    def __init__(self, config: str, actuator_name: str):
+        node_name: str = f"leds-driver-{actuator_name}"
         super(LEDsDriverNode, self).__init__(
             name=node_name,
             kind=NodeType.DRIVER,
             description="Robot lights driver",
         )
+        self.actuator_name: str = actuator_name
 
         # load configuration
         self.configuration: LEDsDriverNodeConfiguration = (LEDsDriverNodeConfiguration.
@@ -84,7 +85,7 @@ class LEDsDriverNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "actuator" / "leds" / "rgba").expose(rgb_in)
+        await (self.switchboard / "actuator" / "leds" / self.actuator_name / "rgba").expose(rgb_in)
         # apply initial state
         msg: CarLights = CarLights(
             front_left=RGBA.from_list(self.configuration.initial_pattern["front_left"]),
@@ -109,10 +110,11 @@ class LEDsDriverNode(Node):
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    parser.add_argument("--actuator-name", type=str, required=True, help="Name of the actuator")
     parser.add_argument("--config", type=str, required=True, help="Name of the configuration")
     args: argparse.Namespace = parser.parse_args()
     # create node
-    node: LEDsDriverNode = LEDsDriverNode(config=args.config)
+    node: LEDsDriverNode = LEDsDriverNode(config=args.config, actuator_name=args.actuator_name)
     # launch the node
     node.spin()
 

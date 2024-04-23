@@ -10,7 +10,7 @@ source /environment.sh
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 SENSOR_NAME="front-center"
-CONFIG_FILE="${ROBOT_TYPE}/${ROBOT_HARDWARE}/default"
+CONFIG_FILE="${ROBOT_TYPE}/${ROBOT_HARDWARE}/${SENSOR_NAME}/default"
 
 exec python3 \
   -m camera_driver_node.${ROBOT_HARDWARE} \
