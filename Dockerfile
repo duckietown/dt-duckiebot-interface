@@ -81,7 +81,7 @@ RUN dt-pip3-install "${PROJECT_PATH}/dependencies-py3.*"
 COPY ./packages "${PROJECT_PATH}/packages"
 
 # build packages
-RUN dt-colcon-build ${WORKSPACE_DIR}
+RUN dt-python-build ${WORKSPACE_DIR}
 
 # install launcher scripts
 COPY ./launchers/. "${PROJECT_LAUNCHERS_PATH}/"
