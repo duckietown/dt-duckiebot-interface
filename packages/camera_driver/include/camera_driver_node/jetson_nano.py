@@ -37,9 +37,9 @@ class CameraNode(CameraNodeAbs):
     EXPOSURE_TIMERANGES = {"sports": [100000, 80000000], "night": [100000, 1000000000]}
     DEFAULT_EXPOSURE_MODE = "sports"
 
-    def __init__(self, config: str):
+    def __init__(self, config: str, sensor_name: str):
         # Initialize the DTROS parent class
-        super(CameraNode, self).__init__(config)
+        super(CameraNode, self).__init__(config, sensor_name)
         # prepare gstreamer pipeline
         self._device = None
         # ---
@@ -197,10 +197,11 @@ class CameraNode(CameraNodeAbs):
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    parser.add_argument("--sensor-name", type=str, required=True, help="Name of the sensor")
     parser.add_argument("--config", type=str, required=True, help="Name of the configuration")
     args: argparse.Namespace = parser.parse_args()
     # create node
-    node: CameraNode = CameraNode(config=args.config)
+    node: CameraNode = CameraNode(config=args.config, sensor_name=args.sensor_name)
     # launch the node
     node.spin()
 
