@@ -1,10 +1,13 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
+import json
 import traceback
 from enum import IntEnum
-from typing import List, Optional, Tuple
+from typing import List, Literal, Optional, Tuple
 
 from dataclasses import dataclass
 
+from duckietown_messages.actuators.drone_parameters import FlightControllerParameters
 import numpy as np
 import sys
 import logging
@@ -19,7 +22,6 @@ class DroneMode(IntEnum):
     DISARMED = 0
     ARMED = 1
     FLYING = 2
-    IDLE = 3
 
 # read m1, m2, m3, m4
 @dataclass
@@ -31,17 +33,50 @@ class MotorState:
 
 @dataclass
 class AttitudePidGains:
-    roll_p: int
-    roll_i: int
-    roll_d: int
+    roll_p: float
+    roll_i: float
+    roll_d: float
 
-    pitch_p: int
-    pitch_i: int
-    pitch_d: int
+    pitch_p: float
+    pitch_i: float
+    pitch_d: float
 
-    yaw_p: int
-    yaw_i: int
-    yaw_d: int
+    yaw_p: float
+    yaw_i: float
+    yaw_d: float
+    
+    @staticmethod
+    def from_parameters_message(msg : FlightControllerParameters):
+        """
+        Convert a DroneMotorCommand message to an AttitudePidGains object.
+        """
+        return AttitudePidGains(
+            roll_p=msg.roll_pid_kp,
+            roll_i=msg.roll_pid_ki,
+            roll_d=msg.roll_pid_kd,
+            pitch_p=msg.pitch_pid_kp,
+            pitch_i=msg.pitch_pid_ki,
+            pitch_d=msg.pitch_pid_kd,
+            yaw_p=msg.yaw_pid_kp,
+            yaw_i=msg.yaw_pid_ki,
+            yaw_d=msg.yaw_pid_kd
+        )
+
+    def to_parameters_message(self):
+        """
+        Convert the AttitudePidGains object to a DroneMotorCommand message.
+        """
+        return FlightControllerParameters(
+            roll_pid_kp=self.roll_p,
+            roll_pid_ki=self.roll_i,
+            roll_pid_kd=self.roll_d,
+            pitch_pid_kp=self.pitch_p,
+            pitch_pid_ki=self.pitch_i,
+            pitch_pid_kd=self.pitch_d,
+            yaw_pid_kp=self.yaw_p,
+            yaw_pid_ki=self.yaw_i,
+            yaw_pid_kd=self.yaw_d
+        )
 
 @dataclass
 class SerialConfig:
@@ -65,7 +100,6 @@ class Mode2RC:
             DroneMode.DISARMED: self.disarm,
             DroneMode.ARMED: self.arm,
             DroneMode.FLYING: self.flying,
-            DroneMode.IDLE: self.idle
         }
         return mode_to_rc[mode]
 
@@ -88,16 +122,18 @@ class FlightControllerAbs(ABC):
 
         self._mode_to_rc_commands = mode_to_rc_commands
 
+        self.pids = defaultdict(dict)
+        self._desired_pids = {}
+
         # (try to) connect to the flight controller board
-        self._board: Optional[MSPy] = None
         self.setup()
-        self.connect()
+        self._board: MSPy = self.connect()
 
         if self._board is None:
             return
-
+        
         # Accelerometer scaling (from IMU values to m/s, IMU are in [g/512], 1g = 9.81 m/s^2)
-        self.accRawToMss = 9.81/512
+        self.ACCELEROMETER_SCALING_FACTOR = 9.81/512
         
         # yaw offset
         self.yaw_offset_degrees = 0.0
@@ -107,7 +143,7 @@ class FlightControllerAbs(ABC):
         self._last_command = self.mode_to_rc_command(DroneMode.DISARMED)
 
 
-    def mode_to_rc_command(self, mode: DroneMode) -> Optional[List[int]]:
+    def mode_to_rc_command(self, mode: DroneMode) -> List[int]:
         """
         Provides the raw RC commands for a given mode.
 
@@ -121,7 +157,7 @@ class FlightControllerAbs(ABC):
         return self._mode_to_rc_commands.from_mode(mode)
 
 
-    def calibrate_imu(self, _):
+    def calibrate_imu(self,):
         """ Calibrate IMU """
         logging.info("Calibrating IMU...")
         if self._board is not None:
@@ -152,10 +188,6 @@ class FlightControllerAbs(ABC):
     def arm(self):
         """ Arm the drone """
         self.send_command(self.mode_to_rc_command(DroneMode.ARMED))
-
-    def idle(self):
-        """ Put the drone in idle mode """
-        self.send_command(self.mode_to_rc_command(DroneMode.IDLE))
     
     def fly(self):
         """ Put the drone in flying mode """
@@ -284,9 +316,9 @@ class FlightControllerAbs(ABC):
                 raise FCError(f"Unable to get IMU data {e}, retry...")
 
             # calculate the linear accelerations
-            a_x = self._board.SENSOR_DATA['accelerometer'][0] * self.accRawToMss
-            a_y = self._board.SENSOR_DATA['accelerometer'][1] * self.accRawToMss
-            a_z = self._board.SENSOR_DATA['accelerometer'][2] * self.accRawToMss
+            a_x = self._board.SENSOR_DATA['accelerometer'][0] * self.ACCELEROMETER_SCALING_FACTOR
+            a_y = self._board.SENSOR_DATA['accelerometer'][1] * self.ACCELEROMETER_SCALING_FACTOR
+            a_z = self._board.SENSOR_DATA['accelerometer'][2] * self.ACCELEROMETER_SCALING_FACTOR
         
         else:
             raise FCError("Unable to connect to the flight controller board, retry...")
@@ -329,7 +361,7 @@ class FlightControllerAbs(ABC):
         """
         self.yaw_offset_degrees = self.attitude[2]
 
-    def connect(self):
+    def connect(self) -> MSPy:
         """ Connect to the flight controller board """
         dev = self._get_board_device()
 
@@ -347,9 +379,99 @@ class FlightControllerAbs(ABC):
             logging.critical(f"The flight controller board could not be found at '{dev}'")
             sys.exit(4)
         # ---
-        self._board = board
+        return board
 
     @abstractmethod
     def _get_board_device(self) -> str:
         pass
+
+    def _update_buffer_desired_pids(
+        self,
+        axis_name: Literal['ROLL', 'PITCH', 'YAW', 'ALT', 'Pos', 'PosR', 'NavR', 'LEVEL', 'MAG', 'VEL'],
+        component_name: Literal['p', 'i', 'd'],
+        coefficient_value: int,
+    ):
+        """ Before sending all desired PIDs to the FC, buffer locally in this python obj """
+        if len(self.pids) == 0:
+            _ = self.attitude_pid_gains
+
+        if len(self._desired_pids) == 0 and len(self.pids) != 0:
+            self._desired_pids = self.pids.copy()
+
+        if len(self._desired_pids) == 0:
+            print("Not updating desired PIDs because the original values have not been obtained")
+            return
+
+        self._desired_pids[axis_name][component_name] = coefficient_value
+
+    def _update_pids(self):
+        if len(self._desired_pids) == 0:
+            print("Not sending desired PIDs to the FC. The desired PIDs are empty")
+            return False
+
+        try:
+            desired = []
+            for per_item_pid in self._desired_pids.values():
+                for k in ['p', 'i', 'd']:
+                    desired.append(per_item_pid[k])
+
+            if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_SET_PID'], data=desired):
+                dataHandler = self._board.receive_msg()
+                self._board.process_recv_data(dataHandler)
+                logging.info(f'Received PID values from FC: {self._board.PIDs}')
+
+            # update self.pids
+            _ = self.attitude_pid_gains
+
+            for key_name, per_item_pid in self.pids.items():
+                assert self._desired_pids[key_name]['p'] == per_item_pid['p']
+                assert self._desired_pids[key_name]['i'] == per_item_pid['i']
+                assert self._desired_pids[key_name]['d'] == per_item_pid['d']
+
+            print("================================================================")
+            print("PID update successful. After setting desired PIDs, the new PIDs are:")
+            print(json.dumps(self.pids, indent=2))
+            print("================================================================")
+
+            return True
+        
+        except Exception as e:
+            print(f"Failed to update PIDs to desired. Error: {e}")
+            return False
+
+    def set_pids_rpy(
+        self,
+        roll_p: Optional[int] = None, roll_i: Optional[int] = None, roll_d: Optional[int] = None,
+        pitch_p: Optional[int] = None, pitch_i: Optional[int] = None, pitch_d: Optional[int] = None,
+        yaw_p: Optional[int] = None, yaw_i: Optional[int] = None, yaw_d: Optional[int] = None,
+    ) -> bool:
+        """
+        Set the PID values for the roll, pitch, and yaw axes.
+        
+        Returns:
+            True if the PID values were successfully updated, False otherwise.    
+        """
+
+        if roll_p is not None:
+            self._update_buffer_desired_pids('ROLL', 'p', roll_p)
+        if roll_i is not None:
+            self._update_buffer_desired_pids('ROLL', 'i', roll_i)
+        if roll_d is not None:
+            self._update_buffer_desired_pids('ROLL', 'd', roll_d)
+
+        if pitch_p is not None:
+            self._update_buffer_desired_pids('PITCH', 'p', pitch_p)
+        if pitch_i is not None:
+            self._update_buffer_desired_pids('PITCH', 'i', pitch_i)
+        if pitch_d is not None:
+            self._update_buffer_desired_pids('PITCH', 'd', pitch_d)
+
+        if yaw_p is not None:
+            self._update_buffer_desired_pids('YAW', 'p', yaw_p)
+        if yaw_i is not None:
+            self._update_buffer_desired_pids('YAW', 'i', yaw_i)
+        if yaw_d is not None:
+            self._update_buffer_desired_pids('YAW', 'd', yaw_d)
+
+        return self._update_pids()
 
