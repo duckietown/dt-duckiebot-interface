@@ -19,6 +19,7 @@ from dtps_http.structures import RawData
 from duckietown_messages.actuators.drone_control import DroneControl
 from duckietown_messages.actuators.drone_mode import DroneModeMsg, DroneModeResponse, Mode
 from duckietown_messages.actuators.drone_motor_command import DroneMotorCommand
+from duckietown_messages.actuators.drone_parameters import FlightControllerParameters
 from duckietown_messages.geometry_3d.quaternion import Quaternion
 from duckietown_messages.sensors.imu import Imu
 from duckietown_messages.sensors.battery import BatteryState
