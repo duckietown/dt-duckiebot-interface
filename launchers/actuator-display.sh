@@ -12,11 +12,14 @@ dt-launchfile-init
 # NOTE: Use the variable DT_PROJECT_PATH to know the absolute path to your code
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
-CONFIG_FILE="default"
+ACTUATOR_NAME="interaction-plate"
+CONFIG_FILE="${ACTUATOR_NAME}/default"
+
 
 # display driver
 dt-exec python3 \
   -m display_driver_node.main \
+    --actuator-name ${ACTUATOR_NAME} \
     --config ${CONFIG_FILE}
 
 # default renderers

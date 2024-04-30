@@ -48,13 +48,14 @@ BOOTING_SCREEN: List[DisplayFragment] = [
 
 class DisplayNode(Node):
 
-    def __init__(self, config: str):
-        node_name: str = "display-driver"
+    def __init__(self, config: str, actuator_name: str):
+        node_name: str = f"display-driver-{actuator_name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
             description="LCD display driver",
         )
+        self.actuator_name: str = actuator_name
         # configuration
         self.configuration: DisplayNodeConfiguration = DisplayNodeConfiguration.from_name(
             self.package, node_name, config)
@@ -106,7 +107,7 @@ class DisplayNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "actuator" / "display" / "fragments").expose(fragments)
+        await (self.switchboard / "actuator" / "display" / self.actuator_name / "fragments").expose(fragments)
         # publish the initial state
         await fragments.publish(DisplayFragments(
             fragments=BOOTING_SCREEN
@@ -118,17 +119,18 @@ class DisplayNode(Node):
     async def register_button_events(self):
         await self.switchboard_ready.wait()
         # create button event queue
-        button: DTPSContext = await (self.switchboard / "sensor" / "power-button").until_ready()
+        button: DTPSContext = await (self.switchboard / "sensor" / "power-button" / "interaction-plate").until_ready()
         # subscribe to button events
         await button.subscribe(self.cb_button_events)
 
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
+    parser.add_argument("--actuator-name", type=str, required=True, help="Name of the actuator")
     parser.add_argument("--config", type=str, required=True, help="Name of the configuration")
     args: argparse.Namespace = parser.parse_args()
     # create node
-    node: DisplayNode = DisplayNode(config=args.config)
+    node: DisplayNode = DisplayNode(config=args.config, actuator_name=args.actuator_name)
     # launch the node
     node.spin()
 

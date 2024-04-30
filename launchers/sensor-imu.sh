@@ -9,10 +9,12 @@ source /environment.sh
 # NOTE: Use the variable DT_PROJECT_PATH to know the absolute path to your code
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
-CONFIG_FILE="${ROBOT_TYPE}/default"
+SENSOR_NAME="base"
+CONFIG_FILE="${ROBOT_TYPE}/${SENSOR_NAME}/default"
 
 exec python3 \
   -m imu_driver_node.main \
+    --sensor-name ${SENSOR_NAME} \
     --config ${CONFIG_FILE}
 
 

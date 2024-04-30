@@ -9,10 +9,12 @@ source /environment.sh
 # NOTE: Use the variable DT_PROJECT_PATH to know the absolute path to your code
 # NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
-CONFIG_FILE="default"
+SENSOR_NAME="interaction-plate"
+CONFIG_FILE="${SENSOR_NAME}/default"
 
 exec python3 \
   -m button_driver_node.main \
+    --sensor-name ${SENSOR_NAME} \
     --config ${CONFIG_FILE}
 
 

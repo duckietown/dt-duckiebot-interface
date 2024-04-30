@@ -62,7 +62,7 @@ class ToFNode(Node):
             kind=NodeType.DRIVER,
             description="Time-of-Flight sensor driver",
         )
-        self._sensor_name: str = sensor_name
+        self.sensor_name: str = sensor_name
 
         # load configuration
         self.configuration: ToFNodeConfiguration = ToFNodeConfiguration.from_name(self.package, node_name, config)
@@ -83,7 +83,7 @@ class ToFNode(Node):
         self.logger.info(f"Frequency set to {self._frequency}Hz.")
 
         # frame
-        self._frame_id: str = f"{self._robot_name}/tof/{self._sensor_name}"
+        self.frame_id: str = f"{self._robot_name}/tof/{self.sensor_name}"
 
         # create a ToF sensor handler
         self._sensor: Optional[ToFDriver] = self._find_sensor()
@@ -112,7 +112,7 @@ class ToFNode(Node):
                     accuracy=self._accuracy,
                     i2c_bus=connector.bus,
                     i2c_address=connector.address,
-                    name=self._sensor_name
+                    name=self.sensor_name
                 )
                 sensor.setup()
 
@@ -128,7 +128,7 @@ class ToFNode(Node):
 
                 return sensor
         else:
-            sensor = ToFDriver(accuracy=self._accuracy, name=self._sensor_name)
+            sensor = ToFDriver(accuracy=self._accuracy, name=self.sensor_name)
             sensor.setup()
             sensor.start()
             return sensor
@@ -141,10 +141,22 @@ class ToFNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "time-of-flight" / self._sensor_name / "range").expose(range_queue)
-        await (self.switchboard / "sensor" / "time-of-flight" / self._sensor_name / "info").expose(info_queue)
+        await (self.switchboard / "sensor" / "time-of-flight" / self.sensor_name / "range").expose(range_queue)
+        await (self.switchboard / "sensor" / "time-of-flight" / self.sensor_name / "info").expose(info_queue)
         # publish info about the sensor
         msg = RangeFinder(
+            # -- base
+            header=Header(),
+            # -- sensor
+            name=self.sensor_name,
+            type="time-of-flight",
+            simulated=False,
+            description="Time-of-Flight range sensor",
+            frame_id=self.frame_id,
+            frequency=self._frequency,
+            maker="STMicroelectronics",
+            model="VL53L0X",
+            # -- RangeFinder
             fov=self._accuracy.fov,
             minimum=self._accuracy.min_range,
             maximum=self._accuracy.max_range,
@@ -165,7 +177,7 @@ class ToFNode(Node):
             data: float | None = range_m if range_m <= self._accuracy.max_range else None
             # pack observation into a message
             msg = Range(
-                header=Header(frame=self._frame_id),
+                header=Header(frame=self.frame_id),
                 data=data,
             )
             await range_queue.publish(msg.to_rawdata())
@@ -180,11 +192,12 @@ class ToFNode(Node):
         # wait for switchboard
         await self.switchboard_ready.wait()
         # wait for display
-        display: DTPSContext = await (self.switchboard / "actuator" / "display" / "fragments").until_ready()
+        display: DTPSContext = await ((self.switchboard / "actuator" / "display" / "interaction-plate" / "fragments")
+                                      .until_ready())
         publisher: PublisherInterface = await display.publisher()
         # create screen renderer
         self._renderer = ToFSensorFragmentRenderer(
-            self._sensor_name,
+            self.sensor_name,
             self._accuracy,
             self.configuration.display_fragment_frequency,
             publisher
