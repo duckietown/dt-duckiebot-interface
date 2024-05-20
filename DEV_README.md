@@ -5,5 +5,10 @@ In order to attach VSCode to the running container we need to add the flag `--se
 we need to mount the volumes as `RW` with the `-RW` flag in order to edit files inside the devcontainer.
 
 ```bash
-dts devel run -H virtualtuxdrone -RW -c bash -- -e OPENBLAS_NUM_THREADS=1 --security-opt seccomp=unconfined -v dtps:/dtps
+dts devel run -H virtualtuxdrone -RW -c bash -- -e OPENBLAS_NUM_THREADS=1 --security-opt seccomp=unconfined -v /data/ramdisk/dtps:/dtps -e DT_SUPERUSER=1
+```
+
+
+```bash
+dts devel run -H tuxdrone -RW -c bash -- -v /data/ramdisk/dtps:/dtps -e DT_SUPERUSER=1 --privileged
 ```
