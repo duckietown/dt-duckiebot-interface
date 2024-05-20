@@ -357,8 +357,7 @@ class FlightControllerAbs(ABC):
 
         # try connecting
         try:
-            logging.disable(logging.ERROR)
-            board = MSPy(dev, loglevel='INFO').__enter__()
+            board = MSPy(dev, loglevel='DEBUG').__enter__()
             if board == 1:
                 raise SerialException
         except SerialException:
