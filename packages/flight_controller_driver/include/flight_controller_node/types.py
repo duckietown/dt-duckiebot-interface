@@ -27,7 +27,6 @@ class FlightControllerConfiguration(NodeConfiguration):
     class RCCommands:
         disarm: List[int]
         arm: List[int]
-        idle: List[int]
         flying: List[int]
 
     frequency: Frequency
