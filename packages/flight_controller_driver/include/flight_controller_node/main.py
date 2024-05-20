@@ -22,7 +22,7 @@ from duckietown_messages.actuators.drone_mode import (
     Mode,
 )
 from duckietown_messages.actuators.drone_motor_command import DroneMotorCommand
-from duckietown_messages.actuators.drone_parameters import FlightControllerParameters
+from duckietown_messages.actuators.attitude_pids_parameters import AttitudePIDParameters
 from duckietown_messages.geometry_3d.quaternion import Quaternion
 from duckietown_messages.sensors.angular_velocities import AngularVelocities
 from duckietown_messages.sensors.battery import BatteryState
@@ -35,13 +35,9 @@ from tiny_tf.tf import Transform
 from flight_controller_node.types import FlightControllerConfiguration
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
-    from flight_controller_driver.flight_controller_virtual import (
-        FlightControllerVirtual,
-    )
+    from flight_controller_driver.flight_controller_virtual import FlightControllerVirtual
 else:
-    from flight_controller_driver.flight_controller_physical import (
-        FlightControllerPhysical,
-    )
+    from flight_controller_driver.flight_controller_physical import FlightControllerPhysical
 
 from flight_controller_driver import AttitudePidGains, Mode2RC
 
@@ -81,16 +77,15 @@ class FlightControllerNode(Node):
         self._current_mode: DroneMode = DroneMode.DISARMED
 
         # heartbeats
-        self._heartbeat_joystick = time.time()
-        self._heartbeat_pid = time.time()
-        self._heartbeat_altitude = time.time()
-        self._heartbeat_state_estimator = time.time()
+        self._heartbeat_joystick = time.perf_counter()
+        self._heartbeat_pid = time.perf_counter()
+        self._heartbeat_altitude = time.perf_counter()
+        self._heartbeat_state_estimator = time.perf_counter()
         self._heartbeat_thr = 1.0  # Threshold for heartbeat checks [s]
 
         mode_2_rc = Mode2RC(
             disarm=self.configuration.rc_commands.disarm,
             arm=self.configuration.rc_commands.arm,
-            idle=self.configuration.rc_commands.idle,
             flying=self.configuration.rc_commands.flying,
         )
 
@@ -104,7 +99,8 @@ class FlightControllerNode(Node):
                 )
             else:
                 self._board = FlightControllerPhysical(
-                    mode_to_rc_commands=mode_2_rc, device_ids=self.configuration.device
+                    mode_to_rc_commands=mode_2_rc,
+                    device_ids=self.configuration.device,
                 )
 
         except Exception as e:
@@ -115,6 +111,7 @@ class FlightControllerNode(Node):
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self._board.mode_to_rc_command(DroneMode.DISARMED)
         self._last_command = self._board.mode_to_rc_command(DroneMode.DISARMED)
+        
 
     def _switch_to_mode(self, mode: DroneMode, quiet: bool = False):
         """Update desired mode"""
@@ -143,9 +140,12 @@ class FlightControllerNode(Node):
         if do_switch:
             self._switch_to_mode(mode)
 
+        self.logger.info(f"Switched to mode {self._requested_mode}")
+
         await self.current_mode_queue.publish(
             DroneModeMsg(mode=Mode(self._requested_mode.value)).to_rawdata()
         )
+        
         # respond
         return DroneModeResponse(
             previous_mode=Mode(self._current_mode.value),
@@ -155,12 +155,16 @@ class FlightControllerNode(Node):
     async def _transform_update_pids(self, rd: RawData) -> RawData | TransformError:
         """Update PID values"""
         try:
-            msg: FlightControllerParameters = FlightControllerParameters.from_rawdata(
+            msg: AttitudePIDParameters = AttitudePIDParameters.from_rawdata(
                 rd
             )
             pids = AttitudePidGains.from_parameters_message(msg)
-
-            if self._board.set_pids_rpy(**asdict(pids)) is False:
+            pids_int = asdict(pids)
+            # Cast all the values of the dictionary from float to int
+            for key in pids_int:
+                pids_int[key] = int(pids_int[key])
+  
+            if self._board.set_pids_rpy(**pids_int) is False:
                 return TransformError(400, "Failed to update PID values")
 
             # respond
@@ -212,7 +216,7 @@ class FlightControllerNode(Node):
             self._command = [
                 int(msg.roll),
                 int(msg.pitch),
-                int(msg.yaw),
+                900,int(msg.yaw),
                 int(msg.throttle),
                 int(aux1),
                 int(aux2),
@@ -241,9 +245,7 @@ class FlightControllerNode(Node):
 
         # Expose parameters queue to the switchboard
         await self._parameters_queue.publish(
-            AttitudePidGains.to_parameters_message(
-                self._board.get_pids_rpy()
-            ).to_rawdata()
+                self._board.attitude_pid_gains.to_parameters_message().to_rawdata()
         )
 
     async def worker(self):
@@ -291,15 +293,13 @@ class FlightControllerNode(Node):
         await commands_queue.subscribe(self._flight_commands_cb)
 
         # Create services queues and add transforms
-        zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create(
-            transform=self._srv_zero_yaw_cb
-        )
-        calibrate_imu_queue = await (
-            self.context / "in" / "calibrate_imu"
-        ).queue_create(transform=self._srv_calibrate_imu_cb)
-        set_mode_queue = await (self.context / "in" / "set_mode").queue_create(
-            transform=self._transform_set_mode
-        )
+        zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create()
+        calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create()
+        set_mode_queue = await (self.context / "in" / "set_mode").queue_create()
+
+        await calibrate_imu_queue.subscribe(self._srv_calibrate_imu_cb)
+        await zero_yaw_queue.subscribe(self._srv_zero_yaw_cb)
+        await set_mode_queue.subscribe(self._transform_set_mode)
 
         # Expose queues to the switchboard
         await (self.switchboard / "flight_controller" / "commands").expose(
@@ -323,39 +323,49 @@ class FlightControllerNode(Node):
         await self.dtps_expose()
 
         dt: float = 1.0 / self.configuration.frequency.commands
-        while not self.is_shutdown:
+       
+        self.logger.info("Starting main control loop")
+        async with executed_commands_queue.publisher_context() as cmd_pub:
             try:
-                # if the current mode is anything other than disarmed, preform as safety check
-                if self._requested_mode is not DroneMode.DISARMED:
-                    # break the loop if a safety check has failed
-                    if self._should_disarm():
-                        self.loginfo("Should disarm.")
-                        self._switch_to_mode(DroneMode.DISARMED)
-                        # sleep for the remainder of the loop time
-                        await asyncio.sleep(dt)
+                while not self.is_shutdown:
+                    profiling_start_time = time.perf_counter()
+                    loop_start_time = self._event_loop.time()
+                    
+                    # if the current mode is anything other than disarmed, preform as safety check
+                    if self._requested_mode is not DroneMode.DISARMED:
+                        # break the loop if a safety check has failed
+                        if self._should_disarm():
+                            self.logger.info("Should disarm.")
+                            self._switch_to_mode(DroneMode.DISARMED)
+                            # sleep for the remainder of the loop time
+                            cycle_time = self._event_loop.time() - loop_start_time
+                            await asyncio.sleep(dt - cycle_time)
+                            continue
+
+                    # noinspection PyBroadException
+                    try:
+                        # update and send the flight commands to the board
+                        self._compute_flight_commands()
+                        await self._send_flight_commands(cmd_pub)
+
+                        # publish the current mode
+                        if self._last_published_mode != self._requested_mode:
+                            await self.current_mode_queue.publish(
+                                DroneModeMsg(mode=self._requested_mode.value).to_rawdata()
+                            )
+                            self._last_published_mode = self._requested_mode
+
+                    except FCError:
+                        self.logwarn(
+                            "Could not talk to the flight controller" + str(FCError)
+                        )
                         continue
 
-                # noinspection PyBroadException
-                try:
-                    # update and send the flight commands to the board
-                    self._compute_flight_commands()
-                    await self._send_flight_commands(executed_commands_queue)
-
-                    # publish the current mode
-                    if self._last_published_mode != self._requested_mode:
-                        await self.current_mode_queue.publish(
-                            DroneModeMsg(mode=self._requested_mode.value).to_rawdata()
-                        )
-                        self._last_published_mode = self._requested_mode
-
-                except FCError:
-                    self.logwarn(
-                        "Could not talk to the flight controller" + str(FCError)
-                    )
-                    continue
-
-                # sleep for the remainder of the loop time
-                await asyncio.sleep(dt)
+                    # sleep for the remainder of the loop time
+                    cycle_time = self._event_loop.time() - loop_start_time
+                    
+                    await asyncio.sleep(max(0,dt-cycle_time))
+                    print(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
 
             except Exception:
                 traceback.print_exc()
@@ -374,6 +384,7 @@ class FlightControllerNode(Node):
         dt = 1.0 / self.configuration.frequency.battery
 
         while not self.is_shutdown:
+            loop_start_time = self._event_loop.time()
             try:
                 # read battery status
                 battery_msg = self._read_battery_status()
@@ -381,8 +392,9 @@ class FlightControllerNode(Node):
             except Exception:
                 traceback.print_exc()
             finally:
-                await asyncio.sleep(dt)
-
+                end_time = self._event_loop.time()
+                cycle_time = end_time - loop_start_time
+                await asyncio.sleep(dt-cycle_time)
     @sidecar
     async def worker_motor_pwm(self):
         await self.switchboard_ready.wait()
@@ -393,6 +405,8 @@ class FlightControllerNode(Node):
         dt = 1.0 / self.configuration.frequency.motors
 
         while not self.is_shutdown:
+            loop_start_time = self._event_loop.time()
+            
             try:
                 # read PWM signals going to the motors
                 motor_msg = self._read_motor_pwm_signals()
@@ -400,79 +414,72 @@ class FlightControllerNode(Node):
             except Exception:
                 traceback.print_exc()
             finally:
-                await asyncio.sleep(dt)
+                end_time = self._event_loop.time()
+                cycle_time = end_time - loop_start_time
+                await asyncio.sleep(dt-cycle_time)
 
     @sidecar
     async def worker_imu(self):
         await self.switchboard_ready.wait()
 
-        accelerations_queue = await (
-            self.context / "out" / "acceleration" / "linear"
-        ).queue_create()
-        velocities_queue = await (
-            self.context / "out" / "velocity" / "angular"
-        ).queue_create()
-        orientation_queue = await (self.context / "out" / "attitude").queue_create()
         data_queue = await (self.context / "out" / "data").queue_create()
-
-        await (self.switchboard / "sensor" / "imu" / "accelerometer").expose(
-            accelerations_queue
-        )
-        await (self.switchboard / "sensor" / "imu" / "gyroscope").expose(
-            velocities_queue
-        )
-        await (self.switchboard / "sensor" / "imu" / "orientation").expose(
-            orientation_queue
-        )
         await (self.switchboard / "sensor" / "imu" / "data").expose(data_queue)
 
         dt = 1.0 / self.configuration.frequency.imu
 
-        while not self.is_shutdown:
-            try:
-                # process acceleration data
-                a_x, a_y, a_z = self._board.acceleration
-                acceleration_message = LinearAccelerations(
-                    x=near_zero(a_x),
-                    y=near_zero(a_y),
-                    z=near_zero(a_z),
-                )
-                omega_x, omega_y, omega_z = self._board.gyro
+        async with data_queue.publisher_context() as data_pub:
+            while not self.is_shutdown:
+                try:
+                    loop_start_time = self._event_loop.time()
+                    profiling_start_time = time.perf_counter()
+                    
+                    # Read IMU data
+                    self._board.read_imu_values()
+                    
+                    # process acceleration data
+                    a_x, a_y, a_z = self._board.acceleration
+                    acceleration_message = LinearAccelerations(
+                        x=near_zero(a_x),
+                        y=near_zero(a_y),
+                        z=near_zero(a_z),
+                    )
+                    omega_x, omega_y, omega_z = self._board.gyro
 
-                angular_velocity_message = AngularVelocities(
-                    x=omega_x * DEG2RAD, y=omega_y * DEG2RAD, z=omega_z * DEG2RAD
-                )
+                    angular_velocity_message = AngularVelocities(
+                        x=omega_x * DEG2RAD, y=omega_y * DEG2RAD, z=omega_z * DEG2RAD
+                    )
 
-                # process attitude data
-                roll, pitch, yaw = self._board.attitude
-                orientation = Transform.from_euler_deg(roll, pitch, yaw)
-                (
-                    qx,
-                    qy,
-                    qz,
-                    qw,
-                ) = orientation.quaternion
+                    # process attitude data
+                    roll, pitch, yaw = self._board.attitude
+                    orientation = Transform.from_euler_deg(roll, pitch, yaw)
+                    (
+                        qx,
+                        qy,
+                        qz,
+                        qw,
+                    ) = orientation.quaternion
 
-                orientation_msg = Quaternion(x=qx, y=qy, z=qz, w=qw)
+                    orientation_msg = Quaternion(x=qx, y=qy, z=qz, w=qw)
 
-            except Exception as e:
-                traceback.print_exc()
-                self.logwarn(f"IMU Comm Loss: {e}")
-            else:
-                # pack Imu data
-                imu_message = Imu(
-                    header=Header(frame=self._imu_frame_id),
-                    angular_velocity=angular_velocity_message,
-                    linear_acceleration=acceleration_message,
-                    orientation=orientation_msg,
-                )
-
-                await accelerations_queue.publish(acceleration_message.to_rawdata())
-                await orientation_queue.publish(orientation_msg.to_rawdata())
-                await velocities_queue.publish(angular_velocity_message.to_rawdata())
-                await data_queue.publish(imu_message.to_rawdata())
-            finally:
-                await asyncio.sleep(dt)
+                except Exception as e:
+                    traceback.print_exc()
+                    self.logwarn(f"IMU Comm Loss: {e}")
+                else:
+                    # pack Imu data
+                    imu_message = Imu(
+                        header=Header(frame=self._imu_frame_id),
+                        angular_velocity=angular_velocity_message,
+                        linear_acceleration=acceleration_message,
+                        orientation=orientation_msg,
+                    )
+                    await data_pub.publish(imu_message.to_rawdata())
+                finally:
+                    # sleep for the remainder of the loop time
+                    end_time = self._event_loop.time()
+                    cycle_time = end_time - loop_start_time
+                    await asyncio.sleep(dt-cycle_time)
+                    self.logger.debug(f"IMU Cycle frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
+          
 
     def _compute_flight_commands(self):
         """Set command values if the mode is ARMED or DISARMED"""
@@ -491,6 +498,11 @@ class FlightControllerNode(Node):
             elif self._current_mode is DroneMode.ARMED:
                 # already armed
                 self._command = self._board.mode_to_rc_command(DroneMode.ARMED)
+        
+        elif self._requested_mode is DroneMode.FLYING:
+            # flying
+            self._command = self._board.mode_to_rc_command(DroneMode.FLYING)
+            self._switch_to_mode(DroneMode.FLYING, quiet=True)
 
     async def _send_flight_commands(self, queue: DTPSContext):
         """Send commands to the flight controller board"""
@@ -515,26 +527,26 @@ class FlightControllerNode(Node):
 
     async def _heartbeat_joystick_cb(self, _):
         """Update joystick heartbeat"""
-        self._heartbeat_joystick = time.time()
+        self._heartbeat_joystick = time.perf_counter()
 
     async def _heartbeat_pid_cb(self, _):
         """Update pid_controller heartbeat"""
-        self._heartbeat_pid = time.time()
+        self._heartbeat_pid = time.perf_counter()
 
     async def _heartbeat_altitude_cb(self, _):
         """Update altitude sensor heartbeat"""
-        self._heartbeat_altitude = time.time()
+        self._heartbeat_altitude = time.perf_counter()
 
     async def _heartbeat_state_estimator_cb(self, _):
         """Update state_estimator heartbeat"""
-        self._heartbeat_state_estimator = time.time()
+        self._heartbeat_state_estimator = time.perf_counter()
 
     def _should_disarm(self):
         """
         Disarm the drone if the battery values are too low or if there is a
         missing heartbeat
         """
-        curr_time = time.time()
+        curr_time = time.perf_counter()
         disarm = False
 
         # - joystick

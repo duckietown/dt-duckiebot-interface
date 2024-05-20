@@ -33,3 +33,10 @@ class FlightControllerPhysical(FlightControllerAbs):
         # get device path
         dev = devs[0]
         return dev
+    
+    def _send_rc_to_board(self, rc_command):
+        """ Send RC command to the flight controller board """
+        self._board.fast_msp_rc_cmd(rc_command)
+        
+    def setup(self):
+        return super().setup()

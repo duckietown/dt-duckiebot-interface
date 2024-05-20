@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import asyncio
 from collections import defaultdict
 import json
 import traceback
@@ -7,7 +8,7 @@ from typing import List, Literal, Optional, Tuple
 
 from dataclasses import dataclass
 
-from duckietown_messages.actuators.drone_parameters import FlightControllerParameters
+from duckietown_messages.actuators.attitude_pids_parameters import AttitudePIDParameters
 import numpy as np
 import sys
 import logging
@@ -46,7 +47,7 @@ class AttitudePidGains:
     yaw_d: float
     
     @staticmethod
-    def from_parameters_message(msg : FlightControllerParameters):
+    def from_parameters_message(msg : AttitudePIDParameters):
         """
         Convert a DroneMotorCommand message to an AttitudePidGains object.
         """
@@ -66,7 +67,7 @@ class AttitudePidGains:
         """
         Convert the AttitudePidGains object to a DroneMotorCommand message.
         """
-        return FlightControllerParameters(
+        return AttitudePIDParameters(
             roll_pid_kp=self.roll_p,
             roll_pid_ki=self.roll_i,
             roll_pid_kd=self.roll_d,
@@ -89,7 +90,6 @@ class Mode2RC:
     """
     disarm: List[int]
     arm: List[int]
-    idle: List[int]
     flying: Optional[List[int]] = None
 
     def from_mode(self, mode : DroneMode):
@@ -138,11 +138,6 @@ class FlightControllerAbs(ABC):
         # yaw offset
         self.yaw_offset_degrees = 0.0
 
-        # store the command to send to the flight controller, initialize as disarmed
-        self._command = self.mode_to_rc_command(DroneMode.DISARMED)
-        self._last_command = self.mode_to_rc_command(DroneMode.DISARMED)
-
-
     def mode_to_rc_command(self, mode: DroneMode) -> List[int]:
         """
         Provides the raw RC commands for a given mode.
@@ -155,7 +150,6 @@ class FlightControllerAbs(ABC):
 
         """
         return self._mode_to_rc_commands.from_mode(mode)
-
 
     def calibrate_imu(self,):
         """ Calibrate IMU """
@@ -200,7 +194,7 @@ class FlightControllerAbs(ABC):
     @abstractmethod
     def setup(self):
         """
-        Implement this method to setup the flight controller board, run before connecting.
+        Implement this method to setup the flight controller board, executed prior connecting to the serial port.
         """
 
     @property
@@ -298,14 +292,14 @@ class FlightControllerAbs(ABC):
         yaw -= self.yaw_offset_degrees
 
         return roll, pitch, yaw
-    
-    @property
-    def acceleration(self) -> Tuple[float, float, float]:
+
+    def read_imu_values(self):
         """
-        Acceleration values of the drone. In [m/s^2].
-        
-        Returns:
-            a_x, a_y, a_z
+        Read IMU values from the board and store them in the object.
+
+        They can be accessed by the methods:
+        - acceleration
+        - gyro
         """
         if self._board is not None:
             try:
@@ -314,14 +308,21 @@ class FlightControllerAbs(ABC):
             except Exception as e:
                 logging.warning(f"Unable to get IMU data {e}, retry...")
                 raise FCError(f"Unable to get IMU data {e}, retry...")
-
-            # calculate the linear accelerations
-            a_x = self._board.SENSOR_DATA['accelerometer'][0] * self.ACCELEROMETER_SCALING_FACTOR
-            a_y = self._board.SENSOR_DATA['accelerometer'][1] * self.ACCELEROMETER_SCALING_FACTOR
-            a_z = self._board.SENSOR_DATA['accelerometer'][2] * self.ACCELEROMETER_SCALING_FACTOR
-        
         else:
             raise FCError("Unable to connect to the flight controller board, retry...")
+       
+    @property
+    def acceleration(self) -> Tuple[float, float, float]:
+        """
+        Acceleration values of the drone. In [m/s^2].
+        
+        Returns:
+            a_x, a_y, a_z
+        """
+        # calculate the linear accelerations
+        a_x = self._board.SENSOR_DATA['accelerometer'][0] * self.ACCELEROMETER_SCALING_FACTOR
+        a_y = self._board.SENSOR_DATA['accelerometer'][1] * self.ACCELEROMETER_SCALING_FACTOR
+        a_z = self._board.SENSOR_DATA['accelerometer'][2] * self.ACCELEROMETER_SCALING_FACTOR   
 
         return a_x, a_y, a_z
 
@@ -337,23 +338,12 @@ class FlightControllerAbs(ABC):
         Returns:
             omega_x, omega_y, omega_z
         """
-        if self._board is not None:
-            try:
-                # read IMU RAW data
-                self._board.fast_read_imu()
-            except Exception as e:
-                logging.warning(f"Unable to get IMU data {e}, retry...")
-                raise FCError(f"Unable to get IMU data {e}, retry...")
-
-            # calculate the linear accelerations
-            omega_x = self._board.SENSOR_DATA['gyroscope'][0] * RAW_GYRO_TO_DEG_S
-            omega_y = self._board.SENSOR_DATA['gyroscope'][1] * RAW_GYRO_TO_DEG_S
-            omega_z = self._board.SENSOR_DATA['gyroscope'][2] * RAW_GYRO_TO_DEG_S
-            
-            return omega_x, omega_y, omega_z
+        # calculate the linear accelerations
+        omega_x = self._board.SENSOR_DATA['gyroscope'][0] * RAW_GYRO_TO_DEG_S
+        omega_y = self._board.SENSOR_DATA['gyroscope'][1] * RAW_GYRO_TO_DEG_S
+        omega_z = self._board.SENSOR_DATA['gyroscope'][2] * RAW_GYRO_TO_DEG_S
         
-        else:
-            raise FCError("Unable to connect to the flight controller board, retry...")
+        return omega_x, omega_y, omega_z
 
     def zero_yaw(self):
         """
@@ -367,7 +357,8 @@ class FlightControllerAbs(ABC):
 
         # try connecting
         try:
-            board = MSPy(dev, logfilename='/tmp/MSPy.log').__enter__()
+            logging.disable(logging.ERROR)
+            board = MSPy(dev, loglevel='INFO').__enter__()
             if board == 1:
                 raise SerialException
         except SerialException:

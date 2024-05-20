@@ -3,7 +3,7 @@ ARG PROJECT_NAME
 ARG PROJECT_DESCRIPTION
 ARG PROJECT_MAINTAINER
 # pick an icon from: https://fontawesome.com/v4.7.0/icons/
-ARG PROJECT_ICON="cube"
+ARG PROJECT_ICON="cogs"
 ARG PROJECT_FORMAT_VERSION
 
 # ==================================================>
@@ -81,7 +81,7 @@ RUN dt-pip3-install "${PROJECT_PATH}/dependencies-py3.*"
 COPY ./packages "${PROJECT_PATH}/packages"
 
 # build packages
-RUN dt-colcon-build ${WORKSPACE_DIR}
+RUN dt-python-build ${WORKSPACE_DIR}
 
 # install launcher scripts
 COPY ./launchers/. "${PROJECT_LAUNCHERS_PATH}/"
@@ -132,3 +132,4 @@ COPY assets/usr/share/fonts/*.ttf /usr/share/fonts/
 # copy betaflight sitl binary and config files
 COPY assets/usr/bin/betaflight /usr/bin/betaflight
 RUN chown -R duckie:duckie /usr/bin/betaflight/ && chmod +x /usr/bin/betaflight/launch_betaflight.sh
+# RUN echo 'SUBSYSTEM=="i2c-dev", GROUP="duckie", MODE="0660"' > /etc/udev/rules.d/99-i2c.rules
