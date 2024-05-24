@@ -34,6 +34,7 @@ class ToFNodeConfiguration(NodeConfiguration):
         address: int
 
     sensor_name: str
+    sensor_model: str 
     frequency: int
     mode: str
     display_fragment_frequency: int
@@ -68,11 +69,17 @@ class ToFNode(Node):
         self.configuration: ToFNodeConfiguration = ToFNodeConfiguration.from_name(self.package, node_name, config)
 
         # load accuracy profile
-        self._accuracy: ToFAccuracy = ToFAccuracy.from_string(self.configuration.mode)
+        self._accuracy: ToFAccuracy = ToFAccuracy.from_string(
+            self.configuration.mode,
+            self.configuration.sensor_model
+            )
 
         # compute frequency
         self._frequency: int = self.configuration.frequency
         max_frequency = min(self.configuration.frequency, int(1.0 / self._accuracy.timing_budget))
+        
+        assert max_frequency > 0, "The timing budget is too low."
+        
         if self.configuration.frequency > max_frequency:
             self.logger.warning(
                 f"Frequency of {self.configuration.frequency}Hz not supported. The selected mode "
