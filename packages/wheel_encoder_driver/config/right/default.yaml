@@ -1,4 +1,6 @@
-gpio: 19
+ticks_gpio: 19
+direction_gpio: 16
+direction_inverted: true
 resolution: 135
 publish_frequency: 30
 renderer_frequency: 5

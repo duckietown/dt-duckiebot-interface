@@ -23,7 +23,9 @@ from wheel_encoder_driver import WheelEncoderDriver
 
 @dataclasses.dataclass
 class WheelEncoderNodeConfiguration(NodeConfiguration):
-    gpio: Optional[int]
+    ticks_gpio: Optional[int]
+    direction_gpio: Optional[int]
+    direction_inverted: bool
     resolution: int
     publish_frequency: float
     renderer_frequency: float
@@ -52,7 +54,12 @@ class WheelEncoderNode(Node):
         self._wheel_frame_id: str = f"{self._robot_name}/motor/{self._side}/wheel"
 
         # create a WheelEncoder sensor handler
-        self._sensor: WheelEncoderDriverAbs = WheelEncoderDriver(self._side, self.configuration.gpio)
+        self._sensor: WheelEncoderDriverAbs = WheelEncoderDriver(
+            self._side,
+            self.configuration.ticks_gpio,
+            self.configuration.direction_gpio,
+            self.configuration.direction_inverted,
+        )
 
         # create screen renderer
         self._renderer_reminder: DTReminder = DTReminder(frequency=self.configuration.renderer_frequency)
@@ -71,7 +78,7 @@ class WheelEncoderNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "wheel-encoder" / self._side).expose(queue)
+        await (self.switchboard / "sensor" / "wheel-encoder" / self._side / "ticks").expose(queue)
         # read and publish
         while not self.is_shutdown:
             # pack observation into a message
