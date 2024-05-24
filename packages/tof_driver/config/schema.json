@@ -4,19 +4,18 @@
         "sensor_name": {
             "type": "string"
         },
+        "sensor_model": {
+            "type": "string",
+            "enum": [
+                "VL53L0X",
+                "VL53L1X"
+            ]
+        },
         "frequency": {
             "type": "number"
         },
         "mode": {
-            "type": "string",
-            "enum": [
-                "BETTER",
-                "GOOD",
-                "BETTER",
-                "BEST",
-                "LONG_RANGE",
-                "HIGH_SPEED"
-            ]
+            "type": "string"
         },
         "display_fragment_frequency": {
             "type": "number"
@@ -46,5 +45,31 @@
         "mode",
         "display_fragment_frequency",
         "connectors"
+    ],
+    "oneOf": [
+        {
+            "properties": {
+                "sensor_model": {
+                    "const": "VL53L0X"
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": ["BETTER", "GOOD", "BEST", "LONG_RANGE", "HIGH_SPEED"]
+                }
+            },
+            "required": ["mode"]
+        },
+        {
+            "properties": {
+                "sensor_model": {
+                    "const": "VL53L1X"
+                },
+                "mode": {
+                    "type": "string",
+                    "enum": ["SHORT_RANGE", "LONG_RANGE"]
+                }
+            },
+            "required": ["mode"]
+        }
     ]
 }

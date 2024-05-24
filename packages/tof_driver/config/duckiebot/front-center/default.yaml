@@ -1,4 +1,5 @@
 sensor_name: "front_center"
+sensor_model: "VL53L0X"
 frequency: 20
 mode: "BETTER"
 display_fragment_frequency: 4

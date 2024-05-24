@@ -1,6 +1,7 @@
 sensor_name: "bottom"
+sensor_model: "VL53L1X"
 frequency: 30
-mode: "GOOD"
+mode: "LONG_RANGE"
 display_fragment_frequency: 0
 connectors:
   # DD21 - One ToF sensor connected directly to the HUT
