@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-import asyncio
 from collections import defaultdict
 import json
 import traceback
@@ -8,14 +7,14 @@ from typing import List, Literal, Optional, Tuple
 
 from dataclasses import dataclass
 
-from duckietown_messages.actuators.attitude_pids_parameters import AttitudePIDParameters
+# from duckietown_messages.actuators.attitude_pids_parameters import AttitudePIDParameters
 import numpy as np
 import sys
 import logging
 
 from serial import SerialException
 
-from yamspy import MSPy
+from .h2rMultiWii import MultiWii
 
 RAW_GYRO_TO_DEG_S = 1 / 16.4
 
@@ -32,52 +31,52 @@ class MotorState:
     m3: int
     m4: int
 
-@dataclass
-class AttitudePidGains:
-    roll_p: float
-    roll_i: float
-    roll_d: float
+# @dataclass
+# class AttitudePidGains:
+#     roll_p: float
+#     roll_i: float
+#     roll_d: float
 
-    pitch_p: float
-    pitch_i: float
-    pitch_d: float
+#     pitch_p: float
+#     pitch_i: float
+#     pitch_d: float
 
-    yaw_p: float
-    yaw_i: float
-    yaw_d: float
+#     yaw_p: float
+#     yaw_i: float
+#     yaw_d: float
     
-    @staticmethod
-    def from_parameters_message(msg : AttitudePIDParameters):
-        """
-        Convert a DroneMotorCommand message to an AttitudePidGains object.
-        """
-        return AttitudePidGains(
-            roll_p=msg.roll_pid_kp,
-            roll_i=msg.roll_pid_ki,
-            roll_d=msg.roll_pid_kd,
-            pitch_p=msg.pitch_pid_kp,
-            pitch_i=msg.pitch_pid_ki,
-            pitch_d=msg.pitch_pid_kd,
-            yaw_p=msg.yaw_pid_kp,
-            yaw_i=msg.yaw_pid_ki,
-            yaw_d=msg.yaw_pid_kd
-        )
+#     @staticmethod
+#     def from_parameters_message(msg : AttitudePIDParameters):
+#         """
+#         Convert a DroneMotorCommand message to an AttitudePidGains object.
+#         """
+#         return AttitudePidGains(
+#             roll_p=msg.roll_pid_kp,
+#             roll_i=msg.roll_pid_ki,
+#             roll_d=msg.roll_pid_kd,
+#             pitch_p=msg.pitch_pid_kp,
+#             pitch_i=msg.pitch_pid_ki,
+#             pitch_d=msg.pitch_pid_kd,
+#             yaw_p=msg.yaw_pid_kp,
+#             yaw_i=msg.yaw_pid_ki,
+#             yaw_d=msg.yaw_pid_kd
+#         )
 
-    def to_parameters_message(self):
-        """
-        Convert the AttitudePidGains object to a DroneMotorCommand message.
-        """
-        return AttitudePIDParameters(
-            roll_pid_kp=self.roll_p,
-            roll_pid_ki=self.roll_i,
-            roll_pid_kd=self.roll_d,
-            pitch_pid_kp=self.pitch_p,
-            pitch_pid_ki=self.pitch_i,
-            pitch_pid_kd=self.pitch_d,
-            yaw_pid_kp=self.yaw_p,
-            yaw_pid_ki=self.yaw_i,
-            yaw_pid_kd=self.yaw_d
-        )
+#     def to_parameters_message(self):
+#         """
+#         Convert the AttitudePidGains object to a DroneMotorCommand message.
+#         """
+#         return AttitudePIDParameters(
+#             roll_pid_kp=self.roll_p,
+#             roll_pid_ki=self.roll_i,
+#             roll_pid_kd=self.roll_d,
+#             pitch_pid_kp=self.pitch_p,
+#             pitch_pid_ki=self.pitch_i,
+#             pitch_pid_kd=self.pitch_d,
+#             yaw_pid_kp=self.yaw_p,
+#             yaw_pid_ki=self.yaw_i,
+#             yaw_pid_kd=self.yaw_d
+#         )
 
 @dataclass
 class SerialConfig:
@@ -127,7 +126,7 @@ class FlightControllerAbs(ABC):
 
         # (try to) connect to the flight controller board
         self.setup()
-        self._board: MSPy = self.connect()
+        self._board: MultiWii = self.connect()
 
         if self._board is None:
             return
@@ -155,21 +154,14 @@ class FlightControllerAbs(ABC):
         """ Calibrate IMU """
         logging.info("Calibrating IMU...")
         if self._board is not None:
-            if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_ACC_CALIBRATION'],data=[]):
-                logging.debug("Sent accelerometer calibration message")
-                dataHandler = self._board.receive_msg()
-                logging.debug("Received accelerometer calibration response message")
-                self._board.process_recv_data(dataHandler)
-                logging.info("IMU Calibration performed")
-
-            else:
-                raise FCError("Unable to calibrate IMU, retry...")
+            self._board.calibrate()
         else:
             traceback.print_exc()
             raise FCError("Unable to connect to the flight controller board, retry...")
 
     def send_command(self, command):
         """ Send commands to the flight controller board """
+        print(f"Sending command: {command}")
         try:
             self._send_rc_to_board(command)
         except Exception as e:
@@ -199,9 +191,7 @@ class FlightControllerAbs(ABC):
 
     @property
     def voltage(self):
-        if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_ANALOG'], data=[]):
-            dataHandler = self._board.receive_msg()
-            self._board.process_recv_data(dataHandler)
+        self._board.update_battery()
 
         if self._board.ANALOG is not None:
             if 'voltage' in self._board.ANALOG:
@@ -225,48 +215,14 @@ class FlightControllerAbs(ABC):
         Returns:
             m1, m2, m3, m4
         """
-        if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_MOTOR'], data=[]):
-            dataHandler = self._board.receive_msg()
-            self._board.process_recv_data(dataHandler)
-        else:
-            raise FCError("Unable to get MOTOR data, retry...")
+        self._board.getData(MultiWii.MOTOR)
 
-        m1=int(self._board.MOTOR_DATA[0])
-        m2=int(self._board.MOTOR_DATA[1])
-        m3=int(self._board.MOTOR_DATA[2])
-        m4=int(self._board.MOTOR_DATA[3])
+        m1=int(self._board.motor_data()[0])
+        m2=int(self._board.motor_data()[1])
+        m3=int(self._board.motor_data()[2])
+        m4=int(self._board.motor_data()[3])
 
         return m1, m2, m3, m4
-
-    @property
-    def attitude_pid_gains(self):
-        if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_PIDNAMES'], data=[]):
-            dataHandler = self._board.receive_msg()
-            self._board.process_recv_data(dataHandler)
-            logging.info(f'Received PID names from FC: {self._board.PIDNAMES}')
-
-        if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_PID'], data=[]):
-            dataHandler = self._board.receive_msg()
-            self._board.process_recv_data(dataHandler)
-            logging.info(f'Received PID values from FC: {self._board.PIDs}')
-
-        for name, pid_values in zip(self._board.PIDNAMES, self._board.PIDs):
-            self.pids[name]['p'] = pid_values[0]
-            self.pids[name]['i'] = pid_values[1]
-            self.pids[name]['d'] = pid_values[2]
-
-        ret = AttitudePidGains(
-            roll_p=self.pids['ROLL']['p'],
-            roll_i=self.pids['ROLL']['i'],
-            roll_d=self.pids['ROLL']['d'],
-            pitch_p=self.pids['PITCH']['p'],
-            pitch_i=self.pids['PITCH']['i'],
-            pitch_d=self.pids['PITCH']['d'],
-            yaw_p=self.pids['YAW']['p'],
-            yaw_i=self.pids['YAW']['i'],
-            yaw_d=self.pids['YAW']['d'],
-        )  
-        return ret
     
     @property
     def attitude(self) -> Tuple[float, float, float]:
@@ -278,15 +234,15 @@ class FlightControllerAbs(ABC):
         """
         try:
             # read roll, pitch, heading
-            self._board.fast_read_attitude()
+            self._board.getData(MultiWii.ATTITUDE)
         except Exception as e:
             logging.warning(f"Unable to get attitude data {e}, retry...")
             raise FCError(f"Unable to get attitude data {e}, retry...")
         
         # calculate values to update imu_message:
-        roll = self._board.SENSOR_DATA['kinematics'][0]
-        pitch = self._board.SENSOR_DATA['kinematics'][1]
-        yaw = self._board.SENSOR_DATA['kinematics'][2]
+        roll = self._board.attitude['angx']
+        pitch = self._board.attitude['angy']
+        yaw = self._board.attitude['angz']
         
         # TODO: check if the negative sign is correct
         yaw -= self.yaw_offset_degrees
@@ -304,7 +260,7 @@ class FlightControllerAbs(ABC):
         if self._board is not None:
             try:
                 # read lin_acc_x, lin_acc_y, lin_acc_z
-                self._board.fast_read_imu()
+                self._board.getData(MultiWii.RAW_IMU)
             except Exception as e:
                 logging.warning(f"Unable to get IMU data {e}, retry...")
                 raise FCError(f"Unable to get IMU data {e}, retry...")
@@ -320,9 +276,9 @@ class FlightControllerAbs(ABC):
             a_x, a_y, a_z
         """
         # calculate the linear accelerations
-        a_x = self._board.SENSOR_DATA['accelerometer'][0] * self.ACCELEROMETER_SCALING_FACTOR
-        a_y = self._board.SENSOR_DATA['accelerometer'][1] * self.ACCELEROMETER_SCALING_FACTOR
-        a_z = self._board.SENSOR_DATA['accelerometer'][2] * self.ACCELEROMETER_SCALING_FACTOR   
+        a_x = self._board.rawIMU['ax'] * self.ACCELEROMETER_SCALING_FACTOR
+        a_y = self._board.rawIMU['ay'] * self.ACCELEROMETER_SCALING_FACTOR
+        a_z = self._board.rawIMU['az'] * self.ACCELEROMETER_SCALING_FACTOR   
 
         return a_x, a_y, a_z
 
@@ -339,9 +295,9 @@ class FlightControllerAbs(ABC):
             omega_x, omega_y, omega_z
         """
         # calculate the linear accelerations
-        omega_x = self._board.SENSOR_DATA['gyroscope'][0] * RAW_GYRO_TO_DEG_S
-        omega_y = self._board.SENSOR_DATA['gyroscope'][1] * RAW_GYRO_TO_DEG_S
-        omega_z = self._board.SENSOR_DATA['gyroscope'][2] * RAW_GYRO_TO_DEG_S
+        omega_x = self._board.rawIMU['gx'] * RAW_GYRO_TO_DEG_S
+        omega_y = self._board.rawIMU['gy'] * RAW_GYRO_TO_DEG_S
+        omega_z = self._board.rawIMU['gz'] * RAW_GYRO_TO_DEG_S
         
         return omega_x, omega_y, omega_z
 
@@ -351,15 +307,13 @@ class FlightControllerAbs(ABC):
         """
         self.yaw_offset_degrees = self.attitude[2]
 
-    def connect(self) -> MSPy:
+    def connect(self) -> MultiWii:
         """ Connect to the flight controller board """
         dev = self._get_board_device()
 
         # try connecting
         try:
-            board = MSPy(dev, loglevel='DEBUG').__enter__()
-            if board == 1:
-                raise SerialException
+            board = MultiWii()
         except SerialException:
             logging.critical(f"Cannot connect to the flight controller board at '{dev}'. "
                           f"The USB is unplugged. Please check connection.")
@@ -395,39 +349,7 @@ class FlightControllerAbs(ABC):
         self._desired_pids[axis_name][component_name] = coefficient_value
 
     def _update_pids(self):
-        if len(self._desired_pids) == 0:
-            print("Not sending desired PIDs to the FC. The desired PIDs are empty")
-            return False
-
-        try:
-            desired = []
-            for per_item_pid in self._desired_pids.values():
-                for k in ['p', 'i', 'd']:
-                    desired.append(per_item_pid[k])
-
-            if self._board.send_RAW_msg(MSPy.MSPCodes['MSP_SET_PID'], data=desired):
-                dataHandler = self._board.receive_msg()
-                self._board.process_recv_data(dataHandler)
-                logging.info(f'Received PID values from FC: {self._board.PIDs}')
-
-            # update self.pids
-            _ = self.attitude_pid_gains
-
-            for key_name, per_item_pid in self.pids.items():
-                assert self._desired_pids[key_name]['p'] == per_item_pid['p']
-                assert self._desired_pids[key_name]['i'] == per_item_pid['i']
-                assert self._desired_pids[key_name]['d'] == per_item_pid['d']
-
-            print("================================================================")
-            print("PID update successful. After setting desired PIDs, the new PIDs are:")
-            print(json.dumps(self.pids, indent=2))
-            print("================================================================")
-
-            return True
-        
-        except Exception as e:
-            print(f"Failed to update PIDs to desired. Error: {e}")
-            return False
+        return True
 
     def set_pids_rpy(
         self,
@@ -435,6 +357,7 @@ class FlightControllerAbs(ABC):
         pitch_p: Optional[int] = None, pitch_i: Optional[int] = None, pitch_d: Optional[int] = None,
         yaw_p: Optional[int] = None, yaw_i: Optional[int] = None, yaw_d: Optional[int] = None,
     ) -> bool:
+        return True
         """
         Set the PID values for the roll, pitch, and yaw axes.
         
@@ -465,3 +388,6 @@ class FlightControllerAbs(ABC):
 
         return self._update_pids()
 
+    @property
+    def attitude_pid_gains(self):
+        return False
