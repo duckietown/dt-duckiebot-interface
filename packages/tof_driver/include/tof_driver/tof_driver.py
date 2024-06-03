@@ -44,6 +44,11 @@ class ToFDriverVL53L1X(ToFDriverAbs):
 
     def setup(self):
         bus: ExtendedI2C = ExtendedI2C(self._i2c_bus)
+        addresses = bus.scan()
+        decimal_addresses = ', '.join(str(addr) for addr in addresses)
+        hex_addresses = ', '.join(hex(addr) for addr in addresses)
+        print(f"Devices on bus {self._i2c_bus}: Decimal - {decimal_addresses}, Hexadecimal - {hex_addresses}")
+        print(f"{self.__class__.__name__}: Setting up sensor on bus {self._i2c_bus} at address {self._i2c_address}")
         self._sensor = VL53L1X(bus, address=self._i2c_address)
         # set accuracy mode
         self._sensor.distance_mode = self._accuracy.mode

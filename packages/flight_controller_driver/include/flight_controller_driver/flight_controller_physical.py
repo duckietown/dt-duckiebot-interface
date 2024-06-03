@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import logging
 import sys
+from typing import List
 from .flight_controller_abs import FlightControllerAbs, Mode2RC
 
 from serial.tools.list_ports import grep as serial_grep
@@ -34,9 +35,13 @@ class FlightControllerPhysical(FlightControllerAbs):
         dev = devs[0]
         return dev
     
-    def _send_rc_to_board(self, rc_command):
+    def _send_rc_to_board(self, rc_command: List[int]):
         """ Send RC command to the flight controller board """
-        self._board.fast_msp_rc_cmd(rc_command)
+        assert len(rc_command) == 6, f"RC command must have 6 elements, has {len(rc_command)}: {rc_command}."
+        rc_command.extend([1000, 1000])
+        self._board.send_raw_command(len(rc_command), self._board.SET_RAW_RC, rc_command)
+        self._board.receiveDataPacket()
+        
         
     def setup(self):
         return super().setup()

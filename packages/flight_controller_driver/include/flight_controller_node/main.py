@@ -1,4 +1,3 @@
-import argparse
 import asyncio
 import sys
 import time
@@ -6,6 +5,9 @@ import traceback
 from dataclasses import asdict
 from math import pi
 from typing import Optional, Union
+
+import yappi
+import argparse
 
 from dt_node_utils import NodeType
 from dt_node_utils.decorators import sidecar
@@ -22,7 +24,7 @@ from duckietown_messages.actuators.drone_mode import (
     Mode,
 )
 from duckietown_messages.actuators.drone_motor_command import DroneMotorCommand
-from duckietown_messages.actuators.attitude_pids_parameters import AttitudePIDParameters
+# from duckietown_messages.actuators.attitude_pids_parameters import AttitudePIDParameters
 from duckietown_messages.geometry_3d.quaternion import Quaternion
 from duckietown_messages.sensors.angular_velocities import AngularVelocities
 from duckietown_messages.sensors.battery import BatteryState
@@ -39,7 +41,7 @@ if get_robot_hardware() == RobotHardware.VIRTUAL:
 else:
     from flight_controller_driver.flight_controller_physical import FlightControllerPhysical
 
-from flight_controller_driver import AttitudePidGains, Mode2RC
+from flight_controller_driver import Mode2RC
 
 DEG2RAD = pi / 180.0
 
@@ -154,6 +156,7 @@ class FlightControllerNode(Node):
 
     async def _transform_update_pids(self, rd: RawData) -> RawData | TransformError:
         """Update PID values"""
+        return TransformError(400, "Failed to update PID values")
         try:
             msg: AttitudePIDParameters = AttitudePIDParameters.from_rawdata(
                 rd
@@ -163,7 +166,8 @@ class FlightControllerNode(Node):
             # Cast all the values of the dictionary from float to int
             for key in pids_int:
                 pids_int[key] = int(pids_int[key])
-  
+            return TransformError(400, "Failed to update PID values")
+
             if self._board.set_pids_rpy(**pids_int) is False:
                 return TransformError(400, "Failed to update PID values")
 
@@ -180,7 +184,7 @@ class FlightControllerNode(Node):
         """Zero yaw"""
 
         try:
-            self._board.zero_yaw()
+            await self._board.zero_yaw()
         except Exception as e:
             return TransformError(400, str(e))
 
@@ -207,7 +211,7 @@ class FlightControllerNode(Node):
         )
 
     async def _flight_commands_cb(self, rd):
-        msg = DroneControl.from_rawdata(rd)
+        msg : DroneControl = DroneControl.from_rawdata(rd)
         """ Store and send the flight commands if the current mode is FLYING """
         if self._requested_mode is DroneMode.FLYING:
             aux1, aux2 = self._board.mode_to_rc_command(DroneMode.FLYING)[4:6]
@@ -216,15 +220,16 @@ class FlightControllerNode(Node):
             self._command = [
                 int(msg.roll),
                 int(msg.pitch),
-                900,int(msg.yaw),
+                int(msg.yaw),
                 int(msg.throttle),
                 int(aux1),
                 int(aux2),
             ]
 
-    def _read_battery_status(self):
+    async def _read_battery_status(self):
         """Read battery status"""
-        voltage = self._board.voltage
+        voltage = await self._board.voltage
+        print(voltage)
         return BatteryState(
             voltage=voltage,
             present=True
@@ -244,9 +249,9 @@ class FlightControllerNode(Node):
         )
 
         # Expose parameters queue to the switchboard
-        await self._parameters_queue.publish(
-                self._board.attitude_pid_gains.to_parameters_message().to_rawdata()
-        )
+        # await self._parameters_queue.publish(
+        #         self._board.attitude_pid_gains.to_parameters_message().to_rawdata()
+        # )
 
     async def worker(self):
         await self.dtps_init(self.configuration)
@@ -387,7 +392,7 @@ class FlightControllerNode(Node):
             loop_start_time = self._event_loop.time()
             try:
                 # read battery status
-                battery_msg = self._read_battery_status()
+                battery_msg = await self._read_battery_status()
                 await battery_queue.publish(battery_msg.to_rawdata())
             except Exception:
                 traceback.print_exc()
@@ -409,7 +414,7 @@ class FlightControllerNode(Node):
             
             try:
                 # read PWM signals going to the motors
-                motor_msg = self._read_motor_pwm_signals()
+                motor_msg = await self._read_motor_pwm_signals()
                 await motors_queue.publish(motor_msg.to_rawdata())
             except Exception:
                 traceback.print_exc()
@@ -434,7 +439,7 @@ class FlightControllerNode(Node):
                     profiling_start_time = time.perf_counter()
                     
                     # Read IMU data
-                    self._board.read_imu_values()
+                    await self._board.read_imu_values()
                     
                     # process acceleration data
                     a_x, a_y, a_z = self._board.acceleration
@@ -450,7 +455,7 @@ class FlightControllerNode(Node):
                     )
 
                     # process attitude data
-                    roll, pitch, yaw = self._board.attitude
+                    roll, pitch, yaw = await self._board.attitude
                     orientation = Transform.from_euler_deg(roll, pitch, yaw)
                     (
                         qx,
@@ -507,7 +512,7 @@ class FlightControllerNode(Node):
     async def _send_flight_commands(self, queue: DTPSContext):
         """Send commands to the flight controller board"""
         try:
-            self._board.send_command(self._command)
+            self._board.send_command(self._command.copy())
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command
@@ -592,12 +597,12 @@ class FlightControllerNode(Node):
 
         return disarm
 
-    def _read_motor_pwm_signals(self) -> DroneMotorCommand:
+    async def _read_motor_pwm_signals(self) -> DroneMotorCommand:
         """
         Reads the motor signals sent by the flight controller to the ESCs.
         """
         # create Motor message
-        m1, m2, m3, m4 = self._board.motors_pwm
+        m1, m2, m3, m4 = await self._board.motors_pwm
 
         return DroneMotorCommand(
             minimum=self.configuration.motor_command_range[0],
@@ -617,16 +622,25 @@ class FlightControllerNode(Node):
         self.loginfo("Disarming!")
         self._command = self._board.mode_to_rc_command(DroneMode.DISARMED)
         self._switch_to_mode(DroneMode.DISARMED, quiet=True)
-        # self._mode_pub.publish(DroneModeMsg(mode=DroneMode.DISARMED.value))
+        if yappi.runn
         sys.exit()
 
 
 def main():
+
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
     parser.add_argument(
         "--config", type=str, required=True, help="Name of the configuration"
     )
+    parser.add_argument(
+        "--profiling", help="Enable profiling", action="store_true",
+    )
+
     args: argparse.Namespace = parser.parse_args()
+
+    if args.profiling:
+        yappi.run().__enter__()
+
     # create node
     node: FlightControllerNode = FlightControllerNode(config=args.config)
     # launch the node
