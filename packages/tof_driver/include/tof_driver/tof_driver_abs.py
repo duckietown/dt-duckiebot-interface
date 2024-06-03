@@ -16,8 +16,8 @@ class ToFAccuracyModeVL53L1X(IntEnum):
     """Accuracy modes for the VL53L1X sensor.
     1=short (up to 136cm) , 2=long (up to 360cm)
     """
-    SHORT_RANGE = 1
-    LONG_RANGE = 2
+    SHORT_RANGE = 1 # 20 ms timing budget 1.36m range
+    LONG_RANGE = 2  # 33 ms timing budget 3.6m range
 
 
 @dataclasses.dataclass
@@ -52,7 +52,7 @@ class ToFAccuracy:
                     ),
                 "LONG_RANGE": ToFAccuracy(
                     mode=ToFAccuracyModeVL53L1X.LONG_RANGE,
-                    timing_budget=140 * ms,
+                    timing_budget=33 * ms,
                     max_range=3.6,
                     min_range=0.04,
                     fov=np.deg2rad(27)
