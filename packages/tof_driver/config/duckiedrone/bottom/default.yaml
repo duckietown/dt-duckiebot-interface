@@ -5,5 +5,5 @@ mode: "LONG_RANGE"
 display_fragment_frequency: 0
 connectors:
   # DD21 - One ToF sensor connected directly to the HUT
-  -   bus: 1
+  -   bus: 22
       address: 0x29
