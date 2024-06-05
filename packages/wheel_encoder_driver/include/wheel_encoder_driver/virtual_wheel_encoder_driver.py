@@ -19,11 +19,12 @@ class VirtualWheelEncoderDriver(WheelEncoderDriverAbs):
 
         Args:
             name (:obj:`str`): name of the encoder (e.g., left, right).
-            _ (:obj:`int`): placeholder for the GPIO pin number.
-            callback (:obj:`callable`): callback function to receive new (unique) readings.
+            _ (:obj:`int`): placeholder for the ticks GPIO pin number.
+            __ (:obj:`int`): placeholder for the direction GPIO pin number.
+            ___ (:obj:`bool`): placeholder for the direction inversion flag.
     """
 
-    def __init__(self, name: str, _: int):
+    def __init__(self, name: str, _: int, __: int, ___: bool):
         super(VirtualWheelEncoderDriver, self).__init__(name)
         # prepare zmq pipeline
         self._reading: Optional[float] = None

@@ -1,5 +1,4 @@
 # LIST YOUR PYTHON3 PACKAGES HERE
-# NOTE: only place non-Duckietown libraries here; pin versions only if necessary
 
 # Jetson packages
 #   - 2.0.20 is the last version supporting Python3.8
@@ -30,3 +29,9 @@ adafruit-extended-bus==1.0.2
 # transformations
 pytransform3d==3.5.0
 tiny-tf==1.2.0
+
+
+# -- Duckietown --
+
+# this is needed for the camera driver node
+lib-dt-computer-vision==0.1.9

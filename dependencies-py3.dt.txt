@@ -1,5 +1,0 @@
-# LIST YOUR DUCKIETOWN PYTHON3 PACKAGES HERE
-# NOTE: only place Duckietown libraries here; these libraries will be resolved to the latest available version and pinned; pin a specific version only if necessary
-
-# this is needed for the camera driver node
-lib-dt-computer-vision==0.1.6

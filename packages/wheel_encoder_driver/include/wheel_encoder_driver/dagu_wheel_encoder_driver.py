@@ -1,8 +1,6 @@
-from typing import Callable
-
 from dt_device_utils import get_device_hardware_brand, DeviceHardwareBrand
 
-from .wheel_encoder_abs import WheelEncoderDriverAbs
+from .wheel_encoder_abs import WheelEncoderDriverAbs, WheelDirection
 
 ROBOT_HARDWARE = get_device_hardware_brand()
 
@@ -25,19 +23,47 @@ class DaguWheelEncoderDriver(WheelEncoderDriverAbs):
 
         Args:
             name (:obj:`str`): name of the encoder (e.g., left, right).
-            gpio (:obj:`int`): Number of the pin the encoder is connected to.
+            ticks_gpio (:obj:`int`): Number of the pin the encoder is connected to.
+            direction_gpio (:obj:`int`): Number of the pin the encoder direction signal is connected to.
+            direction_inverted (:obj:`bool`): Flag to invert the direction signal.
     """
 
-    def __init__(self, name: str, gpio: int):
+    def __init__(self, name: str, ticks_gpio: int, direction_gpio: int, direction_inverted: bool):
         super(DaguWheelEncoderDriver, self).__init__(name)
-        # valid gpio
-        if not 1 <= gpio <= 40:
+        self._direction_correction: int = 1 if direction_inverted else 0
+        # configure GPIO mode
+        GPIO.setmode(GPIO.BCM)
+        # validate gpio
+        if not 1 <= ticks_gpio <= 40:
             raise ValueError("The pin number must be within the range [1, 40].")
         # configure GPIO pin
-        self._gpio: int = gpio
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setup(gpio, GPIO.IN)
-        GPIO.add_event_detect(gpio, GPIO.RISING, callback=self._bump_ticks)
+        self._ticks_gpio: int = ticks_gpio
+        GPIO.setup(ticks_gpio, GPIO.IN)
+        # validate gpio
+        if not 1 <= direction_gpio <= 40:
+            raise ValueError("The pin number must be within the range [1, 40].")
+        # configure GPIO pin
+        self._direction_gpio: int = direction_gpio
+        self._direction_edge = None
+        GPIO.setup(direction_gpio, GPIO.IN)
+        # add event detection
+        GPIO.add_event_detect(ticks_gpio, GPIO.RISING, callback=self._bump_ticks)
+        GPIO.add_event_detect(direction_gpio, GPIO.BOTH, callback=self._process_direction_edge)
+
+    def _bump_ticks(self, _):
+        if self._direction_edge is GPIO.RISING:
+            self.set_direction(WheelDirection.REVERSE)
+        else:
+            self.set_direction(WheelDirection.FORWARD)
+        # ---
+        super()._bump_ticks(_)
+
+    def _process_direction_edge(self, _):
+        if GPIO.input(self._direction_gpio):
+            self._direction_edge = GPIO.RISING if not self._direction_correction else GPIO.FALLING
+        else:
+            self._direction_edge = GPIO.FALLING if not self._direction_correction else GPIO.RISING
 
     def release(self):
-        GPIO.remove_event_detect(self._gpio)
+        GPIO.remove_event_detect(self._ticks_gpio)
+        GPIO.remove_event_detect(self._direction_gpio)
