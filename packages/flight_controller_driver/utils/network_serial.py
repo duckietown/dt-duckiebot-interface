@@ -4,7 +4,7 @@ import serial
 # Configuration
 HOST = '0.0.0.0'  # Listen on all network interfaces
 PORT = 12345  # Port to listen on for incoming connections
-SERIAL_PORT = '/dev/ttyACM0'  # Serial port to which data will be sent
+SERIAL_PORT = '/dev/ttyACM{}'  # Serial port to which data will be sent
 BAUD_RATE = 1e6  # Baud rate for the serial communication
 BAUD_RATE = 115200  # Baud rate for the serial communication
 
@@ -28,12 +28,13 @@ def handle_connection(client_socket, serial_port):
 def main():
     while True:
         # Open serial port
-        try:
-            serial_port = serial.Serial(SERIAL_PORT, BAUD_RATE)
-            print(f"Serial port {SERIAL_PORT} opened successfully.")
-        except serial.SerialException as e:
-            print(f"Failed to open serial port: {e}")
-            return
+        for i in range(10):
+            try:
+                serial_port = serial.Serial(SERIAL_PORT.format(i), BAUD_RATE)
+                print(f"Serial port {SERIAL_PORT.format(i)} opened successfully.")
+                break
+            except serial.SerialException as e:
+                print(f"Failed to open serial port: {e}")
 
         # Set up server socket
         try:
