@@ -1,5 +1,5 @@
 initial_pattern:
   front_left: [1, 1, 1, 0.2]
   front_right: [1, 1, 1, 0.2]
-  rear_left: [1, 0, 0, 0.2]
-  rear_right: [1, 0, 0, 0.2]
+  back_left: [1, 0, 0, 0.2]
+  back_right: [1, 0, 0, 0.2]

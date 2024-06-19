@@ -66,8 +66,8 @@ class LEDsDriverNode(Node):
             msg.front_left,
             RGBA.zero(),
             msg.front_right,
-            msg.rear_right,
-            msg.rear_left,
+            msg.back_right,
+            msg.back_left,
         ]
         for i, color in enumerate(lights):
             # apply alpha
@@ -90,8 +90,8 @@ class LEDsDriverNode(Node):
         msg: CarLights = CarLights(
             front_left=RGBA.from_list(self.configuration.initial_pattern["front_left"]),
             front_right=RGBA.from_list(self.configuration.initial_pattern["front_right"]),
-            rear_left=RGBA.from_list(self.configuration.initial_pattern["rear_left"]),
-            rear_right=RGBA.from_list(self.configuration.initial_pattern["rear_right"]),
+            back_left=RGBA.from_list(self.configuration.initial_pattern["back_left"]),
+            back_right=RGBA.from_list(self.configuration.initial_pattern["back_right"]),
         )
         await rgb_in.publish(msg.to_rawdata())
         # run forever
