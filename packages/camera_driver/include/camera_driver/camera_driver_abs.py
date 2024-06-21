@@ -25,6 +25,8 @@ from duckietown_messages.sensors.camera import Camera
 from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
 
+from dtps_utils.passthrough import DTPSPassthrough
+
 
 @dataclasses.dataclass
 class CameraNodeConfiguration(NodeConfiguration):
@@ -60,7 +62,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
     """
 
     def __init__(self, config: str, name: str):
-        node_name: str = f"camera-driver-{name}"
+        node_name: str = f"camera_driver_{name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
@@ -74,7 +76,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         # intrinsic calibration
         # TODO: take common part out
         self.cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
-        self.frame_id = f"/{self._robot_name}/camera/{self.sensor_name}/optical-frame"
+        self.frame_id = f"/{self._robot_name}/camera/{self.sensor_name}/optical_frame"
         # TODO: this needs to be adjusted location
         self.cali_file = os.path.join(self.cali_file_folder, f"{self._robot_name}.yaml")
 
@@ -103,6 +105,8 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         self._info_queue: Optional[DTPSContext] = None
         # data flow monitor
         self._last_image_published_time: float = time.time()
+        # passthrough context
+        self._passthrough: Optional[DTPSPassthrough] = None
         # ---
         self.loginfo("[CameraNodeAbs]: Initialized.")
 
@@ -110,6 +114,10 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         self.shutdown("Data flow monitor has closed the node because of stale stream.")
 
     async def publish(self, jpeg: bytes):
+        # do not publish if passthrough is active
+        if self._passthrough.is_active:
+            return
+        # ---
         msg: CompressedImage = CompressedImage(
             header=Header(
                 frame=self.frame_id,
@@ -134,7 +142,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
             # publish camera extrinsics
             msg: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
                 homographies={
-                    f"/{self._robot_name}/base-footprint": Homography(data=self.camera_model.H.tolist())
+                    f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H.tolist())
                 } if self.camera_model.H is not None else {},
             )
             await self._homographies_queue.publish(msg.to_rawdata())
@@ -179,6 +187,9 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         await (sensor / "parameters").expose(self._parameters_queue)
         await (sensor / "homographies").expose(self._homographies_queue)
         await (sensor / "info").expose(self._info_queue)
+        # create passthrough
+        self._passthrough = DTPSPassthrough(self.context, None, sensor, ["jpeg"])
+        await self._passthrough.astart()
 
     async def _worker(self):
         """
@@ -205,8 +216,8 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         failure_timeout = 20
         while not self.is_shutdown:
             # do nothing for the first `failure_timeout` seconds, then check every 5 seconds, but only if we were
-            # ever able to use the camera
-            if self._has_published and i > failure_timeout and i % 5 == 0:
+            # ever able to use the camera and if we don't have a passthrough active
+            if self._has_published and i > failure_timeout and i % 5 == 0 and not self._passthrough.is_active:
                 elapsed_since_last = time.time() - self._last_image_published_time
                 # reset nvargus if no images were received within the last 10 secs
                 if elapsed_since_last >= 10:

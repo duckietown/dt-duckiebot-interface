@@ -57,7 +57,7 @@ class ToFNode(Node):
     """
 
     def __init__(self, sensor_name: str, config: str):
-        node_name = f"tof-driver-{sensor_name}"
+        node_name = f"tof_driver_{sensor_name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
@@ -148,8 +148,8 @@ class ToFNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "time-of-flight" / self.sensor_name / "range").expose(range_queue)
-        await (self.switchboard / "sensor" / "time-of-flight" / self.sensor_name / "info").expose(info_queue)
+        await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "range").expose(range_queue)
+        await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "info").expose(info_queue)
         # publish info about the sensor
         msg = RangeFinder(
             # -- base
@@ -199,7 +199,7 @@ class ToFNode(Node):
         # wait for switchboard
         await self.switchboard_ready.wait()
         # wait for display
-        display: DTPSContext = await ((self.switchboard / "actuator" / "display" / "interaction-plate" / "fragments")
+        display: DTPSContext = await ((self.switchboard / "actuator" / "display" / "interaction_plate" / "fragments")
                                       .until_ready())
         publisher: PublisherInterface = await display.publisher()
         # create screen renderer

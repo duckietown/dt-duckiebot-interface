@@ -33,20 +33,20 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="camera_driver",
             module=f"camera_driver_node.{robot_hardware}",
-            name="camera-driver",
+            name="camera_driver",
             config=config
         ))
     # tof node
     if args.tof:
         if robot_type == "duckiebot" and robot_configuration in ["DB21M", "DB21J", "DBR4", "DBR5"]:
-            nodes.append(_tof_node("front-center", robot_type, args.tof_config))
+            nodes.append(_tof_node("front_center", robot_type, args.tof_config))
     # wheels node
     if args.wheels:
         config: str = f"{args.wheels_config}.yaml"
         nodes.append(Node(
             package="wheels_driver",
             module="wheels_driver_node.main",
-            name="wheels-driver",
+            name="wheels_driver",
             config=config
         ))
     # display node
@@ -55,7 +55,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="display_driver",
             module="display_driver_node.main",
-            name="display-driver",
+            name="display_driver",
             config=config
         ))
     # wheel encoder nodes
@@ -66,7 +66,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
                 nodes.append(Node(
                     package="wheel_encoder_driver",
                     module=f"wheel_encoder_driver_node.main",
-                    name=f"wheel-encoder-{side}",
+                    name=f"wheel_encoder_{side}",
                     config=config,
                     arguments=["--side", side]
                 ))
@@ -76,7 +76,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="leds_driver",
             module="leds_driver_node.main",
-            name="leds-driver",
+            name="leds_driver",
             config=config
         ))
     # button node
@@ -85,7 +85,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="button_driver",
             module="button_driver_node.main",
-            name="button-driver",
+            name="button_driver",
             config=config
         ))
     # imu node
@@ -94,7 +94,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="imu_driver",
             module="imu_driver_node.main",
-            name="imu-driver",
+            name="imu_driver",
             config=config
         ))
     # display renderer node
@@ -103,7 +103,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         nodes.append(Node(
             package="display_renderer",
             module="display_renderer_node.main",
-            name="display-renderer",
+            name="display_renderer",
             config=config
         ))
     # ---

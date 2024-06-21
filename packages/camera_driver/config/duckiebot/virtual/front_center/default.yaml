@@ -1,0 +1,7 @@
+maker: Duckietown, Inc.
+model: Virtual
+framerate: 30
+fov: 160
+res_w: 640
+res_h: 480
+exposure_mode: sports

@@ -49,7 +49,7 @@ BOOTING_SCREEN: List[DisplayFragment] = [
 class DisplayNode(Node):
 
     def __init__(self, config: str, actuator_name: str):
-        node_name: str = f"display-driver-{actuator_name}"
+        node_name: str = f"display_driver_{actuator_name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
@@ -119,7 +119,7 @@ class DisplayNode(Node):
     async def register_button_events(self):
         await self.switchboard_ready.wait()
         # create button event queue
-        button: DTPSContext = await (self.switchboard / "sensor" / "power-button" / "interaction-plate").until_ready()
+        button: DTPSContext = await (self.switchboard / "sensor" / "power_button" / self.actuator_name).until_ready()
         # subscribe to button events
         await button.subscribe(self.cb_button_events)
 

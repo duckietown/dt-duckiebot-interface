@@ -41,7 +41,7 @@ class ButtonDriverNode(Node):
     _TIME_HOLD_10S = 10
 
     def __init__(self, config: str, sensor_name: str):
-        node_name: str = f"power-button-driver-{sensor_name}"
+        node_name: str = f"power_button_driver_{sensor_name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
@@ -122,7 +122,7 @@ class ButtonDriverNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "power-button" / self.sensor_name / "event").expose(self._queue)
+        await (self.switchboard / "sensor" / "power_button" / self.sensor_name / "event").expose(self._queue)
         # publish no event
         await self._queue.publish(ButtonEventMsg(
             type=InteractionEvent.NOTHING,

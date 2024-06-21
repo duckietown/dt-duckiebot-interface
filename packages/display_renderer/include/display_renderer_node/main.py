@@ -42,7 +42,7 @@ class DisplayRendererNodeConfiguration(NodeConfiguration):
 class DisplayRendererNode(Node):
 
     def __init__(self, config: str):
-        node_name: str = "display-renderer"
+        node_name: str = "display_renderer"
         super().__init__(
             name=node_name,
             kind=NodeType.VISUALIZATION,
@@ -98,7 +98,7 @@ class DisplayRendererNode(Node):
     async def worker(self):
         await self.dtps_init(self.configuration)
         # create fragments queue
-        queue = await (self.switchboard / "actuator" / "display" / "interaction-plate" / "fragments").until_ready()
+        queue = await (self.switchboard / "actuator" / "display" / "interaction_plate" / "fragments").until_ready()
         self._fragments = await queue.publisher()
         # expose node to the switchboard
         await self.dtps_expose()

@@ -48,7 +48,7 @@ class IMUNode(Node):
     """
 
     def __init__(self, config: str, sensor_name: str):
-        node_name: str = f"imu-driver-{sensor_name}"
+        node_name: str = f"imu_driver_{sensor_name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
