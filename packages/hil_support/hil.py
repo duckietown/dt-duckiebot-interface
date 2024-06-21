@@ -35,12 +35,20 @@ class HardwareInTheLoopSupport:
     def hil_is_active(self) -> bool:
         return self._passthrough.is_active
 
-    async def init_hil_support(self, node_cxt: DTPSContext, destination_cxt: DTPSContext, paths: List[str]):
+    async def init_hil_support(
+            self,
+            node: DTPSContext,
+            src: Optional[DTPSContext],
+            src_path: List[str],
+            dst: Optional[DTPSContext],
+            dst_path: List[str],
+            subpaths: List[str],
+            ):
         """
         Configures the support for hardware in the loop (HIL) simulation.
         """
         # create passthrough
-        self._passthrough = DTPSPassthrough(node_cxt, None, destination_cxt, paths)
+        self._passthrough = DTPSPassthrough(node, src, dst, subpaths, src_path=src_path, dst_path=dst_path)
         await self._passthrough.astart()
         # kv-store
         kvstore: KVStore = KVStore()
@@ -71,6 +79,7 @@ class HardwareInTheLoopSupport:
             logger.debug(f"Error is:\n{e.message}")
             return
         source: Optional[DTPSContext] = None
+        path: List[str] = []
         if conn_cfg is not None:
             cxt_cfg: Optional[DTPSContextMsg] = conn_cfg.source
             if cxt_cfg is not None:
@@ -82,28 +91,33 @@ class HardwareInTheLoopSupport:
                                  f"\n\turls: {cxt_cfg.urls}"
                                  f"\n\terror: {str(e)}")
                     return
+                # make sure the context exists
+                exists: bool = False
+                try:
+                    exists = await source.exists()
+                except TimeoutError:
+                    pass
+                if not exists:
+                    logger.info(f"Source context '{cxt_cfg.name}' with urls '{cxt_cfg.urls}' does not exist or "
+                                f"it is not reachable. Ignoring")
+                    return
                 # navigate to optional path
                 if cxt_cfg.path:
                     source = source.navigate(cxt_cfg.path)
-                # navigate to the agent level
-                source = source.navigate(conn_cfg.agent_name)
-                # navigate to the bridged topic
-                source = source.navigate(*self.get_hil_bridged_topic())
+                # move path to the agent level
+                path.append(conn_cfg.agent_name)
+                # move path to the bridged topic
+                path.extend(self.get_hil_bridged_topic())
                 # connect passthrough
                 logger.info(f"Connecting passthrough to context '{cxt_cfg.name}' with configuration {cxt_cfg} and "
-                            f"path '{'/'.join(source.get_path_components())}'.")
-                # make sure the context exists
-                exists: bool = await source.exists()
-                if not exists:
-                    logger.info(f"Source context '{cxt_cfg.name}' does not exist or it is not reachable. Ignoring")
-                    return
+                            f"path {'/'.join(path)}")
             else:
                 logger.info(f"Source context is 'None'. This will trigger a disconnection")
         else:
             if self._passthrough.is_active:
                 logger.info(f"Disconnecting passthrough")
         try:
-            await self._passthrough.set_source(source)
+            await self._passthrough.set_source(source, path)
         except Exception as e:
             logger.error(f"Failed to set passthrough source: {str(e)}")
             traceback.print_exc()

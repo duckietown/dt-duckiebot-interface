@@ -187,7 +187,14 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         await (sensor / "homographies").expose(self._homographies_queue)
         await (sensor / "info").expose(self._info_queue)
         # initialize HIL support
-        await self.init_hil_support(self.context, sensor, ["jpeg"])
+        await self.init_hil_support(
+            self.context,
+            src=None,
+            src_path=[],
+            dst=self.switchboard,
+            dst_path=["sensor", "camera", self.sensor_name],
+            subpaths=["jpeg"],
+        )
 
     async def _worker(self):
         """
