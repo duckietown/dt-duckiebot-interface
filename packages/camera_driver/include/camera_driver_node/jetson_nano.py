@@ -21,9 +21,6 @@ class CameraNode(CameraNodeAbs):
     Handles the imagery on a Jetson Nano.
     """
 
-    def run(self):
-        pass
-
     # each mode defines [width, height, fps]
     CAMERA_MODES = [
         CameraMode(0, 3264, 2464, 21, "full"),
@@ -91,6 +88,11 @@ class CameraNode(CameraNodeAbs):
         retval, image = self._device.read() if self._device else (False, None)
         # keep reading
         while not self.is_shutdown:
+            # do not read the sensor if the passthrough is active
+            if self._passthrough.is_active:
+                await asyncio.sleep(1)
+                continue
+
             if not retval:
                 self.logerr("Could not read image from camera")
                 await asyncio.sleep(1)
