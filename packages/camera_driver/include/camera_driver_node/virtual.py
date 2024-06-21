@@ -2,19 +2,12 @@
 
 import argparse
 import asyncio
-from typing import Optional, Tuple
-
-import coloredlogs
+from typing import Tuple
 
 from camera_driver import CameraNodeAbs
-from dtps_utils.passthrough import DTPSPassthrough
-from duckietown_messages.simulation.hil.configuration import HILConfiguration
-from hil_support.hil import HardwareInTheLoopSupport
-
-coloredlogs.install()
 
 
-class CameraNode(CameraNodeAbs, HardwareInTheLoopSupport):
+class CameraNode(CameraNodeAbs):
     """
     Handles the imagery on a Virtual robot.
     """
@@ -22,9 +15,6 @@ class CameraNode(CameraNodeAbs, HardwareInTheLoopSupport):
     def __init__(self, config: str, sensor_name: str):
         # Initialize the DTROS parent class
         super(CameraNode, self).__init__(config, sensor_name)
-        # passthrough context
-        self._passthrough: Optional[DTPSPassthrough] = None
-        self._hil_configuration: Optional[HILConfiguration] = None
         # ---
         self.loginfo("[CameraNode]: Initialized.")
 

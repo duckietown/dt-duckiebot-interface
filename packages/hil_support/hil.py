@@ -16,9 +16,6 @@ from kvstore.client.client import KVStore
 
 logger = logging.getLogger("hil-support")
 
-import coloredlogs
-coloredlogs.install(logger=logger)
-
 
 class HardwareInTheLoopSupport:
     """
