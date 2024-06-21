@@ -81,7 +81,7 @@ class HardwareInTheLoopSupport:
         source: Optional[DTPSContext] = None
         path: List[str] = []
         if conn_cfg is not None:
-            cxt_cfg: Optional[DTPSContextMsg] = conn_cfg.source
+            cxt_cfg: Optional[DTPSContextMsg] = conn_cfg.simulator
             if cxt_cfg is not None:
                 # open link to context indicated
                 try:
