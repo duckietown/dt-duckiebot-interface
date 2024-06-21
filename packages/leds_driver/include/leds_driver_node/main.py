@@ -38,7 +38,7 @@ class LEDsDriverNode(Node):
     """
 
     def __init__(self, config: str, actuator_name: str):
-        node_name: str = f"leds-driver-{actuator_name}"
+        node_name: str = f"leds_driver_{actuator_name}"
         super(LEDsDriverNode, self).__init__(
             name=node_name,
             kind=NodeType.DRIVER,

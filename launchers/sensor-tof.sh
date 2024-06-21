@@ -13,7 +13,7 @@ CONFIG_FILE="default"
 
 if [ "${ROBOT_TYPE}" == "duckiebot" ]; then
     # duckiebots have a ToF sensor on the front-center
-    SENSOR_NAME="front-center"
+    SENSOR_NAME="front_center"
 elif [ "${ROBOT_TYPE}" == "duckiedrone" ]; then
     # duckiedrone have a ToF sensor on the bottom
     SENSOR_NAME="bottom"

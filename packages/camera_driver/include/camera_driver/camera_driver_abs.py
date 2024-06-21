@@ -60,7 +60,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
     """
 
     def __init__(self, config: str, name: str):
-        node_name: str = f"camera-driver-{name}"
+        node_name: str = f"camera_driver_{name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
@@ -74,7 +74,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         # intrinsic calibration
         # TODO: take common part out
         self.cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
-        self.frame_id = f"/{self._robot_name}/camera/{self.sensor_name}/optical-frame"
+        self.frame_id = f"/{self._robot_name}/camera/{self.sensor_name}/optical_frame"
         # TODO: this needs to be adjusted location
         self.cali_file = os.path.join(self.cali_file_folder, f"{self._robot_name}.yaml")
 
@@ -134,7 +134,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
             # publish camera extrinsics
             msg: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
                 homographies={
-                    f"/{self._robot_name}/base-footprint": Homography(data=self.camera_model.H.tolist())
+                    f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H.tolist())
                 } if self.camera_model.H is not None else {},
             )
             await self._homographies_queue.publish(msg.to_rawdata())

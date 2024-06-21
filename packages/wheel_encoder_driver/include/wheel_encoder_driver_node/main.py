@@ -37,7 +37,7 @@ class WheelEncoderNode(Node):
     """
 
     def __init__(self, side: str, config: str):
-        node_name: str = f"wheel-encoder-driver-{side}"
+        node_name: str = f"wheel_encoder_driver_{side}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
@@ -78,7 +78,7 @@ class WheelEncoderNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "wheel-encoder" / self._side / "ticks").expose(queue)
+        await (self.switchboard / "sensor" / "wheel_encoder" / self._side / "ticks").expose(queue)
         # read and publish
         while not self.is_shutdown:
             # pack observation into a message
