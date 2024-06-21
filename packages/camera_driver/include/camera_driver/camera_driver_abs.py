@@ -25,7 +25,7 @@ from duckietown_messages.sensors.camera import Camera
 from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
 
-from dtps_utils.passthrough import DTPSPassthrough
+from hil_support.hil import HardwareInTheLoopSupport
 
 
 @dataclasses.dataclass
@@ -49,7 +49,7 @@ class CameraNodeConfiguration(NodeConfiguration):
     exposure: Optional[int] = None
 
 
-class CameraNodeAbs(Node, metaclass=ABCMeta):
+class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
     """Handles the imagery.
 
     The node handles the image stream, initializing it, publishing frames
@@ -68,6 +68,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
             kind=NodeType.DRIVER,
             description="Reads a stream of images from a camera and publishes the frames over DTPS",
         )
+        HardwareInTheLoopSupport.__init__(self)
         self.sensor_name: str = name
 
         # load configuration
@@ -105,8 +106,6 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         self._info_queue: Optional[DTPSContext] = None
         # data flow monitor
         self._last_image_published_time: float = time.time()
-        # passthrough context
-        self._passthrough: Optional[DTPSPassthrough] = None
         # ---
         self.loginfo("[CameraNodeAbs]: Initialized.")
 
@@ -115,7 +114,7 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
 
     async def publish(self, jpeg: bytes):
         # do not publish if passthrough is active
-        if self._passthrough.is_active:
+        if self.hil_is_active:
             return
         # ---
         msg: CompressedImage = CompressedImage(
@@ -187,9 +186,8 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         await (sensor / "parameters").expose(self._parameters_queue)
         await (sensor / "homographies").expose(self._homographies_queue)
         await (sensor / "info").expose(self._info_queue)
-        # create passthrough
-        self._passthrough = DTPSPassthrough(self.context, None, sensor, ["jpeg"])
-        await self._passthrough.astart()
+        # initialize HIL support
+        await self.init_hil_support(self.context, sensor, ["jpeg"])
 
     async def _worker(self):
         """
@@ -216,8 +214,8 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         failure_timeout = 20
         while not self.is_shutdown:
             # do nothing for the first `failure_timeout` seconds, then check every 5 seconds, but only if we were
-            # ever able to use the camera and if we don't have a passthrough active
-            if self._has_published and i > failure_timeout and i % 5 == 0 and not self._passthrough.is_active:
+            # ever able to use the camera and if we don't have an HIL passthrough active
+            if self._has_published and i > failure_timeout and i % 5 == 0 and not self.hil_is_active:
                 elapsed_since_last = time.time() - self._last_image_published_time
                 # reset nvargus if no images were received within the last 10 secs
                 if elapsed_since_last >= 10:
