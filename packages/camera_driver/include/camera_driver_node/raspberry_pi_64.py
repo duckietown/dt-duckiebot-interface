@@ -2,6 +2,7 @@
 
 import atexit
 import subprocess
+from typing import cast
 import cv2
 import asyncio
 import argparse
@@ -45,7 +46,7 @@ class CameraNode(CameraNodeAbs):
                 continue
             if image is not None:
                 # without HW acceleration, the image is returned as RGB, encode on CPU
-                jpeg: bytes = np.uint8(image).tobytes()
+                jpeg: bytes = cast(np.ndarray, image).tobytes()
 
                 # publish
                 await self.publish(jpeg)
@@ -80,6 +81,7 @@ class CameraNode(CameraNodeAbs):
                 self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
                 self._device.set(cv2.CAP_PROP_FRAME_WIDTH, self.configuration.res_w)
                 self._device.set(cv2.CAP_PROP_FRAME_HEIGHT, self.configuration.res_h)
+                self._device.set(cv2.CAP_PROP_ROLL, self.configuration.rotation)
                 self._device.set(cv2.CAP_PROP_FPS, self.configuration.framerate)
                 self._device.set(cv2.CAP_PROP_CONVERT_RGB, 0.0)
                 # Set auto exposure to false

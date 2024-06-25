@@ -44,6 +44,7 @@ class CameraNodeConfiguration(NodeConfiguration):
     res_w: int
     res_h: int
     exposure_mode: str
+    rotation: int = 0
     allow_partial_fov: Optional[bool] = None
     use_hw_acceleration: Optional[bool] = None
     exposure: Optional[int] = None
