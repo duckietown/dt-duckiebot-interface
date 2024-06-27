@@ -2,7 +2,8 @@ maker: Waveshare
 model: OV5647
 framerate: 30
 fov: 160
-res_w: 640
-res_h: 480
+res_w: 280
+res_h: 320
+rotation: 270
 exposure_mode: sports
 exposure: 100

@@ -44,6 +44,7 @@ class CameraNodeConfiguration(NodeConfiguration):
     res_w: int
     res_h: int
     exposure_mode: str
+    rotation: int
     allow_partial_fov: Optional[bool] = None
     use_hw_acceleration: Optional[bool] = None
     exposure: Optional[int] = None
@@ -73,6 +74,7 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
 
         # load configuration
         self.configuration: CameraNodeConfiguration = CameraNodeConfiguration.from_name(self.package, node_name, config)
+        self.loginfo(f"Loaded configuration: {self.configuration.to_dict()}")
 
         # intrinsic calibration
         # TODO: take common part out
