@@ -89,7 +89,7 @@ class CameraNode(CameraNodeAbs):
         # keep reading
         while not self.is_shutdown:
             # do not read the sensor if the passthrough is active
-            if self._passthrough.is_active:
+            if self.hil_is_active:
                 await asyncio.sleep(1)
                 continue
 
