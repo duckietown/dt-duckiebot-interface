@@ -131,44 +131,50 @@ class CameraNodeAbs(Node, metaclass=ABCMeta):
         await self._jpeg_queue.publish(msg.to_rawdata())
         self._last_image_published_time = time.time()
         # ---
+        # publish camera intrinsics
+        msg: CameraIntrinsicCalibration = CameraIntrinsicCalibration(
+            K=self.camera_model.K.tolist(),
+            D=self.camera_model.D.tolist(),
+            P=self.camera_model.P.tolist(),
+            R=self.camera_model.R.tolist() if self.camera_model.R is not None else None,
+        )
+        await self._parameters_queue.publish(msg.to_rawdata())
+
+        # publish camera extrinsics
+        msg_homography: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
+            homographies={
+                f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H.tolist())
+            } if self.camera_model.H is not None else {},
+        )
+        await self._homographies_queue.publish(msg_homography.to_rawdata())
+
+        # publish camera info
+        msg: Camera = Camera(
+            # -- base
+            header=Header(),
+            # -- sensor
+            name=self.sensor_name,
+            type="camera",
+            simulated=False,
+            description="RGB8/JPEG Camera",
+            frame_id=self.frame_id,
+            frequency=self.configuration.framerate,
+            maker=self.configuration.maker,
+            model=self.configuration.model,
+            # -- camera
+            width=self.camera_model.width,
+            height=self.camera_model.height,
+            fov=math.radians(self.configuration.fov),
+        )
+
+        await self._info_queue.publish(msg.to_rawdata())
+        
         if not self._has_published:
-            # publish camera intrinsics
-            msg: CameraIntrinsicCalibration = CameraIntrinsicCalibration(
-                K=self.camera_model.K.tolist(),
-                D=self.camera_model.D.tolist(),
-                P=self.camera_model.P.tolist(),
-                R=self.camera_model.R.tolist() if self.camera_model.R is not None else None,
-            )
-            await self._parameters_queue.publish(msg.to_rawdata())
-            self.loginfo("Published camera intrinsics")
-            # publish camera extrinsics
-            msg: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
-                homographies={
-                    f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H.tolist())
-                } if self.camera_model.H is not None else {},
-            )
-            await self._homographies_queue.publish(msg.to_rawdata())
-            self.loginfo(f"Published {len(msg.homographies)} known camera homographies")
-            # publish camera info
-            msg: Camera = Camera(
-                # -- base
-                header=Header(),
-                # -- sensor
-                name=self.sensor_name,
-                type="camera",
-                simulated=False,
-                description="RGB8/JPEG Camera",
-                frame_id=self.frame_id,
-                frequency=self.configuration.framerate,
-                maker=self.configuration.maker,
-                model=self.configuration.model,
-                # -- camera
-                width=self.camera_model.width,
-                height=self.camera_model.height,
-                fov=math.radians(self.configuration.fov),
-            )
-            await self._info_queue.publish(msg.to_rawdata())
-            self.loginfo("Published camera info")
+            self.loginfo("Started publishing camera intrinsics")
+            
+            self.loginfo(f"Started publishing {len(msg_homography.homographies)} known camera homographies")
+            
+            self.loginfo("Started publishing camera info")
             # ---
             self.loginfo("Published the first image")
             self._has_published = True
