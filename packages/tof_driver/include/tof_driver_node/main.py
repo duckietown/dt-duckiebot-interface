@@ -162,7 +162,7 @@ class ToFNode(Node):
             frame_id=self.frame_id,
             frequency=self._frequency,
             maker="STMicroelectronics",
-            model="VL53L0X",
+            model=self.configuration.sensor_model,
             # -- RangeFinder
             fov=self._accuracy.fov,
             minimum=self._accuracy.min_range,
