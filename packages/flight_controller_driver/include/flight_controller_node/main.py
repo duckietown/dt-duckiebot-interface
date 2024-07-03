@@ -622,7 +622,6 @@ class FlightControllerNode(Node):
         self.loginfo("Disarming!")
         self._command = self._board.mode_to_rc_command(DroneMode.DISARMED)
         self._switch_to_mode(DroneMode.DISARMED, quiet=True)
-        if yappi.runn
         sys.exit()
 
 
@@ -637,9 +636,6 @@ def main():
     )
 
     args: argparse.Namespace = parser.parse_args()
-
-    if args.profiling:
-        yappi.run().__enter__()
 
     # create node
     node: FlightControllerNode = FlightControllerNode(config=args.config)
