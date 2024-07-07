@@ -206,7 +206,8 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             # paths to connect when a remote is set
             subpaths=["jpeg"],
             # which side is the re-pluggable one
-            side=HardwareInTheLoopSide.SOURCE
+            side=HardwareInTheLoopSide.SOURCE,
+            # TODO: use transformations to set the frame in the message
         )
 
     async def _worker(self):
