@@ -3,7 +3,7 @@ from typing import Optional
 from tof_driver.tof_driver_abs import ToFDriverAbs, ToFAccuracy
 
 from adafruit_extended_bus import ExtendedI2C
-from adafruit_vl53l0x import VL53L0X
+from .adafruit_vl53l0x import VL53L0X
 from adafruit_vl53l1x import VL53L1X
 
 
@@ -17,7 +17,7 @@ class ToFDriverVL53L0X(ToFDriverAbs):
 
     def setup(self):
         bus: ExtendedI2C = ExtendedI2C(self._i2c_bus)
-        self._sensor = VL53L0X(bus, address=self._i2c_address)
+        self._sensor = VL53L0X(bus, address=self._i2c_address, strict_check=False)
         # set accuracy mode (in microseconds)
         self._sensor.measurement_timing_budget = int(self._accuracy.timing_budget * 10**6)
 

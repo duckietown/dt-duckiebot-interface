@@ -38,7 +38,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         ))
     # tof node
     if args.tof:
-        if robot_type == "duckiebot" and robot_configuration in ["DB21M", "DB21J", "DBR4", "DBR5"]:
+        if robot_type == "duckiebot" and robot_configuration in ["DB21M", "DB21J", "DBR", "DBR5"]:
             nodes.append(_tof_node("front_center", robot_type, args.tof_config))
     # wheels node
     if args.wheels:
@@ -60,7 +60,7 @@ def generate_launch_description(args: argparse.Namespace) -> LaunchDescription:
         ))
     # wheel encoder nodes
     if args.wheel_encoders:
-        if robot_configuration in ["DB21M", "DB21J", "DBR4", "DBR5"]:
+        if robot_configuration in ["DB21M", "DB21J", "DBR"]:
             for side in ["left", "right"]:
                 config: str = f"{side}/{args.wheel_encoders_config}.yaml"
                 nodes.append(Node(

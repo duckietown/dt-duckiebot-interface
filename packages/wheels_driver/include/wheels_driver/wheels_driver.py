@@ -77,8 +77,9 @@ class DaguWheelsDriver(WheelsDriverAbs):
         self._executed_right = (pwmr * rightMotorMode.value) / 255.
 
         # set PWM signals
-        self.leftMotor.set(leftMotorMode, pwml)
-        self.rightMotor.set(rightMotorMode, pwmr)
+        if not self.pretend:
+            self.leftMotor.set(leftMotorMode, pwml)
+            self.rightMotor.set(rightMotorMode, pwmr)
 
     @staticmethod
     def _pwm_value(v: float, wheel_config: WheelPWMConfiguration) -> uint8:

@@ -25,7 +25,7 @@ from duckietown_messages.sensors.camera import Camera
 from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
 
-from hil_support.hil import HardwareInTheLoopSupport
+from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 
 
 @dataclasses.dataclass
@@ -45,7 +45,7 @@ class CameraNodeConfiguration(NodeConfiguration):
     res_h: int
     rotation: int = 0
     exposure_mode: str
-    rotation: int
+    rotation: int = 0
     allow_partial_fov: Optional[bool] = None
     use_hw_acceleration: Optional[bool] = None
     exposure: Optional[int] = None
@@ -198,11 +198,17 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         # initialize HIL support
         await self.init_hil_support(
             self.context,
+            # source (this is the dynamic side, duckiematrix or nothing)
             src=None,
-            src_path=[],
-            dst=self.switchboard,
-            dst_path=["sensor", "camera", self.sensor_name],
+            src_path=["sensor", "camera", self.sensor_name],
+            # destination (this is us, static)
+            dst=self.context,
+            dst_path=["out"],
+            # paths to connect when a remote is set
             subpaths=["jpeg"],
+            # which side is the re-pluggable one
+            side=HardwareInTheLoopSide.SOURCE,
+            # TODO: use transformations to set the frame in the message
         )
 
     async def _worker(self):
@@ -348,3 +354,6 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             P=calibration["projection_matrix"]["data"],
         )
         return camera
+
+    def on_shutdown(self):
+        self.deinit_hil_support()

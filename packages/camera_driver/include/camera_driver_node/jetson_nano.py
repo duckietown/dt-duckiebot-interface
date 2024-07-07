@@ -192,6 +192,7 @@ class CameraNode(CameraNodeAbs):
         return sorted(candidates, key=lambda m: m.id)[-1]
 
     def on_shutdown(self):
+        super().on_shutdown()
         if self._device is not None:
             self._device.release()
         self.loginfo("OpenCV device released.")

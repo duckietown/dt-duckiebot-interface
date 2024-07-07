@@ -22,6 +22,7 @@ from duckietown_messages.actuators.display_fragments import DisplayFragments
 from duckietown_messages.sensors.range import Range
 from duckietown_messages.sensors.range_finder import RangeFinder
 from duckietown_messages.standard.header import Header
+from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from tof_driver import ToFDriver, ToFAccuracy
 
 
@@ -41,7 +42,7 @@ class ToFNodeConfiguration(NodeConfiguration):
     connectors: List[Connector]
 
 
-class ToFNode(Node):
+class ToFNode(Node, HardwareInTheLoopSupport):
     """
     This class implements the communication logic with a Time-of-Flight sensor on the i2c bus.
     It publishes both range measurements and display fragments to show on an LCD screen.
@@ -63,6 +64,7 @@ class ToFNode(Node):
             kind=NodeType.DRIVER,
             description="Time-of-Flight sensor driver",
         )
+        HardwareInTheLoopSupport.__init__(self)
         self.sensor_name: str = sensor_name
 
         # load configuration
@@ -150,6 +152,22 @@ class ToFNode(Node):
         # expose queues to the switchboard
         await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "range").expose(range_queue)
         await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "info").expose(info_queue)
+        # initialize HIL support
+        await self.init_hil_support(
+            self.context,
+            # source (this is the dynamic side, duckiematrix or nothing)
+            src=None,
+            src_path=["sensor", "time_of_flight", self.sensor_name],
+            # destination (this is us, static)
+            dst=self.context,
+            dst_path=["out"],
+            # paths to connect when a remote is set
+            # TODO: "info" should also be exposed by the duckiematrix
+            subpaths=["range"],
+            # which side is the re-pluggable one
+            side=HardwareInTheLoopSide.SOURCE,
+            # TODO: use transformations to set the frame in the message
+        )
         # publish info about the sensor
         msg = RangeFinder(
             # -- base
@@ -172,16 +190,24 @@ class ToFNode(Node):
         # read and publish
         dt: float = 1.0 / self._frequency
         while not self.is_shutdown:
+            # do nothing if HIL is active
+            if self.hil_is_active:
+                await asyncio.sleep(1.0)
+                continue
+            # ---
             try:
                 # detect range
-                range_mm: float = self._sensor.get_distance()
+                range_mm: Optional[float] = self._sensor.get_distance()
             except OSError:
                 self.logger.error("I2C error. The sensor is not responding.")
                 await asyncio.sleep(dt)
                 continue
+            # ---
+            data: float | None = None
             # convert to meters, check for out-of-range
-            range_m: float = range_mm / 1000
-            data: float | None = range_m if range_m <= self._accuracy.max_range else None
+            if range_mm is not None:
+                range_m: float = range_mm / 1000
+                data = range_m if range_m <= self._accuracy.max_range else None
             # pack observation into a message
             msg = Range(
                 header=Header(frame=self.frame_id),

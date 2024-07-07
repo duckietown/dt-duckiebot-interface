@@ -2,7 +2,6 @@
 
 import argparse
 import asyncio
-from typing import Tuple
 
 from camera_driver import CameraNodeAbs
 
@@ -17,9 +16,6 @@ class CameraNode(CameraNodeAbs):
         super(CameraNode, self).__init__(config, sensor_name)
         # ---
         self.loginfo("[CameraNode]: Initialized.")
-
-    def get_hil_bridged_topic(self) -> Tuple[str, ...]:
-        return "sensor", "camera", self.sensor_name
 
     async def worker(self):
         """
@@ -36,9 +32,6 @@ class CameraNode(CameraNodeAbs):
 
     def setup(self):
         pass
-
-    def on_shutdown(self):
-        self.deinit_hil_support()
 
 
 def main():
