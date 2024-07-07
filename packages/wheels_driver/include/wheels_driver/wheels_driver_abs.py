@@ -23,6 +23,7 @@ class WheelsDriverAbs(ABC):
     def __init__(self, left_config: WheelPWMConfiguration, right_config: WheelPWMConfiguration):
         self.left_config = left_config
         self.right_config = right_config
+        self.pretend: bool = False
 
     @abstractmethod
     def set_wheels_speed(self, left: float, right: float):

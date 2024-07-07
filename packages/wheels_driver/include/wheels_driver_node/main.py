@@ -18,9 +18,12 @@ from dt_robot_utils import RobotHardware, get_robot_hardware
 from duckietown_messages.actuators.differential_pwm import DifferentialPWM
 from duckietown_messages.standard.boolean import Boolean
 from duckietown_messages.utils.exceptions import DataDecodingError
+from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from wheels_driver.wheels_driver_abs import WheelsDriverAbs, WheelPWMConfiguration
 
-if get_robot_hardware() == RobotHardware.VIRTUAL:
+is_virtual: bool = get_robot_hardware() == RobotHardware.VIRTUAL
+
+if is_virtual:
     from wheels_driver.virtual_wheels_driver import VirtualWheelsDriver
     WheelsDriver: Type[WheelsDriverAbs] = VirtualWheelsDriver
 else:
@@ -35,7 +38,7 @@ class WheelsDriverNodeConfiguration(NodeConfiguration):
     safety_stop_timeout: float
 
 
-class WheelsDriverNode(Node):
+class WheelsDriverNode(Node, HardwareInTheLoopSupport):
     """Node handling the motor speeds.
 
     Subscribes to the requested wheels commands (linear velocities, i.e. velocity for the left
@@ -55,6 +58,7 @@ class WheelsDriverNode(Node):
             kind=NodeType.DRIVER,
             description="Robot wheels motor driver",
         )
+        HardwareInTheLoopSupport.__init__(self)
         self.actuator_name: str = actuator_name
 
         # load configuration
@@ -89,7 +93,11 @@ class WheelsDriverNode(Node):
             pwm_left = pwms.left
             pwm_right = pwms.right
 
+        if not is_virtual:
+            self.driver.pretend = self.hil_is_active and not self._hil_configuration.dreamwalking
+
         self.driver.set_wheels_speed(left=pwm_left, right=pwm_right)
+
         # publish out the filtered signals
         filtered: DifferentialPWM = DifferentialPWM(left=pwm_left, right=pwm_right)
         await self._pwm_filtered_out.publish(filtered.to_rawdata())
@@ -134,6 +142,20 @@ class WheelsDriverNode(Node):
         await (actuator / "estop").expose(estop_queue)
         await (actuator / "pwm_filtered").expose(self._pwm_filtered_out)
         await (actuator / "pwm_executed").expose(self._pwm_executed_out)
+        # initialize HIL support
+        await self.init_hil_support(
+            self.context,
+            # source (this is us, static)
+            src=self.context,
+            src_path=["in"],
+            # destination (this is the dynamic side, duckiematrix or nothing)
+            dst=None,
+            dst_path=["actuator", "wheels", self.actuator_name],
+            # paths to connect when a remote is set
+            subpaths=["pwm"],
+            # which side is the re-pluggable one
+            side=HardwareInTheLoopSide.DESTINATION
+        )
         # publish the initial state
         await pwm_in.publish(DifferentialPWM(left=0, right=0).to_rawdata())
         await estop_queue.publish(Boolean(data=False).to_rawdata())
