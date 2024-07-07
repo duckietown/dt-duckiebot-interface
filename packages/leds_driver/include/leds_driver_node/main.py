@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
+import argparse
 import dataclasses
 import time
-from typing import Type, cast, List, Dict
-
-import argparse
+from typing import Type, List, Dict
 
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
@@ -15,6 +14,7 @@ from dtps_http import RawData
 from duckietown_messages.actuators.car_lights import CarLights
 from duckietown_messages.colors.rgba import RGBA
 from duckietown_messages.utils.exceptions import DataDecodingError
+from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from leds_driver.leds_driver_abs import LEDsDriverAbs
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
@@ -30,7 +30,7 @@ class LEDsDriverNodeConfiguration(NodeConfiguration):
     initial_pattern: Dict[str, List[float]]
 
 
-class LEDsDriverNode(Node):
+class LEDsDriverNode(Node, HardwareInTheLoopSupport):
     """
     Node handling the robot lights.
 
@@ -44,6 +44,7 @@ class LEDsDriverNode(Node):
             kind=NodeType.DRIVER,
             description="Robot lights driver",
         )
+        HardwareInTheLoopSupport.__init__(self)
         self.actuator_name: str = actuator_name
 
         # load configuration
@@ -60,6 +61,9 @@ class LEDsDriverNode(Node):
             msg: CarLights = CarLights.from_rawdata(data)
         except DataDecodingError as e:
             self.logerr(f"Failed to decode an incoming message: {e.message}")
+            return
+        # when HIL is active, we only apply the colors if in dreamwalking mode
+        if self.hil_is_active and not self._hil_configuration.dreamwalking:
             return
         # ---
         lights: List[RGBA] = [
@@ -79,13 +83,27 @@ class LEDsDriverNode(Node):
     async def worker(self):
         await self.dtps_init(self.configuration)
         # create RGB queue IN
-        rgb_in: DTPSContext = await (self.context / "in" / "rgba").queue_create()
+        rgb_in: DTPSContext = await (self.context / "in" / "pattern").queue_create()
         # subscribe to RGB patterns
         await rgb_in.subscribe(self.cb_pattern)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "actuator" / "leds" / self.actuator_name / "rgba").expose(rgb_in)
+        await (self.switchboard / "actuator" / "lights" / self.actuator_name / "pattern").expose(rgb_in)
+        # initialize HIL support
+        await self.init_hil_support(
+            self.context,
+            # source (this is us, static)
+            src=self.context,
+            src_path=["in"],
+            # destination (this is the dynamic side, duckiematrix or nothing)
+            dst=None,
+            dst_path=["actuator", "lights", self.actuator_name],
+            # paths to connect when a remote is set
+            subpaths=["pattern"],
+            # which side is the re-pluggable one
+            side=HardwareInTheLoopSide.DESTINATION
+        )
         # apply initial state
         msg: CarLights = CarLights(
             front_left=RGBA.from_list(self.configuration.initial_pattern["front_left"]),

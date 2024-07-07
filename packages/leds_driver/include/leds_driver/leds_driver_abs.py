@@ -31,6 +31,9 @@ class LEDsDriverAbs(ABC):
 
     """
 
+    def __init__(self, debug=False):
+        self._debug = debug
+
     @abstractmethod
     def set_channel_intensity(self, led: int, channel: int, intensity: float):
         """
