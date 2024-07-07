@@ -23,13 +23,14 @@ class DaguWheelEncoderDriver(WheelEncoderDriverAbs):
 
         Args:
             name (:obj:`str`): name of the encoder (e.g., left, right).
+            resolution (:obj:`int`): number of ticks per revolution.
             ticks_gpio (:obj:`int`): Number of the pin the encoder is connected to.
             direction_gpio (:obj:`int`): Number of the pin the encoder direction signal is connected to.
             direction_inverted (:obj:`bool`): Flag to invert the direction signal.
     """
 
-    def __init__(self, name: str, ticks_gpio: int, direction_gpio: int, direction_inverted: bool):
-        super(DaguWheelEncoderDriver, self).__init__(name)
+    def __init__(self, name: str, resolution: int, ticks_gpio: int, direction_gpio: int, direction_inverted: bool):
+        super(DaguWheelEncoderDriver, self).__init__(name, resolution)
         self._direction_correction: int = 1 if direction_inverted else 0
         # configure GPIO mode
         GPIO.setmode(GPIO.BCM)

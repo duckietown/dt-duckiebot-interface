@@ -15,6 +15,11 @@ dt-launchfile-init
 ACTUATOR_NAME="interaction_plate"
 CONFIG_FILE="${ACTUATOR_NAME}/default"
 
+if [ "${ROBOT_HARDWARE}" == "virtual" ]; then
+  echo "Actuator 'display' not implemented for Virtual robots"
+  exec sleep infinity
+fi
+
 
 # display driver
 dt-exec python3 \

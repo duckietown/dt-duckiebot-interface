@@ -12,6 +12,11 @@ source /environment.sh
 SENSOR_NAME="base"
 CONFIG_FILE="${ROBOT_TYPE}/${SENSOR_NAME}/default"
 
+if [ "${ROBOT_HARDWARE}" == "virtual" ]; then
+  echo "Sensor 'imu' not implemented for Virtual robots"
+  exec sleep infinity
+fi
+
 exec python3 \
   -m imu_driver_node.main \
     --sensor-name ${SENSOR_NAME} \
