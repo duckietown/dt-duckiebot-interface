@@ -81,35 +81,37 @@ class HardwareInTheLoopSupport:
         path: List[str] = []
         if conn_cfg is not None:
             cxt_cfg: Optional[DTPSContextMsg] = conn_cfg.simulator
-            if cxt_cfg is None:
-                logger.info(f"Field 'simulator' in connection configuration is 'None'. This is not expected. Ignoring.")
-                return
-            # open link to context indicated
-            try:
-                remote: DTPSContext = await context(cxt_cfg.name, urls=cxt_cfg.urls)
-            except Exception as e:
-                logger.error(f"Failed to open context '{cxt_cfg.name}':"
-                             f"\n\turls: {cxt_cfg.urls}"
-                             f"\n\terror: {str(e)}")
-                return
-            # make sure the context exists
-            exists: bool = False
-            try:
-                exists = await remote.exists()
-            except TimeoutError:
-                pass
-            if not exists:
-                logger.info(f"Remote context '{cxt_cfg.name}' with urls '{cxt_cfg.urls}' does not exist or "
-                            f"it is not reachable. Ignoring.")
-                return
-            # navigate to optional path
-            if cxt_cfg.path:
-                remote = remote.navigate(cxt_cfg.path)
-            # move path to the agent level
-            path.append(conn_cfg.agent_name)
-            # connect passthrough
-            logger.info(f"Connecting passthrough to context '{cxt_cfg.name}' with configuration {cxt_cfg} and "
-                        f"path {'/'.join(path)}")
+            if cxt_cfg is not None:
+                # open link to context indicated
+                try:
+                    remote: DTPSContext = await context(cxt_cfg.name, urls=cxt_cfg.urls)
+                except Exception as e:
+                    logger.error(f"Failed to open context '{cxt_cfg.name}':"
+                                 f"\n\turls: {cxt_cfg.urls}"
+                                 f"\n\terror: {str(e)}")
+                    return
+                # make sure the context exists
+                exists: bool = False
+                try:
+                    exists = await remote.exists()
+                except TimeoutError:
+                    pass
+                if not exists:
+                    logger.info(f"Remote context '{cxt_cfg.name}' with urls '{cxt_cfg.urls}' does not exist or "
+                                f"it is not reachable. Ignoring.")
+                    return
+                # navigate to optional path
+                if cxt_cfg.path:
+                    remote = remote.navigate(cxt_cfg.path)
+                # move path to the agent level
+                path.append(conn_cfg.agent_name)
+                # connect passthrough
+                logger.info(f"Connecting passthrough to context '{cxt_cfg.name}' with configuration {cxt_cfg} and "
+                            f"path {'/'.join(path)}")
+            else:
+                logger.info(f"Field 'simulator' in connection configuration is 'None'. "
+                            f"This will trigger a disconnection.")
+                remote = None
         else:
             if self._passthrough.is_active:
                 logger.info(f"Disconnecting passthrough")
