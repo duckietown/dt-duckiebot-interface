@@ -20,7 +20,6 @@ yamspy==0.3.3
 Pillow==9.5.0
 
 # Time-of-Flight sensor
-adafruit-circuitpython-vl53l0x==3.6.11
 adafruit-circuitpython-vl53l1x==1.1.14
 
 # Use /dev/i2c-* buses with circuitpython
