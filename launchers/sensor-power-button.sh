@@ -12,6 +12,11 @@ source /environment.sh
 SENSOR_NAME="interaction_plate"
 CONFIG_FILE="${SENSOR_NAME}/default"
 
+if [ "${ROBOT_HARDWARE}" == "virtual" ]; then
+  echo "Sensor 'power-button' not implemented for Virtual robots"
+  exec sleep infinity
+fi
+
 exec python3 \
   -m button_driver_node.main \
     --sensor-name ${SENSOR_NAME} \
