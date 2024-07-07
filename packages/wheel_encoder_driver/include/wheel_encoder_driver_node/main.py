@@ -1,24 +1,25 @@
 #!/usr/bin/env python3
 
-import dataclasses
+import argparse
 import asyncio
+import dataclasses
 import math
 from typing import Optional
 
-import argparse
 import numpy as np
-
-from dt_node_utils.config import NodeConfiguration
+from pytransform3d import rotations
 
 from dt_class_utils import DTReminder
 from dt_node_utils import NodeType
+from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
+from dtps_http import RawData
 from duckietown_messages.geometry_3d.transformation import Transformation
 from duckietown_messages.standard.integer import Integer
-from wheel_encoder_driver.wheel_encoder_abs import WheelEncoderDriverAbs
-from pytransform3d import rotations
-
+from duckietown_messages.utils.exceptions import DataDecodingError
+from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from wheel_encoder_driver import WheelEncoderDriver
+from wheel_encoder_driver.wheel_encoder_abs import WheelEncoderDriverAbs
 
 
 @dataclasses.dataclass
@@ -31,7 +32,7 @@ class WheelEncoderNodeConfiguration(NodeConfiguration):
     renderer_frequency: float
 
 
-class WheelEncoderNode(Node):
+class WheelEncoderNode(Node, HardwareInTheLoopSupport):
     """
     This class implements the communication logic with a wheel encoder sensor via GPIO pins.
     """
@@ -43,6 +44,7 @@ class WheelEncoderNode(Node):
             kind=NodeType.DRIVER,
             description="Wheel encoder sensor driver",
         )
+        HardwareInTheLoopSupport.__init__(self)
         self._side: str = side
 
         # load configuration
@@ -56,6 +58,7 @@ class WheelEncoderNode(Node):
         # create a WheelEncoder sensor handler
         self._sensor: WheelEncoderDriverAbs = WheelEncoderDriver(
             self._side,
+            self.configuration.resolution,
             self.configuration.ticks_gpio,
             self.configuration.direction_gpio,
             self.configuration.direction_inverted,
@@ -79,12 +82,51 @@ class WheelEncoderNode(Node):
         await self.dtps_expose()
         # expose queues to the switchboard
         await (self.switchboard / "sensor" / "wheel_encoder" / self._side / "ticks").expose(queue)
+
+        # when HIL is enabled, we take the ticks from the remote and update the frame in a man-in-the-middle fashion
+        def _transform_ticks(_rd: RawData) -> RawData:
+            try:
+                _msg: Integer = Integer.from_rawdata(_rd)
+            except DataDecodingError:
+                self.logwarn(f"Received invalid ticks message: {str(_rd)}")
+                return _rd
+            # emulate the virtual sensor
+            self._sensor.emulate_another_sensor(_msg.data)
+            # update the emulated count
+            _msg.data = self._sensor.ticks
+            # update the frame
+            _msg.header.frame = self._wheel_frame_id
+            # return the updated message
+            return _msg.to_rawdata()
+
+        # initialize HIL support
+        await self.init_hil_support(
+            self.context,
+            # source (this is the dynamic side, duckiematrix or nothing)
+            src=None,
+            src_path=["sensor", "wheel_encoder", self._side],
+            # destination (this is us, static)
+            dst=self.context,
+            dst_path=["out"],
+            # paths to connect when a remote is set
+            subpaths=["ticks"],
+            # which side is the re-pluggable one
+            side=HardwareInTheLoopSide.SOURCE,
+            # we use transformations to set the frame in the message and take the ticks from the remote
+            transformations={
+                "ticks": _transform_ticks,
+            },
+        )
         # read and publish
         while not self.is_shutdown:
-            # pack observation into a message
-            msg: Integer = Integer(data=self._sensor.ticks)
-            # publish readings
-            await queue.publish(msg.to_rawdata())
+            if not self.hil_is_active:
+                # pack observation into a message
+                msg: Integer = Integer(data=self._sensor.ticks)
+                msg.header.frame = self._wheel_frame_id
+                # publish readings
+                await queue.publish(msg.to_rawdata())
+
+            self._sensor.emulated = self.hil_is_active
 
             # publish frame updates
             angle = (float(self._sensor.ticks) / float(self.configuration.resolution)) * 2 * math.pi
