@@ -37,9 +37,6 @@ class CameraNode(CameraNodeAbs):
     def setup(self):
         pass
 
-    def on_shutdown(self):
-        self.deinit_hil_support()
-
 
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser()

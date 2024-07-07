@@ -347,3 +347,6 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             P=calibration["projection_matrix"]["data"],
         )
         return camera
+
+    def on_shutdown(self):
+        self.deinit_hil_support()
