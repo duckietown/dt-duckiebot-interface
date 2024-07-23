@@ -6,7 +6,6 @@ from dataclasses import asdict
 from math import pi
 from typing import Optional, Union
 
-import yappi
 import argparse
 
 from dt_node_utils import NodeType
