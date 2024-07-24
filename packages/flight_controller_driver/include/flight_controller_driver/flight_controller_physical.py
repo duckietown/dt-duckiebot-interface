@@ -35,12 +35,12 @@ class FlightControllerPhysical(FlightControllerAbs):
         dev = devs[0]
         return dev
     
-    def _send_rc_to_board(self, rc_command: List[int]):
+    async def _send_rc_to_board(self, rc_command: List[int]):
         """ Send RC command to the flight controller board """
         assert len(rc_command) == 6, f"RC command must have 6 elements, has {len(rc_command)}: {rc_command}."
         rc_command.extend([1000, 1000])
-        self._board.send_raw_command(len(rc_command), self._board.SET_RAW_RC, rc_command)
-        self._board.receiveDataPacket()
+        await self._board.send_raw_command(len(rc_command), self._board.SET_RAW_RC, rc_command)
+        await self._board.receiveDataPacket()
         
         
     def setup(self):
