@@ -159,11 +159,11 @@ class FlightControllerAbs(ABC):
             traceback.print_exc()
             raise FCError("Unable to connect to the flight controller board, retry...")
 
-    def send_command(self, command):
+    async def send_command(self, command):
         """ Send commands to the flight controller board """
         print(f"Sending command: {command}")
         try:
-            self._send_rc_to_board(command)
+            await self._send_rc_to_board(command)
         except Exception as e:
             logging.error(f"Error communicating with board {e}")
 
@@ -180,7 +180,7 @@ class FlightControllerAbs(ABC):
         self.send_command(self.mode_to_rc_command(DroneMode.FLYING))
 
     @abstractmethod
-    def _send_rc_to_board(self, rc_command):
+    async def _send_rc_to_board(self, rc_command):
         pass
 
     @abstractmethod
@@ -190,8 +190,27 @@ class FlightControllerAbs(ABC):
         """
 
     @property
-    def voltage(self):
-        self._board.update_battery()
+    async def voltage(self):
+        """
+        Get the voltage of the flight controller board.
+
+        Returns:
+            The voltage of the flight controller board.
+        """
+        await self._board.update_battery()
+
+        if self._board.ANALOG is not None:
+            if 'voltage' in self._board.ANALOG:
+                voltage = self._board.ANALOG['voltage']
+            else:
+                logging.warning("Unable to get Battery data: " + str(self._board.ANALOG))
+                voltage = -1
+        else:
+            voltage = -1
+            logging.warning("Unable to get Battery data, ANALOG is none")
+
+        return voltage
+        await self._board.update_battery()
 
         if self._board.ANALOG is not None:
             if 'voltage' in self._board.ANALOG:
@@ -206,7 +225,7 @@ class FlightControllerAbs(ABC):
         return voltage
    
     @property
-    def motors_pwm(self) -> Tuple[int, int, int, int]:
+    async def motors_pwm(self) -> Tuple[int, int, int, int]:
         """
         Reads the motors signals sent by the flight controller to the ESCs.
         
@@ -215,7 +234,7 @@ class FlightControllerAbs(ABC):
         Returns:
             m1, m2, m3, m4
         """
-        self._board.getData(MultiWii.MOTOR)
+        await self._board.getData(MultiWii.MOTOR)
 
         m1=int(self._board.motor_data()[0])
         m2=int(self._board.motor_data()[1])
@@ -225,7 +244,7 @@ class FlightControllerAbs(ABC):
         return m1, m2, m3, m4
     
     @property
-    def attitude(self) -> Tuple[float, float, float]:
+    async def attitude(self) -> Tuple[float, float, float]:
         """
         Attitude values of the drone. In degrees.
         
@@ -234,7 +253,7 @@ class FlightControllerAbs(ABC):
         """
         try:
             # read roll, pitch, heading
-            self._board.getData(MultiWii.ATTITUDE)
+            await self._board.getData(MultiWii.ATTITUDE)
         except Exception as e:
             logging.warning(f"Unable to get attitude data {e}, retry...")
             raise FCError(f"Unable to get attitude data {e}, retry...")
@@ -242,14 +261,14 @@ class FlightControllerAbs(ABC):
         # calculate values to update imu_message:
         roll = self._board.attitude['angx']
         pitch = self._board.attitude['angy']
-        yaw = self._board.attitude['angz']
+        yaw = self._board.attitude['heading']
         
         # TODO: check if the negative sign is correct
         yaw -= self.yaw_offset_degrees
 
         return roll, pitch, yaw
 
-    def read_imu_values(self):
+    async def read_imu_values(self):
         """
         Read IMU values from the board and store them in the object.
 
@@ -260,7 +279,7 @@ class FlightControllerAbs(ABC):
         if self._board is not None:
             try:
                 # read lin_acc_x, lin_acc_y, lin_acc_z
-                self._board.getData(MultiWii.RAW_IMU)
+                await self._board.getData(MultiWii.RAW_IMU)
             except Exception as e:
                 logging.warning(f"Unable to get IMU data {e}, retry...")
                 raise FCError(f"Unable to get IMU data {e}, retry...")
@@ -301,11 +320,11 @@ class FlightControllerAbs(ABC):
         
         return omega_x, omega_y, omega_z
 
-    def zero_yaw(self):
+    async def zero_yaw(self):
         """
         Zero the yaw angle of the drone.
         """
-        self.yaw_offset_degrees = self.attitude[2]
+        self.yaw_offset_degrees = await self.attitude[2]
 
     def connect(self) -> MultiWii:
         """ Connect to the flight controller board """
