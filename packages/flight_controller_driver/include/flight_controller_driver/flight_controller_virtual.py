@@ -60,7 +60,7 @@ class FlightControllerVirtual(FlightControllerAbs):
         
         return serial_port_path
 
-    def _send_rc_to_board(self, rc_command):
+    async def _send_rc_to_board(self, rc_command):
         """The rc command is processed and sent to the board via the virtual RC port.
 
         Args:

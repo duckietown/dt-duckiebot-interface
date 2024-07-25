@@ -511,7 +511,7 @@ class FlightControllerNode(Node):
     async def _send_flight_commands(self, queue: DTPSContext):
         """Send commands to the flight controller board"""
         try:
-            self._board.send_command(self._command.copy())
+            await self._board.send_command(self._command.copy())
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command
