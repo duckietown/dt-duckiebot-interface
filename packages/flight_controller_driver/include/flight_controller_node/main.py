@@ -228,7 +228,6 @@ class FlightControllerNode(Node):
     async def _read_battery_status(self):
         """Read battery status"""
         voltage = await self._board.voltage
-        print(voltage)
         return BatteryState(
             voltage=voltage,
             present=True
@@ -369,7 +368,7 @@ class FlightControllerNode(Node):
                     cycle_time = self._event_loop.time() - loop_start_time
                     
                     await asyncio.sleep(max(0,dt-cycle_time))
-                    print(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
+                    # print(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
 
             except Exception:
                 traceback.print_exc()
