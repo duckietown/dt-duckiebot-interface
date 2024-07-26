@@ -219,12 +219,24 @@ class JetsonNanoCameraNode(AbsCameraNode):
         return gst_pipeline
 
     def get_mode(self, width: int, height: int, fps: int, fov: Tuple[str]) -> CameraMode:
+        if self.get_compatible() == "nvidia,jetson-nanonvidia,tegra210":
+            self.log("Detected Blue Jetson Nano. Using camera mode #0.")
+            # blue Jetson Nano, use first mode (mode 3 is not available on this carrier board)
+            return self.CAMERA_MODES[0]
+        # on any other carrier board, use the best mode
         candidates = {
             m
             for m in self.CAMERA_MODES
             if m.width >= width and m.height >= height and m.fps >= fps and m.fov in fov
         }.union({self.CAMERA_MODES[0]})
         return sorted(candidates, key=lambda m: m.id)[-1]
+
+    @staticmethod
+    def get_compatible():
+        # get device tree base compatible
+        with open('/sys/firmware/devicetree/base/compatible', 'rt') as fin:
+            compatible = fin.read().replace('\x00', '')
+        return compatible
 
 
 if __name__ == "__main__":
