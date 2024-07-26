@@ -298,11 +298,10 @@ class FlightControllerNode(Node):
         # Create services queues and add transforms
         zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create()
         calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create()
-        set_mode_queue = await (self.context / "in" / "set_mode").queue_create()
+        set_mode_queue = await (self.context / "in" / "set_mode").queue_create(transform=self._transform_set_mode)
 
         await calibrate_imu_queue.subscribe(self._srv_calibrate_imu_cb)
         await zero_yaw_queue.subscribe(self._srv_zero_yaw_cb)
-        await set_mode_queue.subscribe(self._transform_set_mode)
 
         # Expose queues to the switchboard
         await (self.switchboard / "flight_controller" / "commands").expose(
@@ -368,7 +367,7 @@ class FlightControllerNode(Node):
                     cycle_time = self._event_loop.time() - loop_start_time
                     
                     await asyncio.sleep(max(0,dt-cycle_time))
-                    # print(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
+                    self.logger.debug(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
 
             except Exception:
                 traceback.print_exc()
