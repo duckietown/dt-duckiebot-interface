@@ -161,7 +161,6 @@ class FlightControllerAbs(ABC):
 
     async def send_command(self, command):
         """ Send commands to the flight controller board """
-        print(f"Sending command: {command}")
         try:
             await self._send_rc_to_board(command)
         except Exception as e:
