@@ -374,7 +374,6 @@ class FlightControllerNode(Node):
                     
                     await asyncio.sleep(max(0,dt-cycle_time))
                     self.logdebug(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
-                    self.logdebug(f"CMD: {self._command}")
 
             except Exception:
                 traceback.print_exc()
@@ -523,13 +522,13 @@ class FlightControllerNode(Node):
         
         elif self._requested_mode is DroneMode.FLYING:
             # flying
-            self._command = self._board.mode_to_rc_command(DroneMode.FLYING)
             self._switch_to_mode(DroneMode.FLYING, quiet=True)
 
     async def _send_flight_commands(self, queue: DTPSContext):
         """Send commands to the flight controller board"""
         try:
-            # await self._board.send_command(self._command.copy())
+            self.logdebug(f"Sending command to board: {self._command}")
+            await self._board.send_command(self._command.copy())
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command.copy()
