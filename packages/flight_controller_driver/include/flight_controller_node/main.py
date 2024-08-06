@@ -357,9 +357,10 @@ class FlightControllerNode(Node):
 
                         # publish the current mode
                         if self._last_published_mode != self._requested_mode:
-                            await self.current_mode_queue.publish(
-                                DroneModeMsg(mode=self._requested_mode.value).to_rawdata()
-                            )
+                            # TODO: do we need to publish the mode again here Do we need it to be published continuously?
+                            # await self.current_mode_queue.publish(
+                            #     DroneModeMsg(mode=self._requested_mode.value).to_rawdata()
+                            # )
                             self._last_published_mode = self._requested_mode
 
                     except FCError:
@@ -372,7 +373,8 @@ class FlightControllerNode(Node):
                     cycle_time = self._event_loop.time() - loop_start_time
                     
                     await asyncio.sleep(max(0,dt-cycle_time))
-                    self.logger.debug(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
+                    self.logdebug(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
+                    self.logdebug(f"CMD: {self._command}")
 
             except Exception:
                 traceback.print_exc()
@@ -527,7 +529,7 @@ class FlightControllerNode(Node):
     async def _send_flight_commands(self, queue: DTPSContext):
         """Send commands to the flight controller board"""
         try:
-            await self._board.send_command(self._command.copy())
+            # await self._board.send_command(self._command.copy())
             # keep track of the last command sent
             if self._command != self._last_command:
                 self._last_command = self._command.copy()
