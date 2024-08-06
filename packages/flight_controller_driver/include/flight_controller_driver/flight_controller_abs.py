@@ -209,19 +209,6 @@ class FlightControllerAbs(ABC):
             logging.warning("Unable to get Battery data, ANALOG is none")
 
         return voltage
-        await self._board.update_battery()
-
-        if self._board.ANALOG is not None:
-            if 'voltage' in self._board.ANALOG:
-                voltage = self._board.ANALOG['voltage']
-            else:
-                logging.warning("Unable to get Battery data: " + str(self._board.ANALOG))
-                voltage = -1
-        else:
-            voltage = -1
-            logging.warning("Unable to get Battery data, ANALOG is none")
-
-        return voltage
    
     @property
     async def motors_pwm(self) -> Tuple[int, int, int, int]:
