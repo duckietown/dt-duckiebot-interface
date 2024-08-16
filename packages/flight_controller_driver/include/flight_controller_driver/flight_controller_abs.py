@@ -161,7 +161,6 @@ class FlightControllerAbs(ABC):
 
     async def send_command(self, command):
         """ Send commands to the flight controller board """
-        print(f"Sending command: {command}")
         try:
             await self._send_rc_to_board(command)
         except Exception as e:
@@ -197,19 +196,6 @@ class FlightControllerAbs(ABC):
         Returns:
             The voltage of the flight controller board.
         """
-        await self._board.update_battery()
-
-        if self._board.ANALOG is not None:
-            if 'voltage' in self._board.ANALOG:
-                voltage = self._board.ANALOG['voltage']
-            else:
-                logging.warning("Unable to get Battery data: " + str(self._board.ANALOG))
-                voltage = -1
-        else:
-            voltage = -1
-            logging.warning("Unable to get Battery data, ANALOG is none")
-
-        return voltage
         await self._board.update_battery()
 
         if self._board.ANALOG is not None:
