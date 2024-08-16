@@ -153,21 +153,22 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "range").expose(range_queue)
         await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "info").expose(info_queue)
         # initialize HIL support
-        await self.init_hil_support(
-            self.context,
-            # source (this is the dynamic side, duckiematrix or nothing)
-            src=None,
-            src_path=["sensor", "time_of_flight", self.sensor_name],
-            # destination (this is us, static)
-            dst=self.context,
-            dst_path=["out"],
-            # paths to connect when a remote is set
-            # TODO: "info" should also be exposed by the duckiematrix
-            subpaths=["range"],
-            # which side is the re-pluggable one
-            side=HardwareInTheLoopSide.SOURCE,
-            # TODO: use transformations to set the frame in the message
-        )
+        # TODO: reenable this
+        # await self.init_hil_support(
+        #     self.context,
+        #     # source (this is the dynamic side, duckiematrix or nothing)
+        #     src=None,
+        #     src_path=["sensor", "time_of_flight", self.sensor_name],
+        #     # destination (this is us, static)
+        #     dst=self.context,
+        #     dst_path=["out"],
+        #     # paths to connect when a remote is set
+        #     # TODO: "info" should also be exposed by the duckiematrix
+        #     subpaths=["range"],
+        #     # which side is the re-pluggable one
+        #     side=HardwareInTheLoopSide.SOURCE,
+        #     # TODO: use transformations to set the frame in the message
+        # )
         # publish info about the sensor
         msg = RangeFinder(
             # -- base
