@@ -377,7 +377,7 @@ class MultiWii:
     """
     async def calibrate(self, fname):
         self.send_raw_command(0, MultiWii.ACC_CALIBRATION, [])
-        print(self.receiveDataPacket())
+        print(await self.receiveDataPacket())
 
         # ignore the first 200 because it takes a while to settle.
         for i in range(200):

@@ -58,7 +58,7 @@ class FlightControllerNode(Node):
 
     """
 
-    def __init__(self, config: str):
+    def __init__(self, config: str, arm_override = False):
         node_name: str = "flight_controller_node"
         super(FlightControllerNode, self).__init__(
             name=node_name, kind=NodeType.DRIVER, description="Flight controller driver"
@@ -108,6 +108,7 @@ class FlightControllerNode(Node):
             raise e
 
         self.current_mode_queue: Optional[DTPSContext] = None
+        self._arm_override = arm_override
 
         # store the command to send to the flight controller, initialize as disarmed
         self._command = self._board.mode_to_rc_command(DroneMode.DISARMED)
@@ -328,11 +329,15 @@ class FlightControllerNode(Node):
        
         self.logger.info("Starting main control loop")
         async with executed_commands_queue.publisher_context() as cmd_pub:
+            main_loop_start_time = time.perf_counter()
             try:
                 while not self.is_shutdown:
                     profiling_start_time = time.perf_counter()
                     loop_start_time = self._event_loop.time()
                     
+                    if self._arm_override:
+                        self.perform_arm_override(main_loop_start_time)
+
                     # if the current mode is anything other than disarmed, preform as safety check
                     if self._requested_mode is not DroneMode.DISARMED:
                         # break the loop if a safety check has failed
@@ -352,9 +357,10 @@ class FlightControllerNode(Node):
 
                         # publish the current mode
                         if self._last_published_mode != self._requested_mode:
-                            await self.current_mode_queue.publish(
-                                DroneModeMsg(mode=self._requested_mode.value).to_rawdata()
-                            )
+                            # TODO: do we need to publish the mode again here Do we need it to be published continuously?
+                            # await self.current_mode_queue.publish(
+                            #     DroneModeMsg(mode=self._requested_mode.value).to_rawdata()
+                            # )
                             self._last_published_mode = self._requested_mode
 
                     except FCError:
@@ -367,7 +373,7 @@ class FlightControllerNode(Node):
                     cycle_time = self._event_loop.time() - loop_start_time
                     
                     await asyncio.sleep(max(0,dt-cycle_time))
-                    self.logger.debug(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
+                    self.logdebug(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
 
             except Exception:
                 traceback.print_exc()
@@ -375,6 +381,19 @@ class FlightControllerNode(Node):
         self.loginfo("Shutdown received, disarming...")
         self._board.disarm()
         time.sleep(0.5)
+
+    def perform_arm_override(self, main_loop_start_time):
+        now = time.perf_counter()
+
+        if now - main_loop_start_time > 4:
+            self._switch_to_mode(DroneMode.FLYING, quiet=True)
+            self.logger.info("Arm override enabled, flying the drone.")
+        
+        if 4 > now - main_loop_start_time > 2:
+            self._switch_to_mode(DroneMode.ARMED, quiet=True)
+            self.logger.info("Arm override enabled, arming the drone.")
+
+
 
     @sidecar
     async def worker_battery(self):
@@ -503,16 +522,16 @@ class FlightControllerNode(Node):
         
         elif self._requested_mode is DroneMode.FLYING:
             # flying
-            self._command = self._board.mode_to_rc_command(DroneMode.FLYING)
             self._switch_to_mode(DroneMode.FLYING, quiet=True)
 
     async def _send_flight_commands(self, queue: DTPSContext):
         """Send commands to the flight controller board"""
         try:
+            self.logdebug(f"Sending command to board: {self._command}")
             await self._board.send_command(self._command.copy())
             # keep track of the last command sent
             if self._command != self._last_command:
-                self._last_command = self._command
+                self._last_command = self._command.copy()
 
             await queue.publish(
                 DroneControl(
@@ -628,14 +647,15 @@ def main():
     parser.add_argument(
         "--config", type=str, required=True, help="Name of the configuration"
     )
+
     parser.add_argument(
-        "--profiling", help="Enable profiling", action="store_true",
+        "--arm_override", action="store_true", help="Override the arm check", default=False
     )
 
     args: argparse.Namespace = parser.parse_args()
 
     # create node
-    node: FlightControllerNode = FlightControllerNode(config=args.config)
+    node: FlightControllerNode = FlightControllerNode(config=args.config, arm_override=args.arm_override)
     # launch the node
     node.spin()
 
