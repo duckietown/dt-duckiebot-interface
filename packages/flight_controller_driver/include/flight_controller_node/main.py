@@ -297,12 +297,19 @@ class FlightControllerNode(Node):
         await commands_queue.subscribe(self._flight_commands_cb)
 
         # Create services queues and add transforms
-        zero_yaw_queue = await (self.context / "in" / "imu" / "zero_yaw").queue_create()
-        calibrate_imu_queue = await (self.context / "in" / "calibrate_imu").queue_create()
-        set_mode_queue = await (self.context / "in" / "set_mode").queue_create(transform=self._transform_set_mode)
-
-        await calibrate_imu_queue.subscribe(self._srv_calibrate_imu_cb)
-        await zero_yaw_queue.subscribe(self._srv_zero_yaw_cb)
+        zero_yaw_queue = await (
+            self.context / "in" / "imu" / "zero_yaw"
+        ).queue_create(
+            transform=self._srv_zero_yaw_cb
+        )
+        calibrate_imu_queue = await (
+            self.context / "in" / "calibrate_imu"
+        ).queue_create(
+            transform=self._srv_calibrate_imu_cb
+        )
+        set_mode_queue = await (self.context / "in" / "set_mode").queue_create(
+            transform=self._transform_set_mode
+        )
 
         # Expose queues to the switchboard
         await (self.switchboard / "flight_controller" / "commands").expose(
