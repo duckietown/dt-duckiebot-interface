@@ -5,6 +5,7 @@ import traceback
 from dataclasses import asdict
 from math import pi
 from typing import Optional, Union
+from dtps import context
 
 import argparse
 
@@ -297,17 +298,20 @@ class FlightControllerNode(Node):
         await commands_queue.subscribe(self._flight_commands_cb)
 
         # Create services queues and add transforms
+        # WORKAROUND: until switchboard is fixed, we need to create the queues in the switchboard
+        rpc_call_context = await context("rpc", environment={"DTPS_BASE_RPC":"create:http://localhost:2120/"})
+
         zero_yaw_queue = await (
-            self.context / "in" / "imu" / "zero_yaw"
+            rpc_call_context / "imu" / "zero_yaw"
         ).queue_create(
             transform=self._srv_zero_yaw_cb
         )
         calibrate_imu_queue = await (
-            self.context / "in" / "calibrate_imu"
+            rpc_call_context / "imu" / "calibrate"
         ).queue_create(
             transform=self._srv_calibrate_imu_cb
         )
-        set_mode_queue = await (self.context / "in" / "set_mode").queue_create(
+        set_mode_queue = await (rpc_call_context / "flight_controller" / "mode" / "set").queue_create(
             transform=self._transform_set_mode
         )
 
@@ -315,11 +319,8 @@ class FlightControllerNode(Node):
         await (self.switchboard / "flight_controller" / "commands").expose(
             commands_queue
         )
-        await (self.switchboard / "flight_controller" / "mode" / "set").expose(
-            set_mode_queue
-        )
-        await (self.switchboard / "imu" / "zero_yaw").expose(zero_yaw_queue)
-        await (self.switchboard / "imu" / "calibrate").expose(calibrate_imu_queue)
+
+        # WORKAROUND END
 
         # Expose heartbeat queues to the switchboard
         await (self.switchboard / "heartbeat" / "altitude").expose(heartbeat_altitude)
