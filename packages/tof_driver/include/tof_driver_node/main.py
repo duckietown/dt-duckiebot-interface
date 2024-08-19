@@ -7,6 +7,8 @@ import time
 from typing import Optional, List
 
 import argparse
+from dt_robot_utils.constants import RobotType
+from dt_robot_utils.robot import get_robot_type
 from dtps import DTPSContext, PublisherInterface
 
 from display_driver.types.page import PAGE_TOF
@@ -225,6 +227,11 @@ class ToFNode(Node, HardwareInTheLoopSupport):
     async def worker_display(self):
         # wait for switchboard
         await self.switchboard_ready.wait()
+        
+        if get_robot_type() != RobotType.DUCKIEBOT:
+            # skip display renderer if not a Duckiebot
+            return
+
         # wait for display
         display: DTPSContext = await ((self.switchboard / "actuator" / "display" / "interaction_plate" / "fragments")
                                       .until_ready())
