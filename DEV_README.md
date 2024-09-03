@@ -10,5 +10,5 @@ dts devel run -H virtualtuxdrone -RW -c bash -- -e OPENBLAS_NUM_THREADS=1 --secu
 
 
 ```bash
-dts devel run -H tuxdrone -RW -c bash -- -v /data/ramdisk/dtps:/dtps -e DT_SUPERUSER=1 --privileged
+dts devel run -H endeavour -RW -c bash --detach -- -v /data/ramdisk/dtps:/dtps -e DT_SUPERUSER=1 --privileged
 ```
