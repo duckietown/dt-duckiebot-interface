@@ -33,10 +33,13 @@ from duckietown_messages.standard.header import Header
 from flight_controller_node.types import FlightControllerConfiguration, DroneMode, FCError
 
 from mavsdk import System
-
+from mavsdk.telemetry import Imu as MAVLINKImu
+from mavsdk.telemetry import Quaternion as MAVSDKQuaternion
+from tiny_tf.transformations import quaternion_from_euler
 
 DEG2RAD = pi / 180.0
-
+mG_TO_m_s2 = 9.81/1000
+mrad_s_TO_rad_s = 1/1000
 
 def near_zero(n):
     """Set a number to zero if it is below a threshold value"""
@@ -418,9 +421,7 @@ class FlightControllerNode(Node):
             async for battery in self._board.telemetry.battery():
                 battery_msg = BatteryState(
                     voltage=battery.voltage_v,
-                    present=True
-                    if battery.voltage_v > 6.0
-                    else False,  # ~5V: power from Pi | 7V to 12.6V: power from battery
+                    present=True if battery.voltage_v > 6.0 else False,  # ~5V: power from Pi | 7V to 12.6V: power from battery
                 )
                 await battery_queue.publish(battery_msg.to_rawdata())
 
@@ -435,16 +436,20 @@ class FlightControllerNode(Node):
         await (self.switchboard / "actuator" / "motors").expose(motors_queue) # type: ignore
 
         while not self.is_shutdown:
+            # TODO: the ACTUATOR_OUTPUT_STATUS message is not available in Ardupilot,
+            # we need to directly read the SERVO_OUTPUT_RAW mavlink message, however mavlink pass-through is not yet implemented in MAVSDK-Python
+            # (https://github.com/mavlink/MAVSDK-Python/issues/580)
+            
             async for m in self._board.telemetry.actuator_output_status():
                 try:
                     # read PWM signals going to the motors
                     motor_msg = DroneMotorCommand(
                         minimum=self.configuration.motor_command_range[0],
                         maximum=self.configuration.motor_command_range[1],
-                        m1=m[0],
-                        m2=m[1],
-                        m3=m[2],
-                        m4=m[3],
+                        m1=m.actuator[0],
+                        m2=m.actuator[1],
+                        m3=m.actuator[2],
+                        m4=m.actuator[3],
                     )
                     await motors_queue.publish(motor_msg.to_rawdata())
                 except Exception:
@@ -452,52 +457,75 @@ class FlightControllerNode(Node):
 
     @sidecar
     async def worker_imu(self):
+        """
+        NOTE: The scaled_imu function returns the accelerations in the IMU reference. In the case of the SpeedyBeef405v3
+        the IMU is mounted with the X axis pointing forward, the Y axis pointing to the left and the Z axis pointing up.
+        The mavsdk API is inconsistent, so we have the following mapping, according to the orientation of the IMU in the
+        datasheet (https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmi270-ds000.pdf , page 144):
+
+        - X axis: -imu.acceleration_frd.forward_m_s2
+        - Y axis: imu.acceleration_frd.right_m_s2
+        - Z axis: imu.acceleration_frd.down_m_s2
+        
+        The acceleration must be multiplied by 9.81/1000 to convert it to m/s^2.
+        """
+
         await self.switchboard_ready.wait()
 
-        data_queue = await (self.context / "out" / "data").queue_create() # type: ignore
-        await (self.switchboard / "sensor" / "imu" / "data").expose(data_queue) # type: ignore
+        data_queue = await (self.context / "out" / "data").queue_create()  # type: ignore
+        await (self.switchboard / "sensor" / "imu" / "data").expose(data_queue)  # type: ignore
 
-        # TODO: check if this returns the acceleration in body frame!!!
-        imu_iter = self._board.telemetry.imu()
-        attitude_quaternion_iter = self._board.telemetry.attitude_quaternion()
-        ang_vel_iter = self._board.telemetry.attitude_angular_velocity_body()
+        await self._board.telemetry.set_rate_scaled_imu(rate_hz=50)
+        
+        imu_iter = self._board.telemetry.scaled_imu()
 
         async with data_queue.publisher_context() as data_pub:
             while not self.is_shutdown:
-                try:
-                    imu = await imu_iter.__anext__()
-                    
-                    # process acceleration data
-                    a_x, a_y, a_z = imu.acceleration_frd.forward_m_s2, imu.acceleration_frd.right_m_s2, imu.acceleration_frd.down_m_s2
-                    acceleration_message = LinearAccelerations(
-                        x=near_zero(a_x),
-                        y=near_zero(a_y),
-                        z=near_zero(a_z),
-                    )
-                    
-                    # process angular velocity data
-                    ang_vel = await ang_vel_iter.__anext__()
+                async for euler_angles in self._board.telemetry.attitude_euler():
+                    try:
+                        
+                        imu: MAVLINKImu = await imu_iter.__anext__()
 
-                    angular_velocity_message = AngularVelocities(
-                        x=ang_vel.roll_rad_s, y=ang_vel.pitch_rad_s, z=ang_vel.yaw_rad_s
-                    )
 
-                    # process attitude data
-                    q = await attitude_quaternion_iter.__anext__()
-                    orientation_msg = Quaternion(x=q.x, y=q.y, z=q.z, w=q.w)
+                        a_x=-imu.acceleration_frd.forward_m_s2*mG_TO_m_s2
+                        a_y=imu.acceleration_frd.right_m_s2*mG_TO_m_s2
+                        a_z=imu.acceleration_frd.down_m_s2*mG_TO_m_s2
 
-                except Exception as e:
-                    traceback.print_exc()
-                    self.logwarn(f"IMU Comm Loss: {e}")
-                else:
-                    # pack Imu data
-                    imu_message = Imu(
-                        header=Header(frame=self._imu_frame_id),
-                        angular_velocity=angular_velocity_message,
-                        linear_acceleration=acceleration_message,
-                        orientation=orientation_msg,
-                    ) # type: ignore
-                    await data_pub.publish(imu_message.to_rawdata())
+                        acceleration_message = LinearAccelerations(
+                                x=a_x,
+                                y=a_y,
+                                z=a_z,
+                            )
+                        
+                        om_x=-imu.angular_velocity_frd.forward_rad_s*mrad_s_TO_rad_s
+                        om_y=imu.angular_velocity_frd.right_rad_s*mrad_s_TO_rad_s
+                        om_z=imu.angular_velocity_frd.down_rad_s*mrad_s_TO_rad_s
+
+                        angular_velocity_message = AngularVelocities(
+                            x=om_x,
+                            y=om_y,
+                            z=om_z,
+                        )
+
+                        q = quaternion_from_euler(
+                            euler_angles.roll_deg * DEG2RAD,
+                            euler_angles.pitch_deg * DEG2RAD,
+                            euler_angles.yaw_deg * DEG2RAD,
+                        )
+                        orientation_msg = Quaternion(x=q[0], y=q[1], z=q[2], w=q[3])
+
+                    except Exception as e:
+                        traceback.print_exc()
+                        self.logwarn(f"IMU Comm Loss: {e}")
+                    else:
+                        # pack Imu data
+                        imu_message = Imu(
+                            header=Header(frame=self._imu_frame_id),
+                            angular_velocity=angular_velocity_message,
+                            linear_acceleration=acceleration_message,
+                            orientation=orientation_msg,
+                        )  # type: ignore
+                        await data_pub.publish(imu_message.to_rawdata())
 
 
     async def _compute_flight_commands(self):
@@ -621,7 +649,7 @@ class FlightControllerNode(Node):
         asyncio.run(self._switch_to_mode(DroneMode.DISARMED))
         sys.exit()
 
-
+        
 def main():
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser()
