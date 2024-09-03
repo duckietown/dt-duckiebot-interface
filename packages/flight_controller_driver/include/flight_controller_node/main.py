@@ -216,7 +216,7 @@ class FlightControllerNode(Node):
         """ Store and send the flight commands if the current mode is FLYING """
         if self._requested_mode is DroneMode.FLYING:
             # compile command to be sent to the flight controller board
-            self._command = [msg.roll, msg.pitch, msg.throttle, msg.yaw]
+            self._command = [msg.roll, msg.pitch, msg.yaw, msg.throttle]
 
     #@sidecar
     async def worker_parameters(self):
@@ -553,7 +553,7 @@ class FlightControllerNode(Node):
         try:
             self.logdebug(f"Sending command to board: {self._command}")
 
-            roll, pitch, throttle, yaw = self.normalize_cmd(self._command)
+            roll, pitch, yaw, throttle = self.normalize_cmd(self._command)
             await self._board.manual_control.set_manual_control_input(roll, pitch, throttle, yaw)
 
             # keep track of the last command sent
