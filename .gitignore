@@ -11,7 +11,3 @@ html/*
 # libraries
 libraries/*
 !libraries/PLACE_YOUR_PYTHON_LIBRARIES_SUBMODULES_HERE
-
-# VSCode
-.devcontainer/*
-.vscode/*
