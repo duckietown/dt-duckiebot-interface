@@ -14,7 +14,7 @@ luma.oled==3.13.0
 adafruit-circuitpython-mpu6050==1.2.3
 
 # dependency for the flight controller
-mavsdk
+mavsdk=2.8.3
 
 # this is the last working version of pillow
 Pillow==9.5.0
