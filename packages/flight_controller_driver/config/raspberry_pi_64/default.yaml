@@ -24,5 +24,5 @@ rc_commands:
     arm: [ 1500, 1500, 1500, 900, 1800, 1000 ]
     flying: [ 1500, 1500, 1500, 1000, 1800, 1800  ]
 serial:
-    port: '/tmp/ttyS0'
+    port: '/dev/ttyACM0'
 
