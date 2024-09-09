@@ -21,11 +21,14 @@ In order to attach VSCode to the running container we need to add the flag `--se
 
 we need to mount the volumes as `RW` with the `-RW` flag in order to edit files inside the devcontainer.
 
+### Virtual Robots
+The virtual robots require in addition to the standard flags also the `-e OPENBLAS_NUM_THREADS=1` and `--security-opt seccomp=unconfined` flags in order to work correctly on `amd64` machines.
+
 ```bash
 dts devel run -H VIRTUAL_ROBOT -RW -c bash -- -e OPENBLAS_NUM_THREADS=1 --security-opt seccomp=unconfined -v /data/ramdisk/dtps:/dtps -e DT_SUPERUSER=1
 ```
 
-
+### Real Robots
 ```bash
 dts devel run -H REAL_ROBOT -RW -c bash --detach -- -v /data/ramdisk/dtps:/dtps -e DT_SUPERUSER=1 --privileged
 ```
