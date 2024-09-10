@@ -195,21 +195,20 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         await (sensor / "homographies").expose(self._homographies_queue)
         await (sensor / "info").expose(self._info_queue)
         # initialize HIL support
-        # TODO: re-enable this
-        # await self.init_hil_support(
-        #     self.context,
-        #     # source (this is the dynamic side, duckiematrix or nothing)
-        #     src=None,
-        #     src_path=["sensor", "camera", self.sensor_name],
-        #     # destination (this is us, static)
-        #     dst=self.context,
-        #     dst_path=["out"],
-        #     # paths to connect when a remote is set
-        #     subpaths=["jpeg"],
-        #     # which side is the re-pluggable one
-        #     side=HardwareInTheLoopSide.SOURCE,
-        #     # TODO: use transformations to set the frame in the message
-        # )
+        await self.init_hil_support(
+            self.context,
+            # source (this is the dynamic side, duckiematrix or nothing)
+            src=None,
+            src_path=["sensor", "camera", self.sensor_name],
+            # destination (this is us, static)
+            dst=self.context,
+            dst_path=["out"],
+            # paths to connect when a remote is set
+            subpaths=["jpeg"],
+            # which side is the re-pluggable one
+            side=HardwareInTheLoopSide.SOURCE,
+            # TODO: use transformations to set the frame in the message
+        )
 
     async def _worker(self):
         """
