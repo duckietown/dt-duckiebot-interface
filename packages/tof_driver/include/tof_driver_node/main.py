@@ -7,6 +7,8 @@ import time
 from typing import Optional, List
 
 import argparse
+from dt_robot_utils.constants import RobotType
+from dt_robot_utils.robot import get_robot_type
 from dtps import DTPSContext, PublisherInterface
 
 from display_driver.types.page import PAGE_TOF
@@ -153,21 +155,22 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "range").expose(range_queue)
         await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "info").expose(info_queue)
         # initialize HIL support
-        await self.init_hil_support(
-            self.context,
-            # source (this is the dynamic side, duckiematrix or nothing)
-            src=None,
-            src_path=["sensor", "time_of_flight", self.sensor_name],
-            # destination (this is us, static)
-            dst=self.context,
-            dst_path=["out"],
-            # paths to connect when a remote is set
-            # TODO: "info" should also be exposed by the duckiematrix
-            subpaths=["range"],
-            # which side is the re-pluggable one
-            side=HardwareInTheLoopSide.SOURCE,
-            # TODO: use transformations to set the frame in the message
-        )
+        # TODO: reenable this
+        # await self.init_hil_support(
+        #     self.context,
+        #     # source (this is the dynamic side, duckiematrix or nothing)
+        #     src=None,
+        #     src_path=["sensor", "time_of_flight", self.sensor_name],
+        #     # destination (this is us, static)
+        #     dst=self.context,
+        #     dst_path=["out"],
+        #     # paths to connect when a remote is set
+        #     # TODO: "info" should also be exposed by the duckiematrix
+        #     subpaths=["range"],
+        #     # which side is the re-pluggable one
+        #     side=HardwareInTheLoopSide.SOURCE,
+        #     # TODO: use transformations to set the frame in the message
+        # )
         # publish info about the sensor
         msg = RangeFinder(
             # -- base
@@ -224,6 +227,11 @@ class ToFNode(Node, HardwareInTheLoopSupport):
     async def worker_display(self):
         # wait for switchboard
         await self.switchboard_ready.wait()
+        
+        if get_robot_type() != RobotType.DUCKIEBOT:
+            # skip display renderer if not a Duckiebot
+            return
+
         # wait for display
         display: DTPSContext = await ((self.switchboard / "actuator" / "display" / "interaction_plate" / "fragments")
                                       .until_ready())
