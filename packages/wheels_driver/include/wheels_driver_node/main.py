@@ -15,6 +15,7 @@ from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
 from dt_robot_utils import RobotHardware, get_robot_hardware
+from dtps_utils.subscriber import DTPSSubscriber
 from duckietown_messages.actuators.differential_pwm import DifferentialPWM
 from duckietown_messages.standard.boolean import Boolean
 from duckietown_messages.utils.exceptions import DataDecodingError
@@ -77,15 +78,10 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
             right_config=WheelPWMConfiguration(),
         )
 
-    async def cb_wheels_pwm(self, data: RawData):
+    async def cb_wheels_pwm(self, pwms: DifferentialPWM):
         """
         Callback that sets wheels' PWM signals.
         """
-        try:
-            pwms: DifferentialPWM = DifferentialPWM.from_rawdata(data)
-        except DataDecodingError as e:
-            self.logerr(f"Failed to decode an incoming message: {e.message}")
-            return
         pwm_left: float = 0.0
         pwm_right: float = 0.0
         self.last_command_time = time.time()
@@ -131,7 +127,8 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         self._pwm_filtered_out: DTPSContext = await (self.context / "out" / "pwm_filtered").queue_create()
         self._pwm_executed_out: DTPSContext = await (self.context / "out" / "pwm_executed").queue_create()
         # subscribe to PWM commands
-        await pwm_in.subscribe(self.cb_wheels_pwm)
+        pwm_sub: DTPSSubscriber = DTPSSubscriber(pwm_in, self.cb_wheels_pwm, DifferentialPWM)
+        await pwm_sub.init()
         # subscribe to emergency stop commands
         await estop_queue.subscribe(self.cb_estop)
         # expose node to the switchboard
