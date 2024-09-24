@@ -204,7 +204,7 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             dst=self.context,
             dst_path=["out"],
             # paths to connect when a remote is set
-            subpaths=["jpeg"],
+            subpaths=["jpeg", "info"],
             # which side is the re-pluggable one
             side=HardwareInTheLoopSide.SOURCE,
             # TODO: use transformations to set the frame in the message
