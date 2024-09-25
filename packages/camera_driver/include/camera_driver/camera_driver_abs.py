@@ -127,15 +127,6 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         await self._jpeg_queue.publish(msg.to_rawdata())
         self._last_image_published_time = time.time()
         # ---
-        # publish camera intrinsics
-        msg: CameraIntrinsicCalibration = CameraIntrinsicCalibration(
-            K=self.camera_model.K.tolist(),
-            D=self.camera_model.D.tolist(),
-            P=self.camera_model.P.tolist(),
-            R=self.camera_model.R.tolist() if self.camera_model.R is not None else None,
-        )
-        await self._parameters_queue.publish(msg.to_rawdata())
-
         # publish camera extrinsics
         msg_homography: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
             homographies={
