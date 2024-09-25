@@ -5,10 +5,10 @@ import math
 import os
 import time
 from abc import abstractmethod, ABCMeta
-from typing import Optional
+from typing import Optional, cast
 
 import numpy as np
-import yaml
+from dtps_http import RawData
 from turbojpeg import TurboJPEG
 
 from dt_computer_vision.camera import CameraModel
@@ -26,6 +26,7 @@ from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
 
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
+from kvstore_utils import KVStore
 
 
 @dataclasses.dataclass
@@ -92,11 +93,6 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         # shutdown if no calibration file not found
         if not os.path.isfile(self.cali_file):
             self.shutdown("Found no calibration file ... aborting")
-
-        # load the calibration file
-        self._original_camera_model: CameraModel = self.load_camera_model(self.cali_file)
-        self.camera_model: CameraModel = self.compute_camera_model(self._original_camera_model, self.configuration)
-        self.loginfo("Using calibration file: %s" % self.cali_file)
 
         # jpeg decoder
         self._jpeg: TurboJPEG = TurboJPEG()
@@ -195,6 +191,11 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         await (sensor / "parameters").expose(self._parameters_queue)
         await (sensor / "homographies").expose(self._homographies_queue)
         await (sensor / "info").expose(self._info_queue)
+        # open KVStore
+        kvstore: KVStore = KVStore()
+        await kvstore.init()
+        # subscribe to the camera parameters
+        await kvstore.subscribe("calibration/camera_intrinsic/current", self._on_new_intrinsic_calibration)
         # initialize HIL support
         await self.init_hil_support(
             self.context,
@@ -251,43 +252,44 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             i += 1
             await asyncio.sleep(1)
 
+    async def _on_new_intrinsic_calibration(self, rd: RawData):
+        """
+        Handles new intrinsic calibration data from the KVStore.
+        """
+        # load the new calibration
+        try:
+            calibration: dict = cast(dict, rd.get_as_native_object())
+            if not isinstance(calibration, dict):
+                raise ValueError("Expected a dictionary, received %s instead" % type(calibration))
+            # update the camera model
+            original: CameraModel = CameraModel(
+                width=calibration["image_width"],
+                height=calibration["image_height"],
+                K=calibration["camera_matrix"]["data"],
+                D=calibration["distortion_coefficients"]["data"],
+                P=calibration["projection_matrix"]["data"],
+                R=calibration["rectification_matrix"]["data"],
+            )
+            self.camera_model = self.scale_camera_model(original, self.configuration)
+        except Exception as e:
+            self.logerr(f"Failed to process intrinsics calibration from KVStore:\n\nraw_data:\n{rd}\n\nexception:\n{e}")
+            return
+        # publish the new calibration
+        msg: CameraIntrinsicCalibration = CameraIntrinsicCalibration(
+            K=self.camera_model.K.flatten().tolist(),
+            D=self.camera_model.D.flatten().tolist(),
+            P=self.camera_model.P.flatten().tolist(),
+            R=self.camera_model.R.flatten().tolist() if self.camera_model.R is not None else None,
+        )
+        await self._parameters_queue.publish(msg.to_rawdata())
+        self.loginfo("Updated intrinsic camera calibration from KVStore.")
+
     @abstractmethod
     def setup(self):
         raise NotImplementedError("Child classes should implement this method.")
 
-    # TODO: we should use a shared dict with YAML file backend with default fallback and a schema instead of a
-    #  service-like function
-    def save_camera_info(self, camera_model: CameraModel, filename):
-        """Saves intrinsic calibration to file.
-
-        Args:
-            camera_model (:obj:`CameraModel`): Camera model
-            filename (:obj:`str`): filename where to save the camera model
-        """
-        # Convert camera_info_msg and save to a yaml file
-        self.loginfo("[save_camera_info] filename: %s" % filename)
-
-        # serialize to yaml
-        # TODO: we should version this format
-        calib = {
-            "image_width": camera_model.width,
-            "image_height": camera_model.height,
-            "camera_name": "front",
-            "distortion_coefficients": {"data": camera_model.D, "rows": 1, "cols": 5},
-            "camera_matrix": {"data": camera_model.K, "rows": 3, "cols": 3},
-            "rectification_matrix": {"data": camera_model.R, "rows": 3, "cols": 3},
-            "projection_matrix": {"data": camera_model.P, "rows": 3, "cols": 4},
-        }
-        self.loginfo("[save_camera_info] calib %s" % calib)
-        try:
-            f = open(filename, "w")
-            yaml.safe_dump(calib, f)
-            return True
-        except IOError:
-            return False
-
     @staticmethod
-    def compute_camera_model(original: CameraModel, cfg: CameraNodeConfiguration):
+    def scale_camera_model(original: CameraModel, cfg: CameraNodeConfiguration):
         """
         Update the camera parameters based on the current resolution.
 
@@ -329,31 +331,6 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             R=copy.deepcopy(original.R),
             P=new_p,
         )
-
-    @staticmethod
-    def load_camera_model(filename: str) -> CameraModel:
-        """Loads the camera calibration files.
-
-        Loads the intrinsic camera matrices.
-
-        Args:
-            filename (:obj:`str`): filename of calibration files.
-
-        Returns:
-            :obj:`CameraModel`: a CameraModel message object
-
-        """
-        with open(filename, "r") as stream:
-            calibration = yaml.safe_load(stream)
-        camera = CameraModel(
-            width=calibration["image_width"],
-            height=calibration["image_height"],
-            K=calibration["camera_matrix"]["data"],
-            D=calibration["distortion_coefficients"]["data"],
-            R=calibration["rectification_matrix"]["data"],
-            P=calibration["projection_matrix"]["data"],
-        )
-        return camera
 
     def on_shutdown(self):
         self.deinit_hil_support()
