@@ -5,6 +5,7 @@ import asyncio
 import dataclasses
 import math
 from typing import Optional
+from dtps import DTPSContext
 
 import numpy as np
 from pytransform3d import rotations
@@ -17,9 +18,12 @@ from dtps_http import RawData
 from duckietown_messages.geometry_3d.transformation import Transformation
 from duckietown_messages.standard.integer import Integer
 from duckietown_messages.utils.exceptions import DataDecodingError
+from duckietown_messages.actuators.differential_pwm import DifferentialPWM
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from wheel_encoder_driver import WheelEncoderDriver
-from wheel_encoder_driver.wheel_encoder_abs import WheelEncoderDriverAbs
+from wheel_encoder_driver.wheel_encoder_abs import WheelEncoderDriverAbs, WheelDirection
+from dt_robot_utils import get_robot_hardware, RobotHardware
+
 
 
 @dataclasses.dataclass
@@ -72,17 +76,41 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
     def period(self) -> float:
         return 1. / self.configuration.publish_frequency
 
+    async def cb_pwm_executed(self, data: RawData):
+        """
+        Callback to look at what command is being executed so that we know
+        which way to increment the ticks for the real robot
+        """
+        try:
+            pwm_executed: DifferentialPWM = DifferentialPWM.from_rawdata(data)
+        except DataDecodingError as e:
+            self.logerr(f"Failed to decode PWM executed message: {e.message}")
+
+        if get_robot_hardware() != RobotHardware.VIRTUAL:
+            if self._side == "left":
+                if pwm_executed.left >= 0:
+                    self._sensor.set_direction(WheelDirection.FORWARD)
+                else:
+                    self._sensor.set_direction(WheelDirection.REVERSE)
+            else:
+                if pwm_executed.right >= 0:
+                    self._sensor.set_direction(WheelDirection.FORWARD)
+                else:
+                    self._sensor.set_direction(WheelDirection.REVERSE)
+
     async def worker(self):
         await self.dtps_init(self.configuration)
         # create sensor queue
         queue = await (self.context / "out" / "ticks").queue_create()
+        self.loginfo("waiting for pwm_executed DTPS queue to come online")
+        pwm_executed = await (self.switchboard / "actuator" / "wheels" / "base" /"pwm_executed").until_ready()
+        await pwm_executed.subscribe(self.cb_pwm_executed)
         # TODO: we need to make this global and rethink how (origin, target, transform) TFs are stored in the same queue
         tf_queue = await (self.context / "out" / "tf").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
         await (self.switchboard / "sensor" / "wheel_encoder" / self._side / "ticks").expose(queue)
-
         # when HIL is enabled, we take the ticks from the remote and update the frame in a man-in-the-middle fashion
         def _transform_ticks(_rd: RawData) -> RawData:
             try:
