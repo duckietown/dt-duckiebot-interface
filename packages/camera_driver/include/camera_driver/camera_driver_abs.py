@@ -105,6 +105,14 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         self._info_queue: Optional[DTPSContext] = None
         # data flow monitor
         self._last_image_published_time: float = time.time()
+        # jpeg message
+        self.jpeg_message: CompressedImage = CompressedImage(
+            header=Header(
+                frame=self.frame_id,
+            ),
+            format="jpeg",
+            data=b"",
+        )
         # ---
         self.loginfo("[CameraNodeAbs]: Initialized.")
 
@@ -116,50 +124,18 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         if self.hil_is_active:
             return
         # ---
-        msg: CompressedImage = CompressedImage(
-            header=Header(
-                frame=self.frame_id,
-            ),
-            format="jpeg",
-            data=jpeg,
-        )
-        # publish the compressed image
-        await self._jpeg_queue.publish(msg.to_rawdata())
+        # publish jpeg message
+        self.jpeg_message.data = jpeg
+        await self._jpeg_queue.publish(self.jpeg_message.to_rawdata())
         self._last_image_published_time = time.time()
-        # ---
-        # publish camera extrinsics
-        msg_homography: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
-            homographies={
-                f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H.tolist())
-            } if self.camera_model.H is not None else {},
-        )
-        await self._homographies_queue.publish(msg_homography.to_rawdata())
-
-        # publish camera info
-        msg: Camera = Camera(
-            # -- base
-            header=Header(),
-            # -- sensor
-            name=self.sensor_name,
-            type="camera",
-            simulated=False,
-            description="RGB8/JPEG Camera",
-            frame_id=self.frame_id,
-            frequency=self.configuration.framerate,
-            maker=self.configuration.maker,
-            model=self.configuration.model,
-            # -- camera
-            width=self.camera_model.width,
-            height=self.camera_model.height,
-            fov=math.radians(self.configuration.fov),
-        )
-
-        await self._info_queue.publish(msg.to_rawdata())
-        
+        # publish homographies message
+        await self._homographies_queue.publish(self.homographies_message_raw_data)
+        # publish info message
+        await self._info_queue.publish(self.info_message_raw_data)
         if not self._has_published:
             self.loginfo("Started publishing camera intrinsics")
             
-            self.loginfo(f"Started publishing {len(msg_homography.homographies)} known camera homographies")
+            self.loginfo(f"Started publishing {len(self.homographies_message.homographies)} known camera homographies")
             
             self.loginfo("Started publishing camera info")
             # ---
@@ -262,6 +238,32 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
                 R=calibration["rectification_matrix"]["data"],
             )
             self.camera_model = self.scale_camera_model(original, self.configuration)
+            # homographies message
+            self.homographies_message: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
+                homographies={
+                    f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H.tolist())
+                } if self.camera_model.H is not None else {},
+            )
+            self.homographies_message_raw_data = self.homographies_message.to_rawdata()
+            # info message
+            info_message: Camera = Camera(
+                # -- base
+                header=Header(),
+                # -- sensor
+                name=self.sensor_name,
+                type="camera",
+                simulated=False,
+                description="RGB8/JPEG Camera",
+                frame_id=self.frame_id,
+                frequency=self.configuration.framerate,
+                maker=self.configuration.maker,
+                model=self.configuration.model,
+                # -- camera
+                width=self.camera_model.width,
+                height=self.camera_model.height,
+                fov=math.radians(self.configuration.fov),
+            )
+            self.info_message_raw_data = info_message.to_rawdata()
         except Exception as e:
             self.logerr(f"Failed to process intrinsics calibration from KVStore:\n\nraw_data:\n{rd}\n\nexception:\n{e}")
             return
