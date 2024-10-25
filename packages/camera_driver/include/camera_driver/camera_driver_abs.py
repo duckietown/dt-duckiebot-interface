@@ -1,22 +1,12 @@
-import asyncio
-import copy
-import dataclasses
-import math
-import os
-import time
+import asyncio, dataclasses, math, numpy, os, time
 from abc import abstractmethod, ABCMeta
-from typing import Optional, cast
-
-import numpy as np
-from dtps_http import RawData
-from turbojpeg import TurboJPEG
-
 from dt_computer_vision.camera import CameraModel
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
 from dtps import DTPSContext
+from dtps_http import RawData
 from dtps_http.structures import Bounds
 from duckietown_messages.calibrations.camera_extrinsic import CameraExtrinsicCalibration
 from duckietown_messages.calibrations.camera_intrinsic import CameraIntrinsicCalibration
@@ -24,9 +14,10 @@ from duckietown_messages.geometry_2d.homography import Homography
 from duckietown_messages.sensors.camera import Camera
 from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
-
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from kvstore_utils import KVStore
+from turbojpeg import TurboJPEG
+from typing import Optional, cast
 
 
 @dataclasses.dataclass
@@ -53,7 +44,8 @@ class CameraNodeConfiguration(NodeConfiguration):
 
 
 class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
-    """Handles the imagery.
+    """
+    Handles the imagery.
 
     The node handles the image stream, initializing it, publishing frames
     according to the required frequency and stops it at shutdown.
@@ -61,42 +53,47 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
     Note that only one instance of this class should be used at a time.
     If another node tries to start an instance while this node is running,
     it will likely fail with an `Out of resource` exception.
-
     """
-
     def __init__(self, config: str, name: str):
         node_name: str = f"camera_driver_{name}"
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
-            description="Reads a stream of images from a camera and publishes the frames over DTPS",
+            description="Reads a stream of images from a camera and publishes the frames over DTPS"
         )
         HardwareInTheLoopSupport.__init__(self)
+        self.robot_name = os.environ.get("VEHICLE_NAME")
         self.sensor_name: str = name
-
+        self.frame_id = f"/{self.robot_name}/camera/{self.sensor_name}/optical_frame"
         # load configuration
         self.configuration: CameraNodeConfiguration = CameraNodeConfiguration.from_name(self.package, node_name, config)
         self.loginfo(f"Loaded configuration: {self.configuration.to_dict()}")
-
         # intrinsic calibration
         # TODO: take common part out
-        self.cali_file_folder = "/data/config/calibrations/camera_intrinsic/"
-        self.frame_id = f"/{self._robot_name}/camera/{self.sensor_name}/optical_frame"
+        intrinsics_calibration_folder = "/data/config/calibrations/camera_intrinsic/"
         # TODO: this needs to be adjusted location
-        self.cali_file = os.path.join(self.cali_file_folder, f"{self._robot_name}.yaml")
-
-        # locate calibration yaml file or use the default otherwise
-        if not os.path.isfile(self.cali_file):
-            self.logwarn("Calibration not found: %s.\n Using default instead." % self.cali_file)
-            self.cali_file = self.cali_file_folder + "default.yaml"
-
-        # shutdown if no calibration file not found
-        if not os.path.isfile(self.cali_file):
-            self.shutdown("Found no calibration file ... aborting")
-
+        intrinsics_calibration_file = os.path.join(intrinsics_calibration_folder, f"{self.robot_name}.yaml")
+        # find the intrinsics calibration file or use the default otherwise
+        if not os.path.isfile(intrinsics_calibration_file):
+            self.logwarn(f"Intrinsics calibration file not found: {intrinsics_calibration_file}.\nUsing default instead.")
+            intrinsics_calibration_file = intrinsics_calibration_folder + "default.yaml"
+            # shutdown if the default intrinsics calibration file is not found
+            if not os.path.isfile(intrinsics_calibration_file):
+                self.shutdown("Default intrinsics calibration file not found.\nShutting down...")
+        # extrinsic calibration
+        # TODO: take common part out
+        extrinsics_calibration_folder = "/data/config/calibrations/camera_extrinsic/"
+        # TODO: this needs to be adjusted location
+        extrinsics_calibration_file = os.path.join(extrinsics_calibration_folder, f"{self.robot_name}.yaml")
+        # find the extrinsics calibration file or use the default otherwise
+        if not os.path.isfile(extrinsics_calibration_file):
+            self.logwarn(f"Extrinsics calibration file not found: {extrinsics_calibration_file}.\nUsing default instead.")
+            extrinsics_calibration_file = extrinsics_calibration_folder + "default.yaml"
+            # shutdown if the default extrinsics calibration file is not found
+            if not os.path.isfile(extrinsics_calibration_file):
+                self.shutdown("Default extrinsics calibration file not found.\nShutting down...")
         # jpeg decoder
         self._jpeg: TurboJPEG = TurboJPEG()
-
         # publishers
         self._has_published: bool = False
         self._jpeg_queue: Optional[DTPSContext] = None
@@ -108,10 +105,10 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         # jpeg message
         self.jpeg_message: CompressedImage = CompressedImage(
             header=Header(
-                frame=self.frame_id,
+                frame=self.frame_id
             ),
             format="jpeg",
-            data=b"",
+            data=b""
         )
         # ---
         self.loginfo("[CameraNodeAbs]: Initialized.")
@@ -123,22 +120,11 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         # do not publish if passthrough is active
         if self.hil_is_active:
             return
-        # ---
         # publish jpeg message
         self.jpeg_message.data = jpeg
         await self._jpeg_queue.publish(self.jpeg_message.to_rawdata())
         self._last_image_published_time = time.time()
-        # publish homographies message
-        await self._homographies_queue.publish(self.homographies_message_raw_data)
-        # publish info message
-        await self._info_queue.publish(self.info_message_raw_data)
         if not self._has_published:
-            self.loginfo("Started publishing camera intrinsics")
-            
-            self.loginfo(f"Started publishing {len(self.homographies_message.homographies)} known camera homographies")
-            
-            self.loginfo("Started publishing camera info")
-            # ---
             self.loginfo("Published the first image")
             self._has_published = True
 
@@ -163,6 +149,8 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         await kvstore.init()
         # subscribe to the camera parameters
         await kvstore.subscribe("calibration/camera_intrinsic/current", self._on_new_intrinsic_calibration)
+        # subscribe to the camera homographies
+        await kvstore.subscribe("calibration/camera_extrinsic/current", self._on_new_extrinsic_calibration)
         # initialize HIL support
         await self.init_hil_support(
             self.context,
@@ -175,7 +163,7 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             # paths to connect when a remote is set
             subpaths=["jpeg", "info"],
             # which side is the re-pluggable one
-            side=HardwareInTheLoopSide.SOURCE,
+            side=HardwareInTheLoopSide.SOURCE
             # TODO: use transformations to set the frame in the message
         )
 
@@ -184,7 +172,6 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         Begins the camera capturing.
         """
         self.loginfo("Setting up camera...")
-        # ---
         try:
             # setup camera
             try:
@@ -210,14 +197,37 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
                 # reset nvargus if no images were received within the last 10 secs
                 if elapsed_since_last >= 10:
                     self.loginfo(
-                        f"[data-flow-monitor]: Detected a period of "
+                        "[data-flow-monitor]: Detected a period of "
                         f"{int(elapsed_since_last)} seconds during which no "
-                        f"images were produced, restarting camera process."
+                        "images were produced, restarting camera process."
                     )
                     self._stale_stream_reset()
-            # ---
             i += 1
             await asyncio.sleep(1)
+
+    async def _on_new_extrinsic_calibration(self, rd: RawData):
+        """
+        Handles new extrinsic calibration data from the KVStore.
+        """
+        # load the new calibration
+        try:
+            calibration: dict = cast(dict, rd.get_as_native_object())
+            if not isinstance(calibration, dict):
+                raise ValueError(f"Expected a dictionary, received {type(calibration)} instead")
+            # update the camera model
+            self.camera_model.H = calibration["homography"]
+        except Exception as e:
+            self.logerr(f"Failed to process extrinsics calibration from KVStore:\n\nraw_data:\n{rd}\n\nexception:\n{e}")
+            return
+        # homographies message
+        homographies_message: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
+            homographies={
+                f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H)
+            } if self.camera_model.H is not None else {}
+        )
+        # publish homographies message
+        await self._homographies_queue.publish(homographies_message.to_rawdata())
+        self.loginfo("Updated extrinsic camera calibration from KVStore.")
 
     async def _on_new_intrinsic_calibration(self, rd: RawData):
         """
@@ -227,62 +237,56 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         try:
             calibration: dict = cast(dict, rd.get_as_native_object())
             if not isinstance(calibration, dict):
-                raise ValueError("Expected a dictionary, received %s instead" % type(calibration))
+                raise ValueError(f"Expected a dictionary, received {type(calibration)} instead")
             # update the camera model
-            original: CameraModel = CameraModel(
+            self.camera_model: CameraModel = CameraModel(
                 width=calibration["image_width"],
                 height=calibration["image_height"],
                 K=calibration["camera_matrix"]["data"],
                 D=calibration["distortion_coefficients"]["data"],
                 P=calibration["projection_matrix"]["data"],
-                R=calibration["rectification_matrix"]["data"],
+                R=calibration["rectification_matrix"]["data"]
             )
-            self.camera_model = self.scale_camera_model(original, self.configuration)
-            # homographies message
-            self.homographies_message: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
-                homographies={
-                    f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H.tolist())
-                } if self.camera_model.H is not None else {},
-            )
-            self.homographies_message_raw_data = self.homographies_message.to_rawdata()
-            # info message
-            info_message: Camera = Camera(
-                # -- base
-                header=Header(),
-                # -- sensor
-                name=self.sensor_name,
-                type="camera",
-                simulated=False,
-                description="RGB8/JPEG Camera",
-                frame_id=self.frame_id,
-                frequency=self.configuration.framerate,
-                maker=self.configuration.maker,
-                model=self.configuration.model,
-                # -- camera
-                width=self.camera_model.width,
-                height=self.camera_model.height,
-                fov=math.radians(self.configuration.fov),
-            )
-            self.info_message_raw_data = info_message.to_rawdata()
+            if self.configuration.res_w != self.camera_model.width or self.configuration.res_h != self.camera_model.height:
+                self.camera_model = self.scale_camera_model(self.camera_model, self.configuration)
         except Exception as e:
             self.logerr(f"Failed to process intrinsics calibration from KVStore:\n\nraw_data:\n{rd}\n\nexception:\n{e}")
             return
-        # publish the new calibration
-        msg: CameraIntrinsicCalibration = CameraIntrinsicCalibration(
+        # parameters message
+        parameters_message: CameraIntrinsicCalibration = CameraIntrinsicCalibration(
             K=self.camera_model.K.flatten().tolist(),
             D=self.camera_model.D.flatten().tolist(),
             P=self.camera_model.P.flatten().tolist(),
-            R=self.camera_model.R.flatten().tolist() if self.camera_model.R is not None else None,
+            R=self.camera_model.R.flatten().tolist() if self.camera_model.R is not None else None
         )
-        await self._parameters_queue.publish(msg.to_rawdata())
+        # info message
+        info_message: Camera = Camera(
+            header=Header(),
+            name=self.sensor_name,
+            type="camera",
+            simulated=False,
+            description="RGB8/JPEG Camera",
+            frame_id=self.frame_id,
+            frequency=self.configuration.framerate,
+            maker=self.configuration.maker,
+            model=self.configuration.model,
+            width=self.camera_model.width,
+            height=self.camera_model.height,
+            fov=math.radians(self.configuration.fov)
+        )
+        # publish parameters message
+        await self._parameters_queue.publish(parameters_message.to_rawdata())
+        # publish info message
+        await self._info_queue.publish(info_message.to_rawdata())
         self.loginfo("Updated intrinsic camera calibration from KVStore.")
+        self.loginfo("Published camera info")
 
     @abstractmethod
     def setup(self):
         raise NotImplementedError("Child classes should implement this method.")
 
     @staticmethod
-    def scale_camera_model(original: CameraModel, cfg: CameraNodeConfiguration):
+    def scale_camera_model(camera_model: CameraModel, configuration: CameraNodeConfiguration):
         """
         Update the camera parameters based on the current resolution.
 
@@ -291,39 +295,32 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         As the calibration has been done at a specific resolution, these matrices need
         to be adjusted if a different resolution is being used.
         """
-        scale_width = float(cfg.res_w) / original.width
-        scale_height = float(cfg.res_h) / original.height
-
-        scale_matrix = np.ones(9)
+        scale_width = float(configuration.res_w) / camera_model.width
+        scale_height = float(configuration.res_h) / camera_model.height
+        # adjust the K matrix
+        scale_matrix = numpy.ones(9)
         scale_matrix[0] *= scale_width
         scale_matrix[2] *= scale_width
         scale_matrix[4] *= scale_height
         scale_matrix[5] *= scale_height
-
-        # adjust the camera matrix resolution
-        new_height = cfg.res_h
-        new_width = cfg.res_w
-
-        # adjust the K matrix
-        new_k = np.array(original.K) * scale_matrix
-
+        K = numpy.array(camera_model.K) * scale_matrix
         # adjust the P matrix
-        scale_matrix = np.ones(12)
+        scale_matrix = numpy.ones(12)
         scale_matrix[0] *= scale_width
         scale_matrix[2] *= scale_width
         scale_matrix[5] *= scale_height
         scale_matrix[6] *= scale_height
-        new_p = np.array(original.P) * scale_matrix
-
+        P = numpy.array(camera_model.P) * scale_matrix
         # create new camera model
-        return CameraModel(
-            width=new_width,
-            height=new_height,
-            K=new_k,
-            D=copy.deepcopy(original.D),
-            R=copy.deepcopy(original.R),
-            P=new_p,
+        new_camera_model = CameraModel(
+            width=configuration.res_w,
+            height=configuration.res_h,
+            K=K,
+            D=camera_model.D,
+            R=camera_model.R,
+            P=P
         )
+        return new_camera_model
 
     def on_shutdown(self):
         self.deinit_hil_support()
