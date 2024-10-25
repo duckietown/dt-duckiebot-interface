@@ -49,22 +49,22 @@ class DaguWheelEncoderDriver(WheelEncoderDriverAbs):
         GPIO.setup(direction_gpio, GPIO.IN)
         # add event detection
         GPIO.add_event_detect(ticks_gpio, GPIO.RISING, callback=self._bump_ticks)
-        GPIO.add_event_detect(direction_gpio, GPIO.BOTH, callback=self._process_direction_edge)
+#        GPIO.add_event_detect(direction_gpio, GPIO.BOTH , callback=self._process_direction_edge)
 
     def _bump_ticks(self, _):
-        if self._direction_edge is GPIO.RISING:
-            self.set_direction(WheelDirection.REVERSE)
-        else:
-            self.set_direction(WheelDirection.FORWARD)
+#        if self._direction_edge is GPIO.RISING:
+#            self.set_direction(WheelDirection.REVERSE)
+#        else:
+#            self.set_direction(WheelDirection.FORWARD)
         # ---
         super()._bump_ticks(_)
 
-    def _process_direction_edge(self, _):
-        if GPIO.input(self._direction_gpio):
-            self._direction_edge = GPIO.RISING if not self._direction_correction else GPIO.FALLING
-        else:
-            self._direction_edge = GPIO.FALLING if not self._direction_correction else GPIO.RISING
+#    def _process_direction_edge(self, _):
+#        if GPIO.input(self._direction_gpio):
+#            self._direction_edge = GPIO.RISING if not self._direction_correction else GPIO.FALLING
+#        else:
+#            self._direction_edge = GPIO.FALLING if not self._direction_correction else GPIO.RISING
 
     def release(self):
         GPIO.remove_event_detect(self._ticks_gpio)
-        GPIO.remove_event_detect(self._direction_gpio)
+#        GPIO.remove_event_detect(self._direction_gpio)
