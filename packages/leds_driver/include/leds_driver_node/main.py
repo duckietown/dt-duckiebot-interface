@@ -91,19 +91,19 @@ class LEDsDriverNode(Node, HardwareInTheLoopSupport):
         # expose queues to the switchboard
         await (self.switchboard / "actuator" / "lights" / self.actuator_name / "pattern").expose(rgb_in)
         # initialize HIL support
-        await self.init_hil_support(
-            self.context,
-            # source (this is us, static)
-            src=self.context,
-            src_path=["in"],
-            # destination (this is the dynamic side, duckiematrix or nothing)
-            dst=None,
-            dst_path=["actuator", "lights", self.actuator_name],
-            # paths to connect when a remote is set
-            subpaths=["pattern"],
-            # which side is the re-pluggable one
-            side=HardwareInTheLoopSide.DESTINATION
-        )
+        # await self.init_hil_support(
+        #     self.context,
+        #     # source (this is us, static)
+        #     src=self.context,
+        #     src_path=["in"],
+        #     # destination (this is the dynamic side, duckiematrix or nothing)
+        #     dst=None,
+        #     dst_path=["actuator", "lights", self.actuator_name],
+        #     # paths to connect when a remote is set
+        #     subpaths=["pattern"],
+        #     # which side is the re-pluggable one
+        #     side=HardwareInTheLoopSide.DESTINATION
+        # )
         # apply initial state
         msg: CarLights = CarLights(
             front_left=RGBA.from_list(self.configuration.initial_pattern["front_left"]),

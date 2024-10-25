@@ -14,11 +14,6 @@ dt-launchfile-init
 
 CONFIG_FILE="default"
 
-# left wheel encoder
-dt-exec python3 \
-  -m wheel_encoder_driver_node.main \
-    --side left \
-    --config left/${CONFIG_FILE}
 
 # right wheel encoder
 dt-exec python3 \
@@ -26,6 +21,12 @@ dt-exec python3 \
     --side right \
     --config right/${CONFIG_FILE}
 
+
+# left wheel encoder
+dt-exec python3 \
+  -m wheel_encoder_driver_node.main \
+    --side left \
+    --config left/${CONFIG_FILE}
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE
 
