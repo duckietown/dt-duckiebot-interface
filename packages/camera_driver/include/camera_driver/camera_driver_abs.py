@@ -8,7 +8,6 @@ from dt_node_utils.node import Node
 from dtps import DTPSContext
 from dtps_http import RawData
 from dtps_http.structures import Bounds
-from duckietown_messages.calibrations.camera_extrinsic import CameraExtrinsicCalibration
 from duckietown_messages.calibrations.camera_intrinsic import CameraIntrinsicCalibration
 from duckietown_messages.geometry_2d.homography import Homography
 from duckietown_messages.sensors.camera import Camera
@@ -97,7 +96,7 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         self._has_published: bool = False
         self._jpeg_queue: Optional[DTPSContext] = None
         self._parameters_queue: Optional[DTPSContext] = None
-        self._homographies_queue: Optional[DTPSContext] = None
+        self._homography_queue: Optional[DTPSContext] = None
         self._info_queue: Optional[DTPSContext] = None
         # data flow monitor
         self._last_image_published_time: float = time.time()
@@ -136,7 +135,7 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         out: DTPSContext = self.context / "out"
         self._jpeg_queue = await (out / "jpeg").queue_create(bounds=Bounds.max_length(3))
         self._parameters_queue = await (out / "parameters").queue_create()
-        self._homographies_queue = await (out / "homographies").queue_create()
+        self._homography_queue = await (out / "homography").queue_create()
         self._info_queue = await (out / "info").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
@@ -144,14 +143,14 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         sensor: DTPSContext = self.switchboard / "sensor" / "camera" / self.sensor_name
         await (sensor / "jpeg").expose(self._jpeg_queue)
         await (sensor / "parameters").expose(self._parameters_queue)
-        await (sensor / "homographies").expose(self._homographies_queue)
+        await (sensor / "homography").expose(self._homography_queue)
         await (sensor / "info").expose(self._info_queue)
         # open KVStore
         kvstore: KVStore = KVStore()
         await kvstore.init()
         # subscribe to the camera parameters
         await kvstore.subscribe("calibration/camera_intrinsic/current", self._on_new_intrinsic_calibration)
-        # subscribe to the camera homographies
+        # subscribe to the camera homography
         await kvstore.subscribe("calibration/camera_extrinsic/current", self._on_new_extrinsic_calibration)
         # initialize HIL support
         await self.init_hil_support(
@@ -221,14 +220,14 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         except Exception as e:
             self.logerr(f"Failed to process extrinsics calibration from KVStore:\n\nraw_data:\n{rd}\n\nexception:\n{e}")
             return
-        # homographies message
-        homographies_message: CameraExtrinsicCalibration = CameraExtrinsicCalibration(
-            homographies={
-                f"/{self._robot_name}/base_footprint": Homography(data=self.camera_model.H)
-            } if self.camera_model.H is not None else {}
+        # homography message
+        homography_message = (
+            Homography(data=(
+                self.camera_model.H if self.camera_model.H is not None else []
+            ))
         )
-        # publish homographies message
-        await self._homographies_queue.publish(homographies_message.to_rawdata())
+        # publish homography message
+        await self._homography_queue.publish(homography_message.to_rawdata())
         self.loginfo("Updated extrinsic camera calibration from KVStore.")
 
     async def _on_new_intrinsic_calibration(self, rd: RawData):
