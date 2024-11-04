@@ -8,8 +8,8 @@ from dt_node_utils.node import Node
 from dtps import DTPSContext
 from dtps_http import RawData
 from dtps_http.structures import Bounds
+from duckietown_messages.calibrations.camera_extrinsic import CameraExtrinsicCalibration
 from duckietown_messages.calibrations.camera_intrinsic import CameraIntrinsicCalibration
-from duckietown_messages.geometry_2d.homography import Homography
 from duckietown_messages.sensors.camera import Camera
 from duckietown_messages.sensors.compressed_image import CompressedImage
 from duckietown_messages.standard.header import Header
@@ -221,8 +221,8 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             self.logerr(f"Failed to process extrinsics calibration from KVStore:\n\nraw_data:\n{rd}\n\nexception:\n{e}")
             return
         # homography message
-        homography_message = (
-            Homography(data=(
+        homography_message: CameraExtrinsicCalibration = (
+            CameraExtrinsicCalibration(homography=(
                 self.camera_model.H if self.camera_model.H is not None else []
             ))
         )
