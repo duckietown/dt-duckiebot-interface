@@ -35,3 +35,6 @@ tiny-tf==1.2.0
 
 # this is needed for the camera driver node
 lib-dt-computer-vision==0.1.9
+
+# Duckietown messages
+git+https://github.com/duckietown/duckietown-messages.git
