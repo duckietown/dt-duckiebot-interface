@@ -15,7 +15,7 @@ class WheelPWMConfiguration:
     """
     pwm_min: uint8 = 60
     pwm_max: uint8 = 255
-    deadzone: float01 = 0.2
+    deadzone: float01 = 0.01
 
 
 class WheelsDriverAbs(ABC):
