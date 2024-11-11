@@ -107,6 +107,9 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
         await pwm_executed.subscribe(self.cb_pwm_executed)
         # TODO: we need to make this global and rethink how (origin, target, transform) TFs are stored in the same queue
         tf_queue = await (self.context / "out" / "tf").queue_create()
+        # create publishers
+        queue_publisher = await queue.publisher()
+        tf_queue_publisher = await tf_queue.publisher()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
@@ -152,7 +155,7 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
                 msg: Integer = Integer(data=self._sensor.ticks)
                 msg.header.frame = self._wheel_frame_id
                 # publish readings
-                await queue.publish(msg.to_rawdata())
+                await queue_publisher.publish(msg.to_rawdata())
 
             self._sensor.emulated = self.hil_is_active
 
@@ -164,7 +167,7 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
                 source=self._motor_frame_id,
                 target=self._wheel_frame_id,
             )
-            await tf_queue.publish(msg.to_rawdata())
+            await tf_queue_publisher.publish(msg.to_rawdata())
 
             # publish display rendering (if it is a good time to do so)
             if self._renderer_reminder.is_time():

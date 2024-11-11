@@ -149,6 +149,8 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         # create sensor queues
         range_queue = await (self.context / "out" / "range").queue_create()
         info_queue = await (self.context / "out" / "info").queue_create()
+        # create publishers
+        range_publisher = await range_queue.publisher()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
@@ -216,7 +218,7 @@ class ToFNode(Node, HardwareInTheLoopSupport):
                 header=Header(frame=self.frame_id),
                 data=data,
             )
-            await range_queue.publish(msg.to_rawdata())
+            await range_publisher.publish(msg.to_rawdata())
             # update display
             if self._renderer is not None:
                 self._renderer.update(range_mm)
