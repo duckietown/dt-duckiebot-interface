@@ -133,3 +133,20 @@ COPY assets/usr/share/fonts/*.ttf /usr/share/fonts/
 COPY assets/usr/bin/betaflight /usr/bin/betaflight
 RUN chown -R duckie:duckie /usr/bin/betaflight/ && chmod +x /usr/bin/betaflight/launch_betaflight.sh
 # RUN echo 'SUBSYSTEM=="i2c-dev", GROUP="duckie", MODE="0660"' > /etc/udev/rules.d/99-i2c.rules
+
+# Raspberry Pi camera
+# libcamera
+RUN git clone https://github.com/raspberrypi/libcamera.git
+WORKDIR ${PROJECT_PATH}/libcamera
+RUN meson setup build -Dpipelines=rpi/vc4,rpi/pisp -Dipas=rpi/vc4,rpi/pisp -Dv4l2=true -Dgstreamer=enabled -Dtest=false -Dlc-compliance=disabled -Dcam=disabled -Dqcam=disabled -Ddocumentation=disabled -Dpycamera=enabled
+RUN ninja -C build install
+WORKDIR ${PROJECT_PATH}
+# kmsxx
+RUN git clone https://github.com/tomba/kmsxx.git
+WORKDIR ${PROJECT_PATH}/kmsxx
+RUN meson setup build -Dpykms=enabled
+RUN ninja -C build install
+WORKDIR ${PROJECT_PATH}
+RUN ldconfig
+RUN python3 -m pip install picamera2
+ENV PYTHONPATH=$PYTHONPATH:/usr/local/lib/aarch64-linux-gnu/python3.12/site-packages
