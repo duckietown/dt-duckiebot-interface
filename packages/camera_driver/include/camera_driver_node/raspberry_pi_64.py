@@ -61,6 +61,10 @@ class CameraNode(CameraNodeAbs):
         controls = {
             "FrameRate": self.configuration.framerate
         }
+        if self.configuration.exposure_mode == "sports":
+            msg = "Setting exposure to 'sports' mode."
+            self.loginfo(msg)
+            controls["AeExposureMode"] = 1
         video_configuration = self._camera.create_video_configuration(main=main, controls=controls)
         self._camera.configure(video_configuration)
         # quality ranges from 0 (worst) to 95 (best), with 90 being the default
