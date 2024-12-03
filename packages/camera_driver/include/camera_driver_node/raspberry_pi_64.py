@@ -31,7 +31,7 @@ class CameraNode(CameraNodeAbs):
         # get first frame
         numpy_array = self._camera.capture_array() if self._camera else None
         if self.configuration.rotation:
-            numpy_array = numpy.rot90(numpy_array, -1)
+            numpy_array = numpy.rot90(numpy_array)
         success, jpeg_encoded_numpy_array = cv2.imencode('.jpeg', numpy_array)
         # keep reading
         while not self.is_shutdown:
@@ -47,7 +47,7 @@ class CameraNode(CameraNodeAbs):
             # grab next frame
             numpy_array = self._camera.capture_array() if self._camera else None
             if self.configuration.rotation:
-                numpy_array = numpy.rot90(numpy_array, -1)
+                numpy_array = numpy.rot90(numpy_array)
             success, jpeg_encoded_numpy_array = cv2.imencode('.jpeg', numpy_array)
         self.loginfo("Camera worker stopped.")
 
