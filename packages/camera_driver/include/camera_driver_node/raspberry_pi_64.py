@@ -55,7 +55,8 @@ class CameraNode(CameraNodeAbs):
         # setup camera
         self._camera = Picamera2()
         main = {
-            "size": (self.configuration.res_w, self.configuration.res_h)
+            "size": (self.configuration.res_w, self.configuration.res_h),
+            "format": "RGB888"
         }
         controls = {
             "FrameRate": self.configuration.framerate
