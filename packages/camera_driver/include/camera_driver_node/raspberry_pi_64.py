@@ -3,7 +3,6 @@
 import argparse, asyncio, atexit, cv2, numpy
 from camera_driver import CameraNodeAbs
 from picamera2 import Picamera2
-from picamera2.encoders import JpegEncoder
 
 
 class CameraNode(CameraNodeAbs):
@@ -55,7 +54,6 @@ class CameraNode(CameraNodeAbs):
         # setup camera
         self._camera = Picamera2()
         main = {
-            "size": (self.configuration.res_w, self.configuration.res_h),
             "format": "RGB888"
         }
         controls = {
