@@ -14,7 +14,7 @@ from display_renderer import AbsDisplayFragmentRenderer
 from duckietown_messages.actuators.display_fragment import DisplayFragment as DisplayFragmentMsg
 from duckietown_messages.utils.image.pil import np_to_pil, pil_to_np
 from ..types.fragment import DisplayFragment
-from ..types.page import ALL_PAGES, PAGE_HOME, PAGE_INIT
+from ..types.page import ALL_PAGES, PAGE_HOME, PAGE_INIT, PAGE_SHUTDOWN
 from ..types.regions import DisplayRegionID, DisplayRegion
 from ..types.regions import REGION_FULL, REGION_HEADER, REGION_BODY, REGION_FOOTER
 from ..types.roi import DisplayROI
@@ -41,7 +41,7 @@ class SSD1306Display:
         self._display = ssd1306(serial)
         # page selector
         self._page = PAGE_INIT
-        self._pages = {PAGE_INIT}
+        self._pages = {PAGE_INIT, PAGE_SHUTDOWN}
         # create buffers
         self._fragments = {k: dict() for k in self._REGIONS}
         self._buffer = np.zeros(
@@ -68,7 +68,7 @@ class SSD1306Display:
 
     def next_page(self):
         with self._fragments_lock:
-            pages = sorted([p for p in self._pages if p != PAGE_INIT])
+            pages = sorted([p for p in self._pages if p not in (PAGE_INIT, PAGE_SHUTDOWN)])
             # move to the next page
             try:
                 i = pages.index(self._page)
@@ -254,7 +254,7 @@ class PagerFragmentRenderer(AbsDisplayFragmentRenderer):
     def render(self):
         self._clear_buffer()
         # sort pages; exclude the INIT page
-        pages = [p for p in sorted(self._pages) if p != PAGE_INIT]
+        pages = [p for p in sorted(self._pages) if p not in (PAGE_INIT, PAGE_SHUTDOWN)]
         # render dots
         ch, cw = self.shape
         _, sw = self.SELECTED_PAGE_ICON.shape

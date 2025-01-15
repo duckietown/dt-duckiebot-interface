@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import dataclasses
-from typing import List
 
 import argparse
 
@@ -30,20 +29,31 @@ class DisplayNodeConfiguration(NodeConfiguration):
     frequency: float
 
 
-BOOTING_SCREEN: List[DisplayFragment] = [
-    DisplayFragment(
-        name="__booting__",
-        region=DisplayRegionID.BODY,
-        page=PAGE_INIT,
-        content=Image.from_np(
-            monospace_screen((32, 128), " Loading... ", scale="hfill"),
-            encoding="mono8",
-        ),
-        location=ROI(x=0, y=8, width=128, height=32),
-        z=0,
-        ttl=-1,
+BOOTING_SCREEN: DisplayFragment = DisplayFragment(
+    name="__booting__",
+    region=DisplayRegionID.BODY,
+    page=PAGE_INIT,
+    content=Image.from_np(
+        monospace_screen((32, 128), " Loading... ", scale="hfill"),
+        encoding="mono8"
     ),
-]
+    location=ROI(x=0, y=8, width=128, height=32),
+    z=0,
+    ttl=-1
+)
+
+SHUTTING_DOWN_SCREEN: DisplayFragment = DisplayFragment(
+    name="__shutting_down__",
+    region=DisplayRegionID.BODY,
+    page=PAGE_SHUTDOWN,
+    content=Image.from_np(
+        monospace_screen((32, 128), " Shutting down... ", scale="hfill"),
+        encoding="mono8"
+    ),
+    location=ROI(x=0, y=8, width=128, height=32),
+    z=0,
+    ttl=-1
+)
 
 
 class DisplayNode(Node):
@@ -90,13 +100,13 @@ class DisplayNode(Node):
             self.logerr(f"Failed to decode an incoming message: {e.message}")
             return
         # ---
-        if event.type == InteractionEvent.SINGLE_CLICK:
-            # switch to the next page
-            self._display.next_page()
-
-        if event.type in [InteractionEvent.HELD_3SEC, InteractionEvent.HELD_10SEC]:
-            # switch to shut down page
-            self._display.page = PAGE_SHUTDOWN
+        if self._display.page != PAGE_SHUTDOWN:
+            if event.type == InteractionEvent.SINGLE_CLICK:
+                # switch to the next page
+                self._display.next_page()
+            elif event.type in [InteractionEvent.HELD_3SEC, InteractionEvent.HELD_10SEC]:
+                # switch to shut down page
+                self._display.page = PAGE_SHUTDOWN
 
     async def worker(self):
         await self.dtps_init(self.configuration)
@@ -110,7 +120,7 @@ class DisplayNode(Node):
         await (self.switchboard / "actuator" / "display" / self.actuator_name / "fragments").expose(fragments)
         # publish the initial state
         await fragments.publish(DisplayFragments(
-            fragments=BOOTING_SCREEN
+            fragments=(BOOTING_SCREEN, SHUTTING_DOWN_SCREEN)
         ).to_rawdata())
         # run forever
         await self.join()
