@@ -18,7 +18,4 @@ if get_robot_hardware() != RobotHardware.VIRTUAL:
     else:
         from .tof_driver import ToFDriverVL53L0X as ToFDriver
 else:
-    if get_robot_type() == RobotType.DUCKIEDRONE:
-        from .gazebo_tof_driver import GazeboToFDriver as ToFDriver
-    else:
-        from .virtual_tof_driver import VirtualToFDriver as ToFDriver
+    from .virtual_tof_driver import VirtualToFDriver as ToFDriver
