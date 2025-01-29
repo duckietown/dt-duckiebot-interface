@@ -195,6 +195,10 @@ class ToFNode(Node, HardwareInTheLoopSupport):
             if self.hil_is_active:
                 await asyncio.sleep(1.0)
                 continue
+            if self._sensor is None:
+                self.logger.error("The sensor is not responding.")
+                await asyncio.sleep(dt)
+                continue
             # ---
             try:
                 # detect range
@@ -209,6 +213,10 @@ class ToFNode(Node, HardwareInTheLoopSupport):
             if range_mm is not None:
                 range_m: float = range_mm / 1000
                 data = range_m if range_m <= self._accuracy.max_range else None
+            else:
+                self.logger.error("The sensor is not responding.")
+                return
+
             # pack observation into a message
             msg = Range(
                 header=Header(frame=self.frame_id),
