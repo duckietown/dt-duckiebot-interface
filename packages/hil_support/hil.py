@@ -41,7 +41,7 @@ class HardwareInTheLoopSupport:
             self,
             node: DTPSContext,
             src: Optional[DTPSContext],
-            src_path: List[str],
+            src_path: Optional[List[str]],
             dst: Optional[DTPSContext],
             dst_path: List[str],
             subpaths: List[str],
@@ -50,6 +50,19 @@ class HardwareInTheLoopSupport:
             ):
         """
         Configures the support for hardware in the loop (HIL) simulation.
+
+        Args:
+            node (DTPSContext): The context node for the HIL support.
+            src (Optional[DTPSContext]): The source context, which is the dynamic side (e.g., duckiematrix or nothing).
+            src_path (Optional[List[str]]): The source path for the HIL support.
+            dst (Optional[DTPSContext]): The destination context, which is the static side (e.g., this context).
+            dst_path (List[str]): The destination path for the HIL support.
+            subpaths (List[str]): The paths to connect when a remote is set.
+            side (HardwareInTheLoopSide): Specifies which side is the re-pluggable one.
+            transformations (Optional[Dict[str, Callable[[RawData], RawData]]]): Optional transformations to set the frame in the message.
+
+        Returns:
+            None
         """
         self._side: HardwareInTheLoopSide = side
         # create passthrough
