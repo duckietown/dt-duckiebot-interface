@@ -215,7 +215,8 @@ class ToFNode(Node, HardwareInTheLoopSupport):
                 data = range_m if range_m <= self._accuracy.max_range else None
             else:
                 self.logger.error("The sensor is not responding.")
-                return
+                await asyncio.sleep(1.0)
+                continue
 
             # pack observation into a message
             msg = Range(
