@@ -28,13 +28,18 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
     async def worker(self):
         await self.dtps_init()
         # create pose queues
-        gt_context = self.context / "out" / "pose"
-        ground_truth_pose_queue = await (gt_context).queue_create()
+        gt_pose_context = self.context / "out" / "pose"
+        ground_truth_pose_queue = await (gt_pose_context).queue_create()
+
+        # create twist queues
+        gt_twist_context = self.context / "out" / "twist"
+        ground_truth_twist_queue = await (gt_twist_context).queue_create()
 
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
         await (self.switchboard / "pose").expose(ground_truth_pose_queue)
+        await (self.switchboard / "twist").expose(ground_truth_twist_queue)
 
         # Remap the pose topic from {matrix_key}/pose/pose to {ROBOT_NAME}/pose
         await self.init_hil_support(
@@ -44,6 +49,18 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
             dst=self.context,
             dst_path=["out"],
             subpaths=["pose"],
+            side=HardwareInTheLoopSide.SOURCE,
+            # TODO: use transformations to set the frame in the message
+        )
+
+        # Remap the twist topic from {matrix_key}/twist/twist to {ROBOT_NAME}/twist
+        await self.init_hil_support(
+            self.context,
+            src=None,
+            src_path=['twist'],
+            dst=self.context,
+            dst_path=["out"],
+            subpaths=["twist"],
             side=HardwareInTheLoopSide.SOURCE,
             # TODO: use transformations to set the frame in the message
         )
