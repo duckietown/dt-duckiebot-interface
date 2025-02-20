@@ -235,7 +235,7 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         # wait for switchboard
         await self.switchboard_ready.wait()
         
-        if get_robot_type() != RobotType.DUCKIEBOT:
+        if get_robot_type() != RobotType.DUCKIEBOT or get_robot_hardware() == RobotHardware.VIRTUAL:
             # skip display renderer if not a Duckiebot
             return
 
