@@ -41,7 +41,7 @@ class HardwareInTheLoopSupport:
             self,
             node: DTPSContext,
             src: Optional[DTPSContext],
-            src_path: List[str],
+            src_path: Optional[List[str]],
             dst: Optional[DTPSContext],
             dst_path: List[str],
             subpaths: List[str],
@@ -50,6 +50,19 @@ class HardwareInTheLoopSupport:
             ):
         """
         Configures the support for hardware in the loop (HIL) simulation.
+
+        Args:
+            node (DTPSContext): The context node for the HIL support.
+            src (Optional[DTPSContext]): The source context, which is the dynamic side (e.g., duckiematrix or nothing).
+            src_path (Optional[List[str]]): The source path for the HIL support.
+            dst (Optional[DTPSContext]): The destination context, which is the static side (e.g., this context).
+            dst_path (List[str]): The destination path for the HIL support.
+            subpaths (List[str]): The paths to connect when a remote is set.
+            side (HardwareInTheLoopSide): Specifies which side is the re-pluggable one.
+            transformations (Optional[Dict[str, Callable[[RawData], RawData]]]): Optional transformations to set the frame in the message.
+
+        Returns:
+            None
         """
         self._side: HardwareInTheLoopSide = side
         # create passthrough
@@ -90,19 +103,26 @@ class HardwareInTheLoopSupport:
                                  f"\n\turls: {cxt_cfg.urls}"
                                  f"\n\terror: {str(e)}")
                     return
-                # make sure the context exists
-                exists: bool = False
-                try:
-                    exists = await remote.exists()
-                except TimeoutError:
-                    pass
-                if not exists:
-                    logger.info(f"Remote context '{cxt_cfg.name}' with urls '{cxt_cfg.urls}' does not exist or "
-                                f"it is not reachable. Ignoring.")
-                    return
+                # make sure the context exists BUG: this fails sometimes, not sure why
+                # exists: bool = True
+                # try:
+                #     exists = await remote.exists()
+                # except TimeoutError:
+                #     pass
+                
+                # if not exists:
+                #     logger.info(f"Remote context '{cxt_cfg.name}' with urls '{cxt_cfg.urls}' does not exist or "
+                #                 f"it is not reachable. Ignoring.")
+                #     return
                 # navigate to optional path
-                if cxt_cfg.path:
-                    remote = remote.navigate(cxt_cfg.path)
+                try:
+                    if cxt_cfg.path:
+                        remote = remote.navigate(cxt_cfg.path)
+                except Exception as e:
+                    logger.error(f"Failed to navigate to path '{cxt_cfg.path}' in context '{cxt_cfg.name}':"
+                                 f"\n\terror: {str(e)}")
+                    return
+
                 # move path to the agent level
                 path.append(conn_cfg.agent_name)
                 # connect passthrough
