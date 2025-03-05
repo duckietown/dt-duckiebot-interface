@@ -157,22 +157,20 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "range").expose(range_queue)
         await (self.switchboard / "sensor" / "time_of_flight" / self.sensor_name / "info").expose(info_queue)
         # initialize HIL support
-        # TODO: reenable this
-        # await self.init_hil_support(
-        #     self.context,
-        #     # source (this is the dynamic side, duckiematrix or nothing)
-        #     src=None,
-        #     src_path=["sensor", "time_of_flight", self.sensor_name],
-        #     # destination (this is us, static)
-        #     dst=self.context,
-        #     dst_path=["out"],
-        #     # paths to connect when a remote is set
-        #     # TODO: "info" should also be exposed by the duckiematrix
-        #     subpaths=["range"],
-        #     # which side is the re-pluggable one
-        #     side=HardwareInTheLoopSide.SOURCE,
-        #     # TODO: use transformations to set the frame in the message
-        # )
+        await self.init_hil_support(
+            self.context,
+            # source (this is the dynamic side, duckiematrix or nothing)
+            src=None,
+            src_path=["sensor", "time_of_flight", self.sensor_name],
+            # destination (this is us, static)
+            dst=self.context,
+            dst_path=["out"],
+            # paths to connect when a remote is set
+            subpaths=["range"],
+            # which side is the re-pluggable one
+            side=HardwareInTheLoopSide.SOURCE,
+            # TODO: use transformations to set the frame in the message
+        )
         # publish info about the sensor
         msg = RangeFinder(
             # -- base
@@ -199,6 +197,10 @@ class ToFNode(Node, HardwareInTheLoopSupport):
             if self.hil_is_active:
                 await asyncio.sleep(1.0)
                 continue
+            if self._sensor is None:
+                self.logger.error("The sensor is not responding.")
+                await asyncio.sleep(dt)
+                continue
             # ---
             try:
                 # detect range
@@ -213,6 +215,11 @@ class ToFNode(Node, HardwareInTheLoopSupport):
             if range_mm is not None:
                 range_m: float = range_mm / 1000
                 data = range_m if range_m <= self._accuracy.max_range else None
+            else:
+                self.logger.error("The sensor is not responding.")
+                await asyncio.sleep(1.0)
+                continue
+
             # pack observation into a message
             msg = Range(
                 header=Header(frame=self.frame_id),
@@ -230,7 +237,7 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         # wait for switchboard
         await self.switchboard_ready.wait()
         
-        if get_robot_type() != RobotType.DUCKIEBOT:
+        if get_robot_type() != RobotType.DUCKIEBOT or get_robot_hardware() == RobotHardware.VIRTUAL:
             # skip display renderer if not a Duckiebot
             return
 

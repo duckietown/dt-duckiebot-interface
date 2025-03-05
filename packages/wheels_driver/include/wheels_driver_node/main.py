@@ -66,6 +66,8 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
                                                              from_name(self.package, node_name, config))
         # emergency stop
         self.estop: bool = False
+        # autopilot
+        self.autopilot: bool = False
         # keep track of when the last command was received
         self.last_command_time: float = 0.0
         # queues
@@ -105,6 +107,22 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         executed: DifferentialPWM = DifferentialPWM(left=self.driver.left_pwm, right=self.driver.right_pwm)
         await self._pwm_executed_out.publish(executed.to_rawdata())
 
+    async def cb_autopilot(self, data: RawData):
+        """
+        Callback that enables/disables autopilot.
+        """
+        try:
+            msg: Boolean = Boolean.from_rawdata(data)
+        except DataDecodingError as e:
+            self.logerr(f"Failed to decode an incoming message: {e.message}")
+            return
+        # ---
+        self.autopilot = msg.data
+        if self.autopilot:
+            self.loginfo("Autopilot Activated")
+        else:
+            self.loginfo("Autopilot Deactivated")
+
     async def cb_estop(self, data: RawData):
         """
         Callback that enables/disables emergency stop.
@@ -130,10 +148,14 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         # create PWM queues OUT
         self._pwm_filtered_out: DTPSContext = await (self.context / "out" / "pwm_filtered").queue_create()
         self._pwm_executed_out: DTPSContext = await (self.context / "out" / "pwm_executed").queue_create()
+        # create autopilot queue
+        autopilot_queue: DTPSContext = await (self.context / "in" / "autopilot").queue_create()
         # subscribe to PWM commands
         await pwm_in.subscribe(self.cb_wheels_pwm)
         # subscribe to emergency stop commands
         await estop_queue.subscribe(self.cb_estop)
+        # subscribe to autopilot commands
+        await autopilot_queue.subscribe(self.cb_autopilot)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
@@ -142,6 +164,7 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         await (actuator / "estop").expose(estop_queue)
         await (actuator / "pwm_filtered").expose(self._pwm_filtered_out)
         await (actuator / "pwm_executed").expose(self._pwm_executed_out)
+        await (actuator / "autopilot").expose(autopilot_queue)
         # initialize HIL support
         await self.init_hil_support(
             self.context,
@@ -159,6 +182,7 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         # publish the initial state
         await pwm_in.publish(DifferentialPWM(left=0, right=0).to_rawdata())
         await estop_queue.publish(Boolean(data=False).to_rawdata())
+        await autopilot_queue.publish(Boolean(data=False).to_rawdata())
         # run forever
         await self.join()
 
