@@ -88,6 +88,11 @@ class IMUNode(Node):
         #       then converted to SI measurement units (m/s, rad/s, etc.) through an IMU-specific
         #       conversion factor. Is this the case here?
         all_queue = await (self.context / "out" / "all").queue_create()
+        # create publishers
+        accelerations_publisher = await accelerations_queue.publisher()
+        velocities_publisher = await velocities_queue.publisher()
+        temperature_publisher = await temperature_queue.publisher()
+        all_publisher = await all_queue.publisher()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
@@ -117,11 +122,11 @@ class IMUNode(Node):
                 )
 
                 # publish
-                await accelerations_queue.publish(accelerations.to_rawdata())
-                await velocities_queue.publish(velocities.to_rawdata())
+                await accelerations_publisher.publish(accelerations.to_rawdata())
+                await velocities_publisher.publish(velocities.to_rawdata())
                 # await orientation_queue.publish(orientation.to_rawdata())
-                await temperature_queue.publish(temperature.to_rawdata())
-                await all_queue.publish(imu_message.to_rawdata())
+                await temperature_publisher.publish(temperature.to_rawdata())
+                await all_publisher.publish(imu_message.to_rawdata())
             finally:
                 # wait
                 await asyncio.sleep(dt)

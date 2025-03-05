@@ -5,7 +5,7 @@ from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
-from dtps import DTPSContext
+from dtps import DTPSContext, PublisherInterface
 from dtps_http import RawData
 from dtps_http.structures import Bounds
 from duckietown_messages.calibrations.camera_extrinsic import CameraExtrinsicCalibration
@@ -92,12 +92,15 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
                 self.shutdown("Default extrinsics calibration file not found.\nShutting down...")
         # jpeg decoder
         self._jpeg: TurboJPEG = TurboJPEG()
-        # publishers
+        # queues
         self._has_published: bool = False
         self._jpeg_queue: Optional[DTPSContext] = None
         self._parameters_queue: Optional[DTPSContext] = None
         self._homography_queue: Optional[DTPSContext] = None
         self._info_queue: Optional[DTPSContext] = None
+        # publishers
+        self._jpeg_publisher: Optional[PublisherInterface] = None
+        self._info_publisher: Optional[PublisherInterface] = None
         # data flow monitor
         self._last_image_published_time: float = time.time()
         # jpeg message
@@ -120,9 +123,9 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             return
         # publish jpeg message
         self.jpeg_message.data = jpeg
-        await self._jpeg_queue.publish(self.jpeg_message.to_rawdata())
+        await self._jpeg_publisher.publish(self.jpeg_message.to_rawdata())
         # publish info message
-        await self._info_queue.publish(self.info_message.to_rawdata())
+        await self._info_publisher.publish(self.info_message_raw_data)
         self._last_image_published_time = time.time()
         if not self._has_published:
             self.loginfo("Published the first image")
@@ -137,6 +140,9 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         self._parameters_queue = await (out / "parameters").queue_create()
         self._homography_queue = await (out / "homography").queue_create()
         self._info_queue = await (out / "info").queue_create()
+        # create publishers
+        self._jpeg_publisher = await self._jpeg_queue.publisher()
+        self._info_publisher = await self._info_queue.publisher()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
@@ -261,7 +267,7 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             R=self.camera_model.R.flatten().tolist() if self.camera_model.R is not None else None
         )
         # info message
-        self.info_message: Camera = Camera(
+        info_message: Camera = Camera(
             header=Header(),
             name=self.sensor_name,
             type="camera",
@@ -275,10 +281,11 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             height=self.camera_model.height,
             fov=math.radians(self.configuration.fov)
         )
+        self.info_message_raw_data = info_message.to_rawdata()
         # publish parameters message
         await self._parameters_queue.publish(parameters_message.to_rawdata())
         # publish info message
-        await self._info_queue.publish(self.info_message.to_rawdata())
+        await self._info_publisher.publish(self.info_message_raw_data)
         self.loginfo("Updated intrinsic camera calibration from KVStore.")
         self.loginfo("Published camera info")
 
