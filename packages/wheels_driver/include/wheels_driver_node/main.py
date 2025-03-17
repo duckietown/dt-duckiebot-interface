@@ -170,12 +170,12 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
             self.context,
             # source (this is us, static)
             src=self.context,
-            src_path=["in"],
+            src_path=["out"],
             # destination (this is the dynamic side, duckiematrix or nothing)
             dst=None,
             dst_path=["actuator", "wheels", self.actuator_name],
             # paths to connect when a remote is set
-            subpaths=["pwm"],
+            subpaths=["pwm_filtered"],
             # which side is the re-pluggable one
             side=HardwareInTheLoopSide.DESTINATION
         )
