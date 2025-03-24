@@ -1,22 +1,14 @@
 #!/usr/bin/env python3
 
-import atexit
-import subprocess
-from typing import cast
-import cv2
-import asyncio
-import argparse
-import numpy as np
-
-
+import argparse, asyncio, atexit, cv2, numpy
 from camera_driver import CameraNodeAbs
+from picamera2 import Picamera2
+
 
 class CameraNode(CameraNodeAbs):
     """
     Handles the imagery on a Raspberry Pi.
     """
-    VIDEO_DEVICE = "/dev/video0"
-
     def __init__(self, config: str, sensor_name: str):
         # Initialize the DTROS parent class
         super(CameraNode, self).__init__(config, sensor_name)
@@ -30,79 +22,66 @@ class CameraNode(CameraNodeAbs):
 
         Captures a frame from the /dev/video0 image sink and publishes it.
         """
-        if self._device is None or not self._device.isOpened():
+        if self._camera is None:
             self.logerr("Device was found closed")
             return
         # init queues
         await self.dtps_init_queues()
         # get first frame
-        retval, image = self._device.read() if self._device else (False, None)
-
+        numpy_array = self._camera.capture_array() if self._camera else None
+        if self.configuration.rotation:
+            numpy_array = numpy.rot90(numpy_array)
+        success, jpeg_encoded_numpy_array = cv2.imencode('.jpeg', numpy_array)
         # keep reading
         while not self.is_shutdown:
-            if not retval:
+            if success is None:
                 self.logerr("Could not read image from camera")
                 await asyncio.sleep(1)
-                continue
-            if image is not None:
-                # without HW acceleration, the image is returned as RGB, encode on CPU
-                jpeg: bytes = cast(np.ndarray, image).tobytes()
-
+            else:
+                jpeg: bytes = jpeg_encoded_numpy_array.tobytes()
                 # publish
                 await self.publish(jpeg)
             # return control to the event loop
             await asyncio.sleep(0.001)
             # grab next frame
-            retval, image = self._device.read() if self._device else (False, None)
+            numpy_array = self._camera.capture_array() if self._camera else None
+            if self.configuration.rotation:
+                numpy_array = numpy.rot90(numpy_array)
+            success, jpeg_encoded_numpy_array = cv2.imencode('.jpeg', numpy_array)
         self.loginfo("Camera worker stopped.")
 
     def setup(self):
         # setup camera
-        cam_props = {
-            "video_bitrate": 25000000,
+        self._camera = Picamera2()
+        main = {
+            "format": "RGB888"
         }
-        for key in cam_props:
-            subprocess.call(
-                f"v4l2-ctl -d {CameraNode.VIDEO_DEVICE} -c {key}={str(cam_props[key])}", shell=True
-            )
-        # create VideoCapture object
-        if self._device is None:
-            self._device = cv2.VideoCapture()
-        # open the device
-        if not self._device.isOpened():
-            try:
-                self._device.open(CameraNode.VIDEO_DEVICE, cv2.CAP_V4L2)
-                # make sure the device is open
-                if not self._device.isOpened():
-                    msg = "OpenCV cannot open camera"
-                    self.logerr(msg)
-                    raise RuntimeError(msg)
-                # configure camera
-                self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-                self._device.set(cv2.CAP_PROP_FRAME_WIDTH, self.configuration.res_w)
-                self._device.set(cv2.CAP_PROP_FRAME_HEIGHT, self.configuration.res_h)
-                self._device.set(cv2.CAP_PROP_ROLL, self.configuration.rotation)
-                self._device.set(cv2.CAP_PROP_FPS, self.configuration.framerate)
-                self._device.set(cv2.CAP_PROP_CONVERT_RGB, 0.0)
-                # Set auto exposure to false
-                if self.configuration.exposure_mode == "sports":
-                    msg = "Setting exposure to 'sports' mode."
-                    self.loginfo(msg)
-                    self._device.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
-                    self._device.set(cv2.CAP_PROP_EXPOSURE, self.configuration.exposure)
-                # try getting a sample image
-                retval, _ = self._device.read()
-                if not retval:
-                    msg = "Could not read image from camera"
-                    self.logerr(msg)
-                    raise RuntimeError(msg)
-            except (Exception, RuntimeError):
-                self.stop()
-                msg = "Could not start camera"
+        controls = {
+            "FrameRate": self.configuration.framerate
+        }
+        if self.configuration.exposure_mode == "sports":
+            msg = "Setting exposure to 'sports' mode."
+            self.loginfo(msg)
+            controls["AeExposureMode"] = 1
+        video_configuration = self._camera.create_video_configuration(main=main, controls=controls)
+        self._camera.configure(video_configuration)
+        # quality ranges from 0 (worst) to 95 (best), with 90 being the default
+        self._camera.options["quality"] = 90
+        self._camera.start()
+        try:
+            # try getting a sample image
+            numpy_array = self._camera.capture_array()
+            if numpy_array is None:
+                msg = "Could not read image from camera"
                 self.logerr(msg)
                 raise RuntimeError(msg)
-            # register self.close as cleanup function
-            atexit.register(self.stop)
+        except (Exception, RuntimeError):
+            self.stop()
+            msg = "Could not start camera"
+            self.logerr(msg)
+            raise RuntimeError(msg)
+        # register self.close as cleanup function
+        atexit.register(self.stop)
 
     def on_shutdown(self):
         super().on_shutdown()

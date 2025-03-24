@@ -19,3 +19,25 @@ v4l-utils
 
 # tools for betaflight SITL
 socat
+
+# Raspberry Pi camera
+pybind11-dev
+cmake
+libboost-dev
+libcamera-dev
+libcamera-tools
+libcap-dev
+libdrm-dev
+libepoxy-dev
+libfmt-dev
+libglib2.0-dev
+libgnutls28-dev
+libgstreamer-plugins-base1.0-dev
+libjpeg-dev
+liblttng-ust-dev
+libtiff5-dev
+libpng-dev
+meson
+ninja-build
+python3-jinja2
+python3-ply
