@@ -125,6 +125,8 @@ RUN python3 -m pip install --ignore-installed --force-reinstall RPi.GPIO
 
 # this is necessary for the camera pipeline to work on the Jetson Nano
 COPY assets/etc/ld.so.conf.d/nvidia-tegra.conf /etc/ld.so.conf.d/nvidia-tegra.conf
+COPY assets/etc/ld.so.conf.d/nvidia-tegra-egl.conf /etc/ld.so.conf.d/nvidia-tegra-egl.conf
+RUN ldconfig
 
 # copy fonts (used by the text display renderer)
 COPY assets/usr/share/fonts/*.ttf /usr/share/fonts/
