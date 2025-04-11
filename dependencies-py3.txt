@@ -3,7 +3,7 @@
 
 # Jetson packages
 # constraints: <=2.0.20, the last version supporting Python3.8
-Jetson.GPIO==2.0.20
+Jetson.GPIO==2.1.9
 
 # RPi packages
 RPi.GPIO==0.7.1
