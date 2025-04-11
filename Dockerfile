@@ -128,8 +128,3 @@ COPY assets/etc/ld.so.conf.d/nvidia-tegra.conf /etc/ld.so.conf.d/nvidia-tegra.co
 
 # copy fonts (used by the text display renderer)
 COPY assets/usr/share/fonts/*.ttf /usr/share/fonts/
-
-# copy betaflight sitl binary and config files
-COPY assets/usr/bin/betaflight /usr/bin/betaflight
-RUN chown -R duckie:duckie /usr/bin/betaflight/ && chmod +x /usr/bin/betaflight/launch_betaflight.sh
-# RUN echo 'SUBSYSTEM=="i2c-dev", GROUP="duckie", MODE="0660"' > /etc/udev/rules.d/99-i2c.rules
