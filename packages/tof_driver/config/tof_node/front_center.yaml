@@ -12,3 +12,6 @@ connectors:
     # fallback: connected directly to the HUT (any model)
     -   bus: 1
         address: 0x29
+    # fallback: connected directly to the HUT (jetson_orin)
+    -   bus: 7
+        address: 0x29
