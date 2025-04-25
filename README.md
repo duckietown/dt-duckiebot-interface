@@ -14,6 +14,21 @@ It should not contain any high-level functionality.
 
 By default, `ROBOT_TYPE` is duckiebot, and you can set it to watchtower or traffic_light if you use them.
 
+## Jetson Orin Nano build
+
+The Jetson Orin Nano requires newer versions of several camera libraries to work. Since the same libraries are also used by the Jetson Nano and they are not backwards compatible there is in this repo a separate `Dockerfile.orin` to build the container for the Orin Nano. The command to do this is:
+
+```
+dts devel build -H jetson --file Dockerfile.orin --tag ente-arm64v8-orin --pull --no-cache
+```
+
+To push the image you can optionally add the `--push` flag.
+
+### Note
+
+In order to ensure compatibility this image should be built on a Jetson Orin Nano.
+
+
 ## Development
 There is a bug with numpy, it requires passing the variable `OPENBLAS_NUM_THREADS=1` to the container.
 
