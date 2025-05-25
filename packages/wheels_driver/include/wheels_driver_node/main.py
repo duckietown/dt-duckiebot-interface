@@ -66,8 +66,6 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
                                                              from_name(self.package, node_name, config))
         # emergency stop
         self.estop: bool = False
-        # autopilot
-        self.autopilot: bool = False
         # keep track of when the last command was received
         self.last_command_time: float = 0.0
         # queues
@@ -107,22 +105,6 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         executed: DifferentialPWM = DifferentialPWM(left=self.driver.left_pwm, right=self.driver.right_pwm)
         await self._pwm_executed_out.publish(executed.to_rawdata())
 
-    async def cb_autopilot(self, data: RawData):
-        """
-        Callback that enables/disables autopilot.
-        """
-        try:
-            msg: Boolean = Boolean.from_rawdata(data)
-        except DataDecodingError as e:
-            self.logerr(f"Failed to decode an incoming message: {e.message}")
-            return
-        # ---
-        self.autopilot = msg.data
-        if self.autopilot:
-            self.loginfo("Autopilot Activated")
-        else:
-            self.loginfo("Autopilot Deactivated")
-
     async def cb_estop(self, data: RawData):
         """
         Callback that enables/disables emergency stop.
@@ -152,8 +134,6 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         await pwm_in.subscribe(self.cb_wheels_pwm)
         # subscribe to emergency stop commands
         await estop_queue.subscribe(self.cb_estop)
-        # subscribe to autopilot commands
-        await autopilot_queue.subscribe(self.cb_autopilot)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
