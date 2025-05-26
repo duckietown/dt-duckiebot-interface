@@ -14,6 +14,17 @@
                 "--config=raspberry_pi_64/default",
                 "--arm-override"
             ],
+        },
+        {
+            "name": "Wheels Driver",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "/code/src/dt-duckiebot-interface/packages/wheels_driver/include/wheels_driver_node/main.py",
+            "console": "integratedTerminal",
+            "args": [
+                "--actuator-name=base",
+                "--config=base/default"
+            ],
         }
     ]
 }
