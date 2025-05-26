@@ -11,6 +11,5 @@ source /environment.sh
 
 exec python3 -m control_mapper_node.main
 
-
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE

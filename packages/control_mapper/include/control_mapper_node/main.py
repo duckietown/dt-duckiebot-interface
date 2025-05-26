@@ -35,7 +35,7 @@ class ControlMapperNode(Node):
         self.loginfo("Initial states published.")
         self.loginfo("Running...")
         await self.join()
-        self.loginfo("Shuting down...")
+        self.loginfo("Shutting down...")
 
 
 if __name__ == "__main__":
