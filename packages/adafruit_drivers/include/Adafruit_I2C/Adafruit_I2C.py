@@ -48,7 +48,7 @@ class Adafruit_I2C(object):
             # Force I2C1 (512MB Pi's)
             self.bus = smbus.SMBus(1)
 
-        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_ORIN_NANO:
+        elif ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_ORIN_NANO:
             # Force I2C7
             self.bus = smbus.SMBus(7)
 
