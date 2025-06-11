@@ -44,19 +44,17 @@ class Adafruit_I2C(object):
         # By default, the correct I2C bus is auto-detected using /proc/cpuinfo
         # Alternatively, you can hard-code the bus version below:
         # self.bus = smbus.SMBus(0); # Force I2C0 (early 256MB Pi's)
-        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_NANO:
-            # Force I2C1 (512MB Pi's)
-            self.bus = smbus.SMBus(1)
-
-        if ROBOT_HARDWARE == DeviceHardwareBrand.JETSON_ORIN_NANO:
-            # Force I2C7
-            self.bus = smbus.SMBus(7)
-
-        elif ROBOT_HARDWARE in [DeviceHardwareBrand.RASPBERRY_PI, DeviceHardwareBrand.RASPBERRY_PI_64]:
-            self.bus = smbus.SMBus(busnum if busnum >= 0 else Adafruit_I2C.getPiI2CBusNumber())
-
-        else:
-            raise Exception("Undefined Hardware!")
+        match ROBOT_HARDWARE:
+            case DeviceHardwareBrand.JETSON_NANO:
+                # Force I2C1 (512MB Pi's)
+                self.bus = smbus.SMBus(1)
+            case DeviceHardwareBrand.JETSON_ORIN_NANO:
+                # Force I2C7
+                self.bus = smbus.SMBus(7)
+            case DeviceHardwareBrand.RASPBERRY_PI | DeviceHardwareBrand.RASPBERRY_PI_64:
+                self.bus = smbus.SMBus(busnum if busnum >= 0 else Adafruit_I2C.getPiI2CBusNumber())
+            case _:
+                raise Exception("Undefined Hardware!")
 
         self.debug = debug
 
