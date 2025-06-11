@@ -12,8 +12,10 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
     This class exposes topics from the Duckiematrix to the robot interface.
     
     Currently supported topics:
-    - `{matrix_key}/pose/pose` (Transformation): the pose of the robot in the world frame.
+    - `{matrix_key}/pose` (Transformation): the pose of the robot in the world frame.
         Gets remapped to `{ROBOT_NAME}/pose`.
+    - `{matrix_key}/twist (Twist): the linear and angular velocity of the robot gets
+        published as a Twist message. Gets remapped to `{ROBOT_NAME}/twist
     """
 
     def __init__(self):
@@ -40,12 +42,12 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
         # expose queues to the switchboard
         await (self.switchboard / "pose").expose(ground_truth_pose_queue)
         await (self.switchboard / "twist").expose(ground_truth_twist_queue)
-
-        # Remap the pose topic from {matrix_key}/pose/pose to {ROBOT_NAME}/pose
+        print("using updated code")
+        #  Remap the pose topic from {matrix_key}/pose to {ROBOT_NAME}/pose
         await self.init_hil_support(
             self.context,
             src=None,
-            src_path=['pose'],
+            src_path=None,
             dst=self.context,
             dst_path=["out"],
             subpaths=["pose"],
@@ -53,11 +55,11 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
             # TODO: use transformations to set the frame in the message
         )
 
-        # Remap the twist topic from {matrix_key}/twist/twist to {ROBOT_NAME}/twist
+        # Remap the twist topic from {matrix_key}/twist to {ROBOT_NAME}/twist
         await self.init_hil_support(
             self.context,
             src=None,
-            src_path=['twist'],
+            src_path=None,
             dst=self.context,
             dst_path=["out"],
             subpaths=["twist"],
