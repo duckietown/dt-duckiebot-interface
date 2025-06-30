@@ -15,7 +15,7 @@ from .types import I2CConnector
 
 class CalibratedMPU6050:
     WHO_AM_I_REG = 0x75
-    ALLOWED_IDS = (0x68, 0x98)        # MPU-6050, ICM-2068x
+    ALLOWED_IDS = (0x68, 0x71, 0x98)        # MPU-6050, ICM-2068x
 
     def __init__(self, i2c_connectors: List[I2CConnector], cxt: DTPSContext, logger: Logger):
         self._i2c_connectors: List[I2CConnector] = i2c_connectors
