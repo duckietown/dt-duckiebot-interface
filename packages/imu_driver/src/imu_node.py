@@ -56,18 +56,53 @@ class IMUNode(DTROS):
         self._hardware_test = HardwareTestIMU()
 
     def _find_sensor(self) -> Optional[MPU6050]:
-        for connector in self._i2c_connectors:
-            conn: str = "[bus:{bus}](0x{address:02X})".format(**connector)
-            self.loginfo(f"Trying to open device on connector {conn}")
-            # Overwrite Adafruit default device ID
-            adafruit_mpu6050._MPU6050_DEVICE_ID = connector["address"]
+        """
+        Probe every (bus, address) pair listed in ~connectors.
+        Accept both genuine MPU-6050 (WHO_AM_I = 0x68) and the newer
+        ICM-2068x clones that return WHO_AM_I = 0x98.
+        """
+        # two IDs we know how to handle
+        ALLOWED_IDS = (0x68, 0x98)          # MPU-6050, ICM-2068x
+
+        for c in self._i2c_connectors:
+            bus_n = c["bus"]
+            addr  = c["address"]
+
+            self.loginfo(f"Trying IMU on I²C-{bus_n} @ 0x{addr:02X}")
+
+            # ---------- read WHO_AM_I first ----------
             try:
-                sensor = MPU6050(board.I2C())
-            except Exception:
-                self.logwarn(f"No devices found on connector {conn}, but the bus exists")
+                import smbus2
+                with smbus2.SMBus(bus_n) as bus:
+                    who = bus.read_byte_data(addr, 0x75)
+            except FileNotFoundError:
+                self.logwarn(f"I²C bus {bus_n} does not exist")
                 continue
-            self.loginfo(f"Device found on connector {conn}")
-            return sensor
+            except OSError as e:
+                self.logwarn(f"No response at 0x{addr:02X} on bus {bus_n}: {e}")
+                continue
+
+            if who not in ALLOWED_IDS:
+                self.logwarn(
+                    f"Unknown IMU (WHO_AM_I 0x{who:02X}) at 0x{addr:02X} on bus {bus_n}"
+                )
+                continue
+
+            # ---------- patch Adafruit driver and instantiate ----------
+            adafruit_mpu6050._MPU6050_DEVICE_ID = who       # make the sanity-check happy
+
+            try:
+                sensor = adafruit_mpu6050.MPU6050(board.I2C(), address=addr)
+                self.loginfo(
+                    f"Found IMU (ID 0x{who:02X}) on I²C-{bus_n} @ 0x{addr:02X}"
+                )
+                return sensor
+            except RuntimeError as e:
+                self.logwarn(f"Driver rejected device at 0x{addr:02X}: {e}")
+                continue
+
+        # nothing worked
+        return None
 
     def publish_data(self, event):
         # Message Blank
