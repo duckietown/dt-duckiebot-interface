@@ -62,7 +62,7 @@ class IMUNode(DTROS):
         ICM-2068x clones that return WHO_AM_I = 0x98.
         """
         # two IDs we know how to handle
-        ALLOWED_IDS = (0x68, 0x98)          # MPU-6050, ICM-2068x
+        ALLOWED_IDS = (0x68, 0x71, 0x98)          # MPU-6050, ICM-2068x
 
         for c in self._i2c_connectors:
             bus_n = c["bus"]
