@@ -72,6 +72,21 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
         self._renderer_reminder: DTReminder = DTReminder(frequency=self.configuration.renderer_frequency)
         # self._renderer = WheelEncoderSensorFragmentRenderer(self._side, self._accuracy)
 
+    def _transform_ticks(self, _rd: RawData) -> RawData:
+        try:
+            _msg: Integer = Integer.from_rawdata(_rd)
+        except DataDecodingError:
+            self.logwarn(f"Received invalid ticks message: {str(_rd)}")
+            return _rd
+        # emulate the virtual sensor
+        self._sensor.emulate_another_sensor(_msg.data)
+        # update the emulated count
+        _msg.data = self._sensor.ticks
+        # update the frame
+        _msg.header.frame = self._wheel_frame_id
+        # return the updated message
+        return _msg.to_rawdata()
+
     @property
     def period(self) -> float:
         return 1. / self.configuration.publish_frequency
@@ -114,21 +129,6 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
         await self.dtps_expose()
         # expose queues to the switchboard
         await (self.switchboard / "sensor" / "wheel_encoder" / self._side / "ticks").expose(queue)
-        # when HIL is enabled, we take the ticks from the remote and update the frame in a man-in-the-middle fashion
-        def _transform_ticks(_rd: RawData) -> RawData:
-            try:
-                _msg: Integer = Integer.from_rawdata(_rd)
-            except DataDecodingError:
-                self.logwarn(f"Received invalid ticks message: {str(_rd)}")
-                return _rd
-            # emulate the virtual sensor
-            self._sensor.emulate_another_sensor(_msg.data)
-            # update the emulated count
-            _msg.data = self._sensor.ticks
-            # update the frame
-            _msg.header.frame = self._wheel_frame_id
-            # return the updated message
-            return _msg.to_rawdata()
 
         # initialize HIL support
         await self.init_hil_support(
@@ -145,7 +145,7 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
             side=HardwareInTheLoopSide.SOURCE,
             # we use transformations to set the frame in the message and take the ticks from the remote
             transformations={
-                "ticks": _transform_ticks,
+                "ticks": self._transform_ticks,
             },
         )
         # read and publish
