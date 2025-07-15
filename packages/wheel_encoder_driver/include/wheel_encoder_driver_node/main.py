@@ -6,8 +6,6 @@ import dataclasses
 from typing import Optional
 from dtps import DTPSContext
 
-import numpy as np
-
 from dt_class_utils import DTReminder
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
