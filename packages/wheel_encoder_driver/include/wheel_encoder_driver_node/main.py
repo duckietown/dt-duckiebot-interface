@@ -3,19 +3,16 @@
 import argparse
 import asyncio
 import dataclasses
-import math
 from typing import Optional
 from dtps import DTPSContext
 
 import numpy as np
-from pytransform3d import rotations
 
 from dt_class_utils import DTReminder
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
 from dtps_http import RawData
-from duckietown_messages.geometry_3d.transformation import Transformation
 from duckietown_messages.standard.integer import Integer
 from duckietown_messages.utils.exceptions import DataDecodingError
 from duckietown_messages.actuators.differential_pwm import DifferentialPWM
@@ -120,11 +117,8 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
         self.loginfo("waiting for pwm_executed DTPS queue to come online")
         pwm_executed = await (self.switchboard / "actuator" / "wheels" / "base" /"pwm_executed").until_ready()
         await pwm_executed.subscribe(self.cb_pwm_executed)
-        # TODO: we need to make this global and rethink how (origin, target, transform) TFs are stored in the same queue
-        tf_queue = await (self.context / "out" / "tf").queue_create()
         # create publishers
         queue_publisher = await queue.publisher()
-        tf_queue_publisher = await tf_queue.publisher()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
