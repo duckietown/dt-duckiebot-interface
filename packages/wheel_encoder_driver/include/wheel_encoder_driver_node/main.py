@@ -159,24 +159,6 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
 
             self._sensor.emulated = self.hil_is_active
 
-            # publish frame updates
-            angle = (float(self._sensor.ticks) / float(self.configuration.resolution)) * 2 * math.pi
-            quat: np.ndarray = rotations.quaternion_from_euler([0, angle, 0], 0, 1, 2, False)
-            msg: Transformation = Transformation.from_pq(
-                pq=np.array([0, 0, 0, *quat]),
-                source=self._motor_frame_id,
-                target=self._wheel_frame_id,
-            )
-            await tf_queue_publisher.publish(msg.to_rawdata())
-
-            # publish display rendering (if it is a good time to do so)
-            if self._renderer_reminder.is_time():
-                # TODO: implement this
-                # self._renderer.update(distance_mm)
-                # msg = self._renderer.as_msg()
-                # self._display_pub.publish(msg)
-                pass
-
             # ---
             await asyncio.sleep(self.period)
 
