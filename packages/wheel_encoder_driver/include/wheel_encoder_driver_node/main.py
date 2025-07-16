@@ -3,19 +3,14 @@
 import argparse
 import asyncio
 import dataclasses
-import math
 from typing import Optional
 from dtps import DTPSContext
-
-import numpy as np
-from pytransform3d import rotations
 
 from dt_class_utils import DTReminder
 from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
 from dtps_http import RawData
-from duckietown_messages.geometry_3d.transformation import Transformation
 from duckietown_messages.standard.integer import Integer
 from duckietown_messages.utils.exceptions import DataDecodingError
 from duckietown_messages.actuators.differential_pwm import DifferentialPWM
@@ -72,6 +67,21 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
         self._renderer_reminder: DTReminder = DTReminder(frequency=self.configuration.renderer_frequency)
         # self._renderer = WheelEncoderSensorFragmentRenderer(self._side, self._accuracy)
 
+    def _transform_ticks(self, _rd: RawData) -> RawData:
+        try:
+            _msg: Integer = Integer.from_rawdata(_rd)
+        except DataDecodingError:
+            self.logwarn(f"Received invalid ticks message: {str(_rd)}")
+            return _rd
+        # emulate the virtual sensor
+        self._sensor.emulate_another_sensor(_msg.data)
+        # update the emulated count
+        _msg.data = self._sensor.ticks
+        # update the frame
+        _msg.header.frame = self._wheel_frame_id
+        # return the updated message
+        return _msg.to_rawdata()
+
     @property
     def period(self) -> float:
         return 1. / self.configuration.publish_frequency
@@ -105,30 +115,12 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
         self.loginfo("waiting for pwm_executed DTPS queue to come online")
         pwm_executed = await (self.switchboard / "actuator" / "wheels" / "base" /"pwm_executed").until_ready()
         await pwm_executed.subscribe(self.cb_pwm_executed)
-        # TODO: we need to make this global and rethink how (origin, target, transform) TFs are stored in the same queue
-        tf_queue = await (self.context / "out" / "tf").queue_create()
         # create publishers
         queue_publisher = await queue.publisher()
-        tf_queue_publisher = await tf_queue.publisher()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
         await (self.switchboard / "sensor" / "wheel_encoder" / self._side / "ticks").expose(queue)
-        # when HIL is enabled, we take the ticks from the remote and update the frame in a man-in-the-middle fashion
-        def _transform_ticks(_rd: RawData) -> RawData:
-            try:
-                _msg: Integer = Integer.from_rawdata(_rd)
-            except DataDecodingError:
-                self.logwarn(f"Received invalid ticks message: {str(_rd)}")
-                return _rd
-            # emulate the virtual sensor
-            self._sensor.emulate_another_sensor(_msg.data)
-            # update the emulated count
-            _msg.data = self._sensor.ticks
-            # update the frame
-            _msg.header.frame = self._wheel_frame_id
-            # return the updated message
-            return _msg.to_rawdata()
 
         # initialize HIL support
         await self.init_hil_support(
@@ -145,7 +137,7 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
             side=HardwareInTheLoopSide.SOURCE,
             # we use transformations to set the frame in the message and take the ticks from the remote
             transformations={
-                "ticks": _transform_ticks,
+                "ticks": self._transform_ticks,
             },
         )
         # read and publish
@@ -158,24 +150,6 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
                 await queue_publisher.publish(msg.to_rawdata())
 
             self._sensor.emulated = self.hil_is_active
-
-            # publish frame updates
-            angle = (float(self._sensor.ticks) / float(self.configuration.resolution)) * 2 * math.pi
-            quat: np.ndarray = rotations.quaternion_from_euler([0, angle, 0], 0, 1, 2, False)
-            msg: Transformation = Transformation.from_pq(
-                pq=np.array([0, 0, 0, *quat]),
-                source=self._motor_frame_id,
-                target=self._wheel_frame_id,
-            )
-            await tf_queue_publisher.publish(msg.to_rawdata())
-
-            # publish display rendering (if it is a good time to do so)
-            if self._renderer_reminder.is_time():
-                # TODO: implement this
-                # self._renderer.update(distance_mm)
-                # msg = self._renderer.as_msg()
-                # self._display_pub.publish(msg)
-                pass
 
             # ---
             await asyncio.sleep(self.period)
