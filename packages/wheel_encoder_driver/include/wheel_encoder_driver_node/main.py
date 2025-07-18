@@ -44,19 +44,19 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
             description="Wheel encoder sensor driver",
         )
         HardwareInTheLoopSupport.__init__(self)
-        self._side: str = side
+        self._side_name: str = side
 
         # load configuration
         self.configuration: WheelEncoderNodeConfiguration = (WheelEncoderNodeConfiguration.
                                                              from_name(self.package, node_name, config))
 
         # frames
-        self._motor_frame_id: str = f"{self._robot_name}/motor/{self._side}"
-        self._wheel_frame_id: str = f"{self._robot_name}/motor/{self._side}/wheel"
+        self._motor_frame_id: str = f"{self._robot_name}/motor/{self._side_name}"
+        self._wheel_frame_id: str = f"{self._robot_name}/motor/{self._side_name}/wheel"
 
         # create a WheelEncoder sensor handler
         self._sensor: WheelEncoderDriverAbs = WheelEncoderDriver(
-            self._side,
+            self._side_name,
             self.configuration.resolution,
             self.configuration.ticks_gpio,
             self.configuration.direction_gpio,
@@ -65,7 +65,7 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
 
         # create screen renderer
         self._renderer_reminder: DTReminder = DTReminder(frequency=self.configuration.renderer_frequency)
-        # self._renderer = WheelEncoderSensorFragmentRenderer(self._side, self._accuracy)
+        # self._renderer = WheelEncoderSensorFragmentRenderer(self._side_name, self._accuracy)
 
     def _transform_ticks(self, _rd: RawData) -> RawData:
         try:
@@ -97,7 +97,7 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
             self.logerr(f"Failed to decode PWM executed message: {e.message}")
 
         if get_robot_hardware() != RobotHardware.VIRTUAL:
-            if self._side == "left":
+            if self._side_name == "left":
                 if pwm_executed.left >= 0:
                     self._sensor.set_direction(WheelDirection.FORWARD)
                 else:
@@ -120,14 +120,14 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "wheel_encoder" / self._side / "ticks").expose(queue)
+        await (self.switchboard / "sensor" / "wheel_encoder" / self._side_name / "ticks").expose(queue)
 
         # initialize HIL support
         await self.init_hil_support(
             self.context,
             # source (this is the dynamic side, duckiematrix or nothing)
             src=None,
-            src_path=["sensor", "wheel_encoder", self._side],
+            src_path=["sensor", "wheel_encoder", self._side_name],
             # destination (this is us, static)
             dst=self.context,
             dst_path=["out"],
