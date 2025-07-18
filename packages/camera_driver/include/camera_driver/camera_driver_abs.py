@@ -18,7 +18,6 @@ from kvstore_utils import KVStore
 from turbojpeg import TurboJPEG
 from typing import Optional, cast
 
-
 @dataclasses.dataclass
 class CameraNodeConfiguration(NodeConfiguration):
     """
@@ -111,6 +110,21 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             format="jpeg",
             data=b""
         )
+        # info message
+        self.info_message: Camera = Camera(
+            header=Header(),
+            name=self.sensor_name,
+            type="camera",
+            simulated=False,
+            description="RGB8/JPEG Camera",
+            frame_id=self.frame_id,
+            frequency=self.configuration.framerate,
+            maker=self.configuration.maker,
+            model=self.configuration.model,
+            width=0,
+            height=0,
+            fov=math.radians(self.configuration.fov)
+        )
         # ---
         self.loginfo("[CameraNodeAbs]: Initialized.")
 
@@ -122,10 +136,13 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         if self.hil_is_active:
             return
         # publish jpeg message
+        timestamp = time.time()
+        self.jpeg_message.header.timestamp = timestamp
         self.jpeg_message.data = jpeg
         await self._jpeg_publisher.publish(self.jpeg_message.to_rawdata())
         # publish info message
-        await self._info_publisher.publish(self.info_message_raw_data)
+        self.info_message.header.timestamp = timestamp
+        await self._info_publisher.publish(self.info_message.to_rawdata())
         self._last_image_published_time = time.time()
         if not self._has_published:
             self.loginfo("Published the first image")
@@ -227,8 +244,12 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             self.logerr(f"Failed to process extrinsics calibration from KVStore:\n\nraw_data:\n{rd}\n\nexception:\n{e}")
             return
         # homography message
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
         homography_message: CameraExtrinsicCalibration = (
-            CameraExtrinsicCalibration(homography=(
+            CameraExtrinsicCalibration(
+                header=header,
+                homography=(
                 self.camera_model.H if self.camera_model.H is not None else []
             ))
         )
@@ -259,33 +280,24 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         except Exception as e:
             self.logerr(f"Failed to process intrinsics calibration from KVStore:\n\nraw_data:\n{rd}\n\nexception:\n{e}")
             return
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
         # parameters message
         parameters_message: CameraIntrinsicCalibration = CameraIntrinsicCalibration(
+            header=header,
             K=self.camera_model.K.flatten().tolist(),
             D=self.camera_model.D.flatten().tolist(),
             P=self.camera_model.P.flatten().tolist(),
             R=self.camera_model.R.flatten().tolist() if self.camera_model.R is not None else None
         )
         # info message
-        info_message: Camera = Camera(
-            header=Header(),
-            name=self.sensor_name,
-            type="camera",
-            simulated=False,
-            description="RGB8/JPEG Camera",
-            frame_id=self.frame_id,
-            frequency=self.configuration.framerate,
-            maker=self.configuration.maker,
-            model=self.configuration.model,
-            width=self.camera_model.width,
-            height=self.camera_model.height,
-            fov=math.radians(self.configuration.fov)
-        )
-        self.info_message_raw_data = info_message.to_rawdata()
+        self.info_message.header.timestamp = timestamp
+        self.info_message.width = self.camera_model.width
+        self.info_message.height = self.camera_model.height
         # publish parameters message
         await self._parameters_queue.publish(parameters_message.to_rawdata())
         # publish info message
-        await self._info_publisher.publish(self.info_message_raw_data)
+        await self._info_publisher.publish(self.info_message.to_rawdata())
         self.loginfo("Updated intrinsic camera calibration from KVStore.")
         self.loginfo("Published camera info")
 

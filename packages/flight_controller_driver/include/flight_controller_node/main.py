@@ -87,8 +87,8 @@ class FlightControllerNode(Node):
         # store the command to send to the flight controller, initialize as disarmed
         self._command = [ 1000, 1000, 1000, 1000,]
         self._last_command = [ 1000, 1000, 1000, 1000,]
-    
-    
+
+
     async def _switch_to_mode(self, mode: DroneMode, quiet: bool = False):
         """Update desired mode"""
         # switch mode
@@ -96,7 +96,7 @@ class FlightControllerNode(Node):
         #  it should be done according to the data coming from the flight controller
         self._current_mode = self._requested_mode
         self._requested_mode = mode
-        
+
         await self._mode_to_function[mode]()
 
     async def _transform_set_mode(
@@ -123,7 +123,7 @@ class FlightControllerNode(Node):
         await self.current_mode_queue.publish(
             DroneModeMsg(mode=Mode(self._requested_mode.value)).to_rawdata()
         )
-        
+
         # respond
         return DroneModeResponse(
             previous_mode=Mode(self._current_mode.value),
@@ -198,7 +198,7 @@ class FlightControllerNode(Node):
             float(cmd[2] / 1000 - 1.0),
             float(cmd[3] / 1000 - 1.0),
         ]
-    
+
     @staticmethod
     def denormalize_cmd(cmd : List[float]) -> List[int]:
         """
@@ -242,13 +242,13 @@ class FlightControllerNode(Node):
                 )
         except Exception as e:
             raise e
-        
+
         self._mode_to_function = {
             DroneMode.DISARMED: self._board.action.disarm,
             DroneMode.ARMED: self._board.action.arm,
             DroneMode.FLYING: self._board.action.arm,
         }
-        
+
         await self.dtps_init(self.configuration)
         # Create queues OUT
         executed_commands_queue: DTPSContext = await (
@@ -334,7 +334,7 @@ class FlightControllerNode(Node):
         await self._send_flight_commands(executed_commands_queue)
 
         await self._board.manual_control.start_altitude_control()
-        
+
         self.logger.info("Starting main control loop")
         async with executed_commands_queue.publisher_context() as cmd_pub:
             main_loop_start_time = time.perf_counter()
@@ -342,7 +342,7 @@ class FlightControllerNode(Node):
                 while not self.is_shutdown and self._event_loop is not None:
                     profiling_start_time = time.perf_counter()
                     loop_start_time = self._event_loop.time()
-                    
+
                     if self._arm_override:
                         await self.perform_arm_override(main_loop_start_time)
 
@@ -351,9 +351,9 @@ class FlightControllerNode(Node):
                         # break the loop if a safety check has failed
                         if self._should_disarm():
                             self.logger.info("Should disarm.")
-                            
+
                             await self._board.action.disarm()
-                            
+
                             # sleep for the remainder of the loop time
                             cycle_time = self._event_loop.time() - loop_start_time
                             await asyncio.sleep(dt - cycle_time)
@@ -381,7 +381,7 @@ class FlightControllerNode(Node):
 
                     # sleep for the remainder of the loop time
                     cycle_time = self._event_loop.time() - loop_start_time
-                    
+
                     await asyncio.sleep(max(0,dt-cycle_time))
                     self.logdebug(f"CMD frequency: {1/(time.perf_counter()-profiling_start_time)} Hz")
 
@@ -400,7 +400,7 @@ class FlightControllerNode(Node):
         if now - main_loop_start_time > 4:
             await self._switch_to_mode(DroneMode.FLYING, quiet=True)
             self.logger.info("Arm override enabled, flying the drone.")
-        
+
         if 4 > now - main_loop_start_time > 2:
             await self._switch_to_mode(DroneMode.ARMED, quiet=True)
             self.logger.info("Arm override enabled, arming the drone.")
@@ -417,9 +417,12 @@ class FlightControllerNode(Node):
         battery_queue = await (self.context / "out" / "battery").queue_create() # type: ignore
         await (self.switchboard / "sensor" / "battery").expose(battery_queue) # type: ignore
 
-        while not self.is_shutdown:    
+        while not self.is_shutdown:
             async for battery in self._board.telemetry.battery():
+                timestamp = time.time()
+                header = Header(timestamp=timestamp)
                 battery_msg = BatteryState(
+                    header=header,
                     voltage=battery.voltage_v,
                     present=True if battery.voltage_v > 6.0 else False,  # ~5V: power from Pi | 7V to 12.6V: power from battery
                 )
@@ -439,11 +442,14 @@ class FlightControllerNode(Node):
             # TODO: the ACTUATOR_OUTPUT_STATUS message is not available in Ardupilot,
             # we need to directly read the SERVO_OUTPUT_RAW mavlink message, however mavlink pass-through is not yet implemented in MAVSDK-Python
             # (https://github.com/mavlink/MAVSDK-Python/issues/580)
-            
+
             async for m in self._board.telemetry.actuator_output_status():
                 try:
                     # read PWM signals going to the motors
+                    timestamp = time.time()
+                    header = Header(timestamp=timestamp)
                     motor_msg = DroneMotorCommand(
+                        header=header,
                         minimum=self.configuration.motor_command_range[0],
                         maximum=self.configuration.motor_command_range[1],
                         m1=m.actuator[0],
@@ -466,7 +472,7 @@ class FlightControllerNode(Node):
         - X axis: -imu.acceleration_frd.forward_m_s2
         - Y axis: imu.acceleration_frd.right_m_s2
         - Z axis: imu.acceleration_frd.down_m_s2
-        
+
         The acceleration must be multiplied by 9.81/1000 to convert it to m/s^2.
         """
 
@@ -476,14 +482,14 @@ class FlightControllerNode(Node):
         await (self.switchboard / "sensor" / "imu" / "data").expose(data_queue)  # type: ignore
 
         await self._board.telemetry.set_rate_scaled_imu(rate_hz=50)
-        
+
         imu_iter = self._board.telemetry.scaled_imu()
 
         async with data_queue.publisher_context() as data_pub:
             while not self.is_shutdown:
                 async for euler_angles in self._board.telemetry.attitude_euler():
                     try:
-                        
+
                         imu: MAVLINKImu = await imu_iter.__anext__()
 
 
@@ -496,7 +502,7 @@ class FlightControllerNode(Node):
                                 y=a_y,
                                 z=a_z,
                             )
-                        
+
                         om_x=-imu.angular_velocity_frd.forward_rad_s*mrad_s_TO_rad_s
                         om_y=imu.angular_velocity_frd.right_rad_s*mrad_s_TO_rad_s
                         om_z=imu.angular_velocity_frd.down_rad_s*mrad_s_TO_rad_s
@@ -519,8 +525,10 @@ class FlightControllerNode(Node):
                         self.logwarn(f"IMU Comm Loss: {e}")
                     else:
                         # pack Imu data
+                        timestamp = time.time()
+                        header = Header(frame=self._imu_frame_id, timestamp=timestamp)
                         imu_message = Imu(
-                            header=Header(frame=self._imu_frame_id),
+                            header=header,
                             angular_velocity=angular_velocity_message,
                             linear_acceleration=acceleration_message,
                             orientation=orientation_msg,
@@ -645,11 +653,11 @@ class FlightControllerNode(Node):
         Disarm the drone and quits the flight controller node.
         """
         self.loginfo("Shutting down the flight controller node")
- 
+
         asyncio.run(self._switch_to_mode(DroneMode.DISARMED))
         sys.exit()
 
-        
+
 def main():
 
     parser: argparse.ArgumentParser = argparse.ArgumentParser()

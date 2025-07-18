@@ -5,6 +5,7 @@ import dataclasses
 import os
 from pathlib import Path
 from typing import Union, Optional, Dict, Awaitable, Callable, List
+import time
 
 import argparse
 import netifaces
@@ -26,6 +27,7 @@ from dt_node_utils.node import Node
 from dt_robot_utils import get_robot_name, get_robot_configuration
 from dtps.ergo_ui import PublisherInterface
 from duckietown_messages.actuators.display_fragments import DisplayFragments
+from duckietown_messages.standard.header import Header
 from duckietown_messages.utils.image.pil import pil_to_np
 
 
@@ -125,7 +127,10 @@ class DisplayRendererNode(Node):
             await asyncio.sleep(dt)
 
     async def publish(self, renderer: AbsDisplayFragmentRenderer):
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
         await self._fragments.publish(DisplayFragments(
+            header=header,
             fragments=renderer.fragments
         ).to_rawdata())
 

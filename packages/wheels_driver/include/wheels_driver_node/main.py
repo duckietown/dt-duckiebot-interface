@@ -17,6 +17,7 @@ from dt_node_utils.node import Node
 from dt_robot_utils import RobotHardware, get_robot_hardware
 from duckietown_messages.actuators.differential_pwm import DifferentialPWM
 from duckietown_messages.standard.boolean import Boolean
+from duckietown_messages.standard.header import Header
 from duckietown_messages.utils.exceptions import DataDecodingError
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from wheels_driver.wheels_driver_abs import WheelsDriverAbs, WheelPWMConfiguration
@@ -99,10 +100,11 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         self.driver.set_wheels_speed(left=pwm_left, right=pwm_right)
 
         # publish out the filtered signals
-        filtered: DifferentialPWM = DifferentialPWM(left=pwm_left, right=pwm_right)
+        header = Header(timestamp=self.last_command_time)
+        filtered: DifferentialPWM = DifferentialPWM(header=header, left=pwm_left, right=pwm_right)
         await self._pwm_filtered_out.publish(filtered.to_rawdata())
         # publish out the executed signals
-        executed: DifferentialPWM = DifferentialPWM(left=self.driver.left_pwm, right=self.driver.right_pwm)
+        executed: DifferentialPWM = DifferentialPWM(header=header, left=self.driver.left_pwm, right=self.driver.right_pwm)
         await self._pwm_executed_out.publish(executed.to_rawdata())
 
     async def cb_estop(self, data: RawData):
@@ -157,8 +159,10 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
             side=HardwareInTheLoopSide.DESTINATION
         )
         # publish the initial state
-        await pwm_in.publish(DifferentialPWM(left=0, right=0).to_rawdata())
-        await estop_queue.publish(Boolean(data=False).to_rawdata())
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
+        await pwm_in.publish(DifferentialPWM(header=header, left=0, right=0).to_rawdata())
+        await estop_queue.publish(Boolean(header=header, data=False).to_rawdata())
         # run forever
         await self.join()
 

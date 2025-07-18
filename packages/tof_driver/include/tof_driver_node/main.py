@@ -37,7 +37,7 @@ class ToFNodeConfiguration(NodeConfiguration):
         address: int
 
     sensor_name: str
-    sensor_model: str 
+    sensor_model: str
     frequency: int
     mode: str
     display_fragment_frequency: int
@@ -81,9 +81,9 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         # compute frequency
         self._frequency: int = self.configuration.frequency
         max_frequency = min(self.configuration.frequency, int(1.0 / self._accuracy.timing_budget))
-        
+
         assert max_frequency > 0, "The timing budget is too low."
-        
+
         if self.configuration.frequency > max_frequency:
             self.logger.warning(
                 f"Frequency of {self.configuration.frequency}Hz not supported. The selected mode "
@@ -172,9 +172,11 @@ class ToFNode(Node, HardwareInTheLoopSupport):
             # TODO: use transformations to set the frame in the message
         )
         # publish info about the sensor
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
         msg = RangeFinder(
             # -- base
-            header=Header(),
+            header=header,
             # -- sensor
             name=self.sensor_name,
             type="time-of-flight",
@@ -221,8 +223,10 @@ class ToFNode(Node, HardwareInTheLoopSupport):
                 continue
 
             # pack observation into a message
+            timestamp = time.time()
+            header = Header(frame=self.frame_id, timestamp=timestamp)
             msg = Range(
-                header=Header(frame=self.frame_id),
+                header=header,
                 data=data,
             )
             await range_publisher.publish(msg.to_rawdata())
@@ -236,7 +240,7 @@ class ToFNode(Node, HardwareInTheLoopSupport):
     async def worker_display(self):
         # wait for switchboard
         await self.switchboard_ready.wait()
-        
+
         if get_robot_type() != RobotType.DUCKIEBOT or get_robot_hardware() == RobotHardware.VIRTUAL:
             # skip display renderer if not a Duckiebot
             return
@@ -302,7 +306,10 @@ class ToFSensorFragmentRenderer(MonoImageFragmentRenderer):
         self._buffer[self._title_h:, :] = reading
 
     async def publish(self, _):
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
         await self._publisher.publish(DisplayFragments(
+            header=header,
             fragments=self.fragments
         ).to_rawdata())
 

@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """The Control Mapper node."""
 
+import time
+
 from dt_node_utils import NodeType
 from dt_node_utils.node import Node
 from duckietown_messages.standard.boolean import Boolean
+from duckietown_messages.standard.header import Header
 
 
 class ControlMapperNode(Node):
@@ -30,7 +33,9 @@ class ControlMapperNode(Node):
         await self.dtps_expose()
         self.loginfo("Node exposed to switchboard.")
         self.loginfo("Publishing initial states...")
-        autopilot_message = Boolean(data=False).to_rawdata()
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
+        autopilot_message = Boolean(header=header, data=False).to_rawdata()
         await autopilot_queue.publish(autopilot_message)
         self.loginfo("Initial states published.")
         self.loginfo("Running...")
