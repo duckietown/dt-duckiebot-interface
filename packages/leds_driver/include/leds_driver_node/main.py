@@ -13,6 +13,7 @@ from dtps import DTPSContext
 from dtps_http import RawData
 from duckietown_messages.actuators.car_lights import CarLights
 from duckietown_messages.colors.rgba import RGBA
+from duckietown_messages.standard.header import Header
 from duckietown_messages.utils.exceptions import DataDecodingError
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from leds_driver.leds_driver_abs import LEDsDriverAbs
@@ -105,7 +106,10 @@ class LEDsDriverNode(Node, HardwareInTheLoopSupport):
             side=HardwareInTheLoopSide.DESTINATION
         )
         # apply initial state
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
         msg: CarLights = CarLights(
+            header=header,
             front_left=RGBA.from_list(self.configuration.initial_pattern["front_left"]),
             front_right=RGBA.from_list(self.configuration.initial_pattern["front_right"]),
             back_left=RGBA.from_list(self.configuration.initial_pattern["back_left"]),

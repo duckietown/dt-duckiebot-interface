@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 import dataclasses
+import time
 from math import pi
 from typing import Optional, List
 
@@ -83,7 +84,7 @@ class IMUNode(Node):
         accelerations_queue = await (self.context / "out" / "acceleration" / "linear").queue_create()
         velocities_queue = await (self.context / "out" / "velocity" / "angular").queue_create()
         temperature_queue = await (self.context / "out" / "temperature").queue_create()
-        # TODO: is raw the appropriate name here? In the context of IMUs a raw value is 
+        # TODO: is raw the appropriate name here? In the context of IMUs a raw value is
         #       typically one that is specified in the IMU's own measurement units, which are
         #       then converted to SI measurement units (m/s, rad/s, etc.) through an IMU-specific
         #       conversion factor. Is this the case here?
@@ -105,18 +106,20 @@ class IMUNode(Node):
         while not self.is_shutdown:
             try:
                 # read data from the sensors and pack into messages
+                timestamp = time.time()
+                header = Header(timestamp=timestamp)
                 acc: List[float] = self._sensor.linear_accelerations
-                accelerations: LinearAccelerations = LinearAccelerations(x=acc[0], y=acc[1], z=acc[2])
+                accelerations: LinearAccelerations = LinearAccelerations(header=header, x=acc[0], y=acc[1], z=acc[2])
                 vel: List[float] = self._sensor.angular_velocities
-                velocities: AngularVelocities = AngularVelocities(x=vel[0]*DEG2RAD, y=vel[1]*DEG2RAD, z=vel[2]*DEG2RAD)
+                velocities: AngularVelocities = AngularVelocities(header=header, x=vel[0]*DEG2RAD, y=vel[1]*DEG2RAD, z=vel[2]*DEG2RAD)
                 temp: float = self._sensor.temperature
-                temperature: Temperature = Temperature(data=temp)
+                temperature: Temperature = Temperature(header=header, data=temp)
             except Exception as e:
                 self.logwarn(f"IMU Comm Loss: {e}")
             else:
                 # pack raw data
                 imu_message = Imu(
-                    header=Header(frame=self._frame_id),
+                    header=Header(frame=self._frame_id, timestamp=timestamp),
                     angular_velocity=velocities,
                     linear_acceleration=accelerations,
                 )

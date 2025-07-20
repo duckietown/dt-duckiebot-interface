@@ -4,6 +4,8 @@ import argparse
 import asyncio
 import dataclasses
 from typing import Optional
+import time
+
 from dtps import DTPSContext
 
 from dt_class_utils import DTReminder
@@ -12,6 +14,7 @@ from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
 from dtps_http import RawData
 from duckietown_messages.standard.integer import Integer
+from duckietown_messages.standard.header import Header
 from duckietown_messages.utils.exceptions import DataDecodingError
 from duckietown_messages.actuators.differential_pwm import DifferentialPWM
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
@@ -144,8 +147,9 @@ class WheelEncoderNode(Node, HardwareInTheLoopSupport):
         while not self.is_shutdown:
             if not self.hil_is_active:
                 # pack observation into a message
-                msg: Integer = Integer(data=self._sensor.ticks)
-                msg.header.frame = self._wheel_frame_id
+                timestamp = time.time()
+                header = Header(frame=self._wheel_frame_id, timestamp=timestamp)
+                msg: Integer = Integer(header=header, data=self._sensor.ticks)
                 # publish readings
                 await queue_publisher.publish(msg.to_rawdata())
 

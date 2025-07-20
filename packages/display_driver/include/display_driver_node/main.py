@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import dataclasses
+import time
 
 import argparse
 
@@ -18,6 +19,7 @@ from duckietown_messages.actuators.display_fragment import DisplayFragment
 from duckietown_messages.actuators.display_fragments import DisplayFragments
 from duckietown_messages.sensors.button_event import ButtonEvent, InteractionEvent
 from duckietown_messages.sensors.image import Image
+from duckietown_messages.standard.header import Header
 from duckietown_messages.geometry_2d.roi import ROI
 from duckietown_messages.utils.exceptions import DataDecodingError
 
@@ -119,7 +121,10 @@ class DisplayNode(Node):
         # expose queues to the switchboard
         await (self.switchboard / "actuator" / "display" / self.actuator_name / "fragments").expose(fragments)
         # publish the initial state
+        timestamp = time.time()
+        header = Header(timestamp=timestamp)
         await fragments.publish(DisplayFragments(
+            header=header,
             fragments=(BOOTING_SCREEN, SHUTTING_DOWN_SCREEN)
         ).to_rawdata())
         # run forever
