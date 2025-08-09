@@ -1,7 +1,7 @@
 from setuptools import setup
 
 package_name = 'button_driver'
-packages = ["button_driver", "button_driver_node"]
+packages = ["button_driver", "button_driver_node", "button_hardware_test"]
 
 setup(
     name=package_name,
