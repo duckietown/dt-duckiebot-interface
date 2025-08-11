@@ -43,7 +43,7 @@ class SSD1306Display:
         self._page = PAGE_INIT
         self._pages = {PAGE_INIT, PAGE_SHUTDOWN}
         # create buffers
-        self._fragments = {k: dict() for k in self._REGIONS}
+        self.fragments = {k: dict() for k in self._REGIONS}
         self._buffer = np.zeros(
             (
                 self._REGIONS[DisplayRegionID.FULL].height,
@@ -51,7 +51,7 @@ class SSD1306Display:
             ),
             dtype=np.uint8,
         )
-        self._fragments_lock = Semaphore()
+        self.fragments_lock = Semaphore()
         self._device_lock = Semaphore()
         # create internal renderers
         self._pager_renderer = PagerFragmentRenderer()
@@ -62,12 +62,12 @@ class SSD1306Display:
 
     @page.setter
     def page(self, page: int):
-        with self._fragments_lock:
+        with self.fragments_lock:
             self._page = page
         self.render()
 
     def next_page(self):
-        with self._fragments_lock:
+        with self.fragments_lock:
             pages = sorted([p for p in self._pages if p not in (PAGE_INIT, PAGE_SHUTDOWN)])
             # move to the next page
             try:
@@ -116,8 +116,8 @@ class SSD1306Display:
         # threshold image at mid-range
         img = (img > 125).astype(np.uint8) * 255
         # list fragment for rendering
-        with self._fragments_lock:
-            self._fragments[region_id][fragment.name] = DisplayFragment(
+        with self.fragments_lock:
+            self.fragments[region_id][fragment.name] = DisplayFragment(
                 data=img, roi=roi, page=fragment.page, z=fragment.z, _ttl=fragment.ttl, _time=time.time()
             )
 
@@ -131,11 +131,11 @@ class SSD1306Display:
             self.render()
 
     def render(self):
-        with self._fragments_lock:
+        with self.fragments_lock:
             # clean pages
             self._pages = {PAGE_HOME if self._inited else PAGE_INIT}
             # remove expired fragments and annotate how many pages we need
-            for region, fragments in self._fragments.items():
+            for region, fragments in self.fragments.items():
                 for fragment_id in set(fragments.keys()):
                     fragment = fragments[fragment_id]
                     if fragment.ttl() <= 0:
@@ -144,7 +144,7 @@ class SSD1306Display:
                             f"region `{region}` w/ TTL `{fragment.given_ttl}` "
                             f"expired, remove!"
                         )
-                        del self._fragments[region][fragment_id]
+                        del self.fragments[region][fragment_id]
                     if fragment.page != ALL_PAGES:
                         self._pages.add(fragment.page)
             # sanitize page selector
@@ -156,7 +156,7 @@ class SSD1306Display:
                 region: [
                     fragment for fragment in fragments.values() if fragment.page in [ALL_PAGES, self._page]
                 ]
-                for region, fragments in self._fragments.items()
+                for region, fragments in self.fragments.items()
             }
         # add pager fragment
         self._pager_renderer.update(self._pages, self._page)

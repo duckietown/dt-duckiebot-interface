@@ -5,4 +5,5 @@ PAGE_HOME = 1
 PAGE_ROBOT_INFO = 10
 # NOTE: leave 10 pages for the robot info
 PAGE_TOF = 20
+PAGE_TEST_DISPLAY = 253
 PAGE_SHUTDOWN = 254
