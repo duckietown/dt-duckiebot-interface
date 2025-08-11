@@ -9,6 +9,7 @@ import argparse
 
 from button_driver import ButtonEvent, ButtonDriver
 from dt_device_utils.device import shutdown_device
+from button_hardware_test import ButtonHardwareTest
 
 # from display_renderer import (
 #     PAGE_SHUTDOWN,
@@ -52,7 +53,7 @@ class ButtonDriverNode(Node):
         self.configuration: ButtonDriverNodeConfiguration = (ButtonDriverNodeConfiguration.
                                                              from_name(self.package, node_name, config))
         # queues
-        self._queue: Optional[DTPSContext] = None
+        self._event_queue: Optional[DTPSContext] = None
         # create a ButtonDriver sensor handler
         self._sensor: ButtonDriver = ButtonDriver(
             self.configuration.led_gpio_pin,
@@ -68,7 +69,7 @@ class ButtonDriverNode(Node):
 
     def _event_cb(self, event: ButtonEvent):
         # wait for DTPS to initialize
-        if self._queue is None:
+        if self._event_queue is None:
             return
         # create partial event
         if event == ButtonEvent.PRESS:
@@ -102,7 +103,7 @@ class ButtonDriverNode(Node):
             header=header,
             type=event,
         ).to_rawdata()
-        await self._queue.publish(rdata)
+        await self._event_queue.publish(rdata)
         # return control to the event loop
         await asyncio.sleep(0.01)
         # react
@@ -121,15 +122,23 @@ class ButtonDriverNode(Node):
     async def worker(self):
         await self.dtps_init(self.configuration)
         # create sensor queue
-        self._queue = await (self.context / "out" / "event").queue_create()
+        self._event_queue = await (self.context / "out" / "event").queue_create()
+        test_in_queue = await (self.context / "test" / "in").queue_create()
+        test_out_queue = await (self.context / "test" / "out").queue_create()
+        # test
+        hardware_test = ButtonHardwareTest(self, test_out_queue, self._sensor)
+        # subscriptions
+        await test_in_queue.subscribe(hardware_test.on_run_test)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "power_button" / self.sensor_name / "event").expose(self._queue)
+        await (self.switchboard / "sensor" / "power_button" / self.sensor_name / "event").expose(self._event_queue)
+        await (self.switchboard / "sensor" / "power_button" / self.sensor_name / "test" / "in").expose(test_in_queue)
+        await (self.switchboard / "sensor" / "power_button" / self.sensor_name / "test" / "out").expose(test_out_queue)
         # publish no event
         timestamp = time.time()
         header = Header(timestamp=timestamp)
-        await self._queue.publish(ButtonEventMsg(
+        await self._event_queue.publish(ButtonEventMsg(
             header=header,
             type=InteractionEvent.NOTHING,
         ).to_rawdata())
