@@ -9,7 +9,6 @@ from dt_node_utils import NodeType
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.node import Node
 from dt_robot_utils import RobotHardware, get_robot_hardware
-from dtps import DTPSContext
 from dtps_http import RawData
 from duckietown_messages.actuators.car_lights import CarLights
 from duckietown_messages.colors.rgba import RGBA
@@ -17,6 +16,7 @@ from duckietown_messages.standard.header import Header
 from duckietown_messages.utils.exceptions import DataDecodingError
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from leds_driver.leds_driver_abs import LEDsDriverAbs
+from led_hardware_test import LEDHardwareTest
 
 if get_robot_hardware() == RobotHardware.VIRTUAL:
     from leds_driver.virtual_leds_driver import VirtualLEDsDriver
@@ -24,6 +24,8 @@ if get_robot_hardware() == RobotHardware.VIRTUAL:
 else:
     from leds_driver.leds_driver import PWMLEDsDriver
     LEDsDriver: Type[LEDsDriverAbs] = PWMLEDsDriver
+
+LED_TUPLE = ("front_left", "middle", "front_right", "back_right", "back_left")
 
 
 @dataclasses.dataclass
@@ -53,11 +55,15 @@ class LEDsDriverNode(Node, HardwareInTheLoopSupport):
                                                            from_name(self.package, node_name, config))
         # setup the driver
         self.driver: LEDsDriverAbs = LEDsDriver(debug=False)
+        # running test flag
+        self.running_test: bool = False
 
     async def cb_pattern(self, data: RawData):
         """
         Callback that implements a given light pattern.
         """
+        if self.running_test:
+            return
         try:
             msg: CarLights = CarLights.from_rawdata(data)
         except DataDecodingError as e:
@@ -84,13 +90,26 @@ class LEDsDriverNode(Node, HardwareInTheLoopSupport):
     async def worker(self):
         await self.dtps_init(self.configuration)
         # create RGB queue IN
-        rgb_in: DTPSContext = await (self.context / "in" / "pattern").queue_create()
-        # subscribe to RGB patterns
-        await rgb_in.subscribe(self.cb_pattern)
+        pattern_queue = await (self.context / "in" / "pattern").queue_create()
+        test_front_in_queue = await (self.context / "test" / "front" / "in").queue_create()
+        test_front_out_queue = await (self.context / "test" / "front" / "out").queue_create()
+        test_back_in_queue = await (self.context / "test" / "back" / "in").queue_create()
+        test_back_out_queue = await (self.context / "test" / "back" / "out").queue_create()
+        # tests
+        front_hardware_test = LEDHardwareTest(self, test_front_out_queue, self.driver, LED_TUPLE, self.configuration.initial_pattern)
+        back_hardware_test = LEDHardwareTest(self, test_back_out_queue, self.driver, LED_TUPLE, self.configuration.initial_pattern)
+        # subscriptions
+        await pattern_queue.subscribe(self.cb_pattern)
+        await test_front_in_queue.subscribe(front_hardware_test.on_run_test)
+        await test_back_in_queue.subscribe(back_hardware_test.on_run_test)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "actuator" / "lights" / self.actuator_name / "pattern").expose(rgb_in)
+        await (self.switchboard / "actuator" / "lights" / self.actuator_name / "pattern").expose(pattern_queue)
+        await (self.switchboard / "actuator" / "lights" / self.actuator_name / "test" / "front" / "in").expose(test_front_in_queue)
+        await (self.switchboard / "actuator" / "lights" / self.actuator_name / "test" / "front" / "out").expose(test_front_out_queue)
+        await (self.switchboard / "actuator" / "lights" / self.actuator_name / "test" / "back" / "in").expose(test_back_in_queue)
+        await (self.switchboard / "actuator" / "lights" / self.actuator_name / "test" / "back" / "out").expose(test_back_out_queue)
         # initialize HIL support
         await self.init_hil_support(
             self.context,
@@ -115,7 +134,7 @@ class LEDsDriverNode(Node, HardwareInTheLoopSupport):
             back_left=RGBA.from_list(self.configuration.initial_pattern["back_left"]),
             back_right=RGBA.from_list(self.configuration.initial_pattern["back_right"]),
         )
-        await rgb_in.publish(msg.to_rawdata())
+        await pattern_queue.publish(msg.to_rawdata())
         # run forever
         await self.join()
 

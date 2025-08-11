@@ -1,7 +1,7 @@
 from setuptools import setup
 
 package_name = 'leds_driver'
-packages = ["leds_driver", "leds_driver_node"]
+packages = ["leds_driver", "leds_driver_node", "led_hardware_test"]
 
 setup(
     name=package_name,

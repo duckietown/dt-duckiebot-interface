@@ -12,6 +12,9 @@ luma.oled==3.13.0
 # dependencies for the IMU sensor
 adafruit-circuitpython-mpu6050==1.2.3
 
+# dependencies for the LED hardware test
+colorir==2.0.1
+
 # dependency for the flight controller
 mavsdk==2.8.3
 
