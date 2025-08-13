@@ -10,12 +10,12 @@ from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
     """
     This class exposes topics from the Duckiematrix to the robot interface.
-    
+
     Currently supported topics:
-    - `{matrix_key}/pose` (Transformation): the pose of the robot in the world frame.
-        Gets remapped to `{ROBOT_NAME}/pose`.
-    - `{matrix_key}/twist (Twist): the linear and angular velocity of the robot gets
-        published as a Twist message. Gets remapped to `{ROBOT_NAME}/twist
+    - `{matrix_key}/state/pose` (Transformation): the pose of the robot in the world frame.
+        Gets remapped to `{ROBOT_NAME}/state/pose`.
+    - `{matrix_key}/state/twist` (Twist): the linear and angular velocity of the robot gets
+        published as a Twist message. Gets remapped to `{ROBOT_NAME}/state/twist`.
     """
 
     def __init__(self):
@@ -29,44 +29,29 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
 
     async def worker(self):
         await self.dtps_init()
-        # create pose queues
-        gt_pose_context = self.context / "out" / "pose"
-        ground_truth_pose_queue = await (gt_pose_context).queue_create()
-
-        # create twist queues
-        gt_twist_context = self.context / "out" / "twist"
-        ground_truth_twist_queue = await (gt_twist_context).queue_create()
-
+        # create queues
+        pose_queue = await (self.context / "out" / "state" / "pose").queue_create()
+        twist_queue = await (self.context / "out" / "state" / "twist").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "pose").expose(ground_truth_pose_queue)
-        await (self.switchboard / "twist").expose(ground_truth_twist_queue)
-        print("using updated code")
-        #  Remap the pose topic from {matrix_key}/pose to {ROBOT_NAME}/pose
+        await (self.switchboard / "state" / "pose").expose(pose_queue)
+        await (self.switchboard / "state" / "twist").expose(twist_queue)
+        # initialize HIL support
         await self.init_hil_support(
             self.context,
+            # source (this is the dynamic side, duckiematrix or nothing)
             src=None,
-            src_path=None,
+            src_path=["state"],
+            # destination (this is us, static)
             dst=self.context,
-            dst_path=["out"],
-            subpaths=["pose"],
+            dst_path=["out", "state"],
+            # paths to connect when a remote is set
+            subpaths=["pose", "twist"],
+            # which side is the re-pluggable one
             side=HardwareInTheLoopSide.SOURCE,
             # TODO: use transformations to set the frame in the message
         )
-
-        # Remap the twist topic from {matrix_key}/twist to {ROBOT_NAME}/twist
-        await self.init_hil_support(
-            self.context,
-            src=None,
-            src_path=None,
-            dst=self.context,
-            dst_path=["out"],
-            subpaths=["twist"],
-            side=HardwareInTheLoopSide.SOURCE,
-            # TODO: use transformations to set the frame in the message
-        )
-
         while not self.is_shutdown:
             # do nothing if HIL is active
             if self.hil_is_active:
