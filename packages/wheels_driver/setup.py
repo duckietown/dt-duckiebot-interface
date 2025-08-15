@@ -1,7 +1,7 @@
 from setuptools import setup
 
 package_name = 'wheels_driver'
-packages = ['wheels_driver', 'wheels_driver_node']
+packages = ["wheels_driver", "wheels_driver_node", "wheels_hardware_test"]
 
 setup(
     name=package_name,

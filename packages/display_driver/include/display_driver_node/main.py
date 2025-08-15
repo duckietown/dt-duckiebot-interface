@@ -23,6 +23,8 @@ from duckietown_messages.standard.header import Header
 from duckietown_messages.geometry_2d.roi import ROI
 from duckietown_messages.utils.exceptions import DataDecodingError
 
+from display_hardware_test import DisplayHardwareTest
+
 
 @dataclasses.dataclass
 class DisplayNodeConfiguration(NodeConfiguration):
@@ -78,11 +80,15 @@ class DisplayNode(Node):
             self.configuration.frequency,
             self.logger
         )
+        # running test flag
+        self.running_test: bool = False
 
     async def cb_fragments(self, data: RawData):
         """
         Callback processing incoming fragments.
         """
+        if self.running_test:
+            return
         try:
             fragments: DisplayFragments = DisplayFragments.from_rawdata(data)
         except DataDecodingError as e:
@@ -96,6 +102,8 @@ class DisplayNode(Node):
         """
         Callback processing incoming button events.
         """
+        if self.running_test:
+            return
         try:
             event: ButtonEvent = ButtonEvent.from_rawdata(data)
         except DataDecodingError as e:
@@ -113,17 +121,24 @@ class DisplayNode(Node):
     async def worker(self):
         await self.dtps_init(self.configuration)
         # create fragments queue
-        fragments: DTPSContext = await (self.context / "in" / "fragments").queue_create()
+        self.fragments_queue = await (self.context / "in" / "fragments").queue_create()
+        test_in_queue = await (self.context / "test" / "in").queue_create()
+        test_out_queue = await (self.context / "test" / "out").queue_create()
+        # test
+        hardware_test = DisplayHardwareTest(self, test_out_queue, self._display)
         # subscribe to fragments
-        await fragments.subscribe(self.cb_fragments)
+        await self.fragments_queue.subscribe(self.cb_fragments)
+        await test_in_queue.subscribe(hardware_test.on_run_test)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "actuator" / "display" / self.actuator_name / "fragments").expose(fragments)
+        await (self.switchboard / "actuator" / "display" / self.actuator_name / "fragments").expose(self.fragments_queue)
+        await (self.switchboard / "actuator" / "display" / self.actuator_name / "test" / "in").expose(test_in_queue)
+        await (self.switchboard / "actuator" / "display" / self.actuator_name / "test" / "out").expose(test_out_queue)
         # publish the initial state
         timestamp = time.time()
         header = Header(timestamp=timestamp)
-        await fragments.publish(DisplayFragments(
+        await self.fragments_queue.publish(DisplayFragments(
             header=header,
             fragments=(BOOTING_SCREEN, SHUTTING_DOWN_SCREEN)
         ).to_rawdata())

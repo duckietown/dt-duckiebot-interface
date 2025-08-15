@@ -20,7 +20,9 @@ from duckietown_messages.standard.boolean import Boolean
 from duckietown_messages.standard.header import Header
 from duckietown_messages.utils.exceptions import DataDecodingError
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
+
 from wheels_driver.wheels_driver_abs import WheelsDriverAbs, WheelPWMConfiguration
+from wheels_hardware_test import WheelsHardwareTest
 
 is_virtual: bool = get_robot_hardware() == RobotHardware.VIRTUAL
 
@@ -77,11 +79,15 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
             left_config=WheelPWMConfiguration(),
             right_config=WheelPWMConfiguration(),
         )
+        # running test flag
+        self.running_test: bool = False
 
     async def cb_wheels_pwm(self, data: RawData):
         """
         Callback that sets wheels' PWM signals.
         """
+        if self.running_test:
+            return
         try:
             pwms: DifferentialPWM = DifferentialPWM.from_rawdata(data)
         except DataDecodingError as e:
@@ -125,17 +131,23 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
 
     async def worker(self):
         await self.dtps_init(self.configuration)
-        # create PWM queue IN
+        # queues
         pwm_in: DTPSContext = await (self.context / "in" / "pwm").queue_create()
-        # create emergency stop queue
         estop_queue: DTPSContext = await (self.context / "in" / "estop").queue_create()
-        # create PWM queues OUT
         self._pwm_filtered_out: DTPSContext = await (self.context / "out" / "pwm_filtered").queue_create()
         self._pwm_executed_out: DTPSContext = await (self.context / "out" / "pwm_executed").queue_create()
-        # subscribe to PWM commands
+        test_left_in_queue = await (self.context / "test" / "left" / "in").queue_create()
+        test_left_out_queue = await (self.context / "test" / "left" / "out").queue_create()
+        test_right_in_queue = await (self.context / "test" / "right" / "in").queue_create()
+        test_right_out_queue = await (self.context / "test" / "right" / "out").queue_create()
+        # test
+        left_hardware_test = WheelsHardwareTest(self, test_left_out_queue, self.driver)
+        right_hardware_test = WheelsHardwareTest(self, test_right_out_queue, self.driver)
+        # subscriptions
         await pwm_in.subscribe(self.cb_wheels_pwm)
-        # subscribe to emergency stop commands
         await estop_queue.subscribe(self.cb_estop)
+        await test_left_in_queue.subscribe(left_hardware_test.on_run_test)
+        await test_right_in_queue.subscribe(right_hardware_test.on_run_test)
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
@@ -144,6 +156,10 @@ class WheelsDriverNode(Node, HardwareInTheLoopSupport):
         await (actuator / "estop").expose(estop_queue)
         await (actuator / "pwm_filtered").expose(self._pwm_filtered_out)
         await (actuator / "pwm_executed").expose(self._pwm_executed_out)
+        await (actuator / "test" / "left" / "in").expose(test_left_in_queue)
+        await (actuator / "test" / "left" / "out").expose(test_left_out_queue)
+        await (actuator / "test" / "right" / "in").expose(test_right_in_queue)
+        await (actuator / "test" / "right" / "out").expose(test_right_out_queue)
         # initialize HIL support
         await self.init_hil_support(
             self.context,
