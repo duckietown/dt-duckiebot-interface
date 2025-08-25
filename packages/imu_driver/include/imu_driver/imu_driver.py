@@ -8,12 +8,12 @@ from adafruit_mpu6050 import MPU6050
 from smbus2 import SMBus  # NEW
 
 from dtps import DTPSContext
-from .exceptions import DeviceNotFound
+from imu_driver.exceptions import DeviceNotFound
+from imu_driver.imu_driver_abs import IMUDriverAbs
+from imu_driver.types import I2CConnector
 
-from .types import I2CConnector
 
-
-class CalibratedMPU6050:
+class IMUDriverCalibratedMPU6050(IMUDriverAbs):
     WHO_AM_I_REG = 0x75
     ALLOWED_IDS = (0x68, 0x71, 0x98)        # MPU-6050, ICM-2068x
 
@@ -30,23 +30,29 @@ class CalibratedMPU6050:
         self.sensor: Optional[MPU6050] = self._find_sensor()
 
     @property
-    def linear_accelerations(self) -> List[float]:
+    def linear_accelerations(self) -> Optional[List[float]]:
         # apply offsets
+        if self.sensor is None:
+            return None
         return [
             v - self._accelerometer_offsets[i]
             for i, v in enumerate(self.sensor.acceleration)
         ]
 
     @property
-    def angular_velocities(self) -> List[float]:
+    def angular_velocities(self) -> Optional[List[float]]:
         # apply offsets
+        if self.sensor is None:
+            return None
         return [
             v - self._gyroscope_offsets[i]
             for i, v in enumerate(self.sensor.gyro)
         ]
 
     @property
-    def temperature(self) -> float:
+    def temperature(self) -> Optional[float]:
+        if self.sensor is None:
+            return None
         return self.sensor.temperature - self._thermometer_offset
 
     def calibrate_offsets(self):

@@ -19,8 +19,9 @@ from duckietown_messages.sensors.linear_accelerations import LinearAccelerations
 from duckietown_messages.sensors.temperature import Temperature
 from duckietown_messages.standard.dictionary import Dictionary
 from duckietown_messages.standard.header import Header
+from hil_support.hil import HardwareInTheLoopSide, HardwareInTheLoopSupport
+from imu_driver import IMUDriver
 from imu_driver.exceptions import DeviceNotFound
-from imu_driver.mpu6050 import CalibratedMPU6050
 from imu_driver.types import I2CConnector
 
 DEG2RAD = pi / 180.0
@@ -41,7 +42,7 @@ class IMUNodeConfiguration(NodeConfiguration):
     connectors: List[I2CConnector]
 
 
-class IMUNode(Node):
+class IMUNode(Node, HardwareInTheLoopSupport):
     """
     This class implements the communication logic with an IMU sensor on the i2c bus.
     It publishes both measurements and display fragments to show on an LCD screen.
@@ -55,17 +56,18 @@ class IMUNode(Node):
             kind=NodeType.DRIVER,
             description="IMU (Inertia Measurement Unit) sensor driver",
         )
-        self.senor_name: str = sensor_name
+        HardwareInTheLoopSupport.__init__(self)
+        self.sensor_name: str = sensor_name
 
         # load configuration
         self.configuration: IMUNodeConfiguration = IMUNodeConfiguration.from_name(self.package, node_name, config)
 
         # frame
-        self._frame_id: str = f"{self._robot_name}/imu/{self.senor_name}"
+        self._frame_id: str = f"{self._robot_name}/imu/{self.sensor_name}"
 
         # create a IMU sensor handler
         try:
-            self._sensor: Optional[CalibratedMPU6050] = CalibratedMPU6050(
+            self._sensor: Optional[IMUDriver] = IMUDriver(
                 self.configuration.connectors, self.context, self.logger
             )
         except DeviceNotFound:
@@ -97,23 +99,42 @@ class IMUNode(Node):
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
-        await (self.switchboard / "sensor" / "imu" / self.senor_name / "accelerometer").expose(accelerations_queue)
-        await (self.switchboard / "sensor" / "imu" / self.senor_name / "gyroscope").expose(velocities_queue)
-        await (self.switchboard / "sensor" / "imu" / self.senor_name / "all").expose(all_queue)
-        await (self.switchboard / "sensor" / "imu" / self.senor_name / "temperature").expose(temperature_queue)
+        await (self.switchboard / "sensor" / "imu" / self.sensor_name / "accelerometer").expose(accelerations_queue)
+        await (self.switchboard / "sensor" / "imu" / self.sensor_name / "gyroscope").expose(velocities_queue)
+        await (self.switchboard / "sensor" / "imu" / self.sensor_name / "all").expose(all_queue)
+        await (self.switchboard / "sensor" / "imu" / self.sensor_name / "temperature").expose(temperature_queue)
+        # initialize HIL support
+        await self.init_hil_support(
+            self.context,
+            # source (this is the dynamic side, duckiematrix or nothing)
+            src=None,
+            src_path=["sensor", "imu", self.sensor_name],
+            # destination (this is us, static)
+            dst=self.context,
+            dst_path=["out"],
+            # paths to connect when a remote is set
+            subpaths=["acceleration/linear", "velocity/angular"],
+            # which side is the re-pluggable one
+            side=HardwareInTheLoopSide.SOURCE,
+            # TODO: use transformations to set the frame in the message
+        )
         # read and publish
         dt: float = 1.0 / self.configuration.frequency
         while not self.is_shutdown:
+            # do nothing if HIL is active
+            if self.hil_is_active:
+                await asyncio.sleep(1.0)
+                continue
             try:
                 # read data from the sensors and pack into messages
                 timestamp = time.time()
                 header = Header(timestamp=timestamp)
-                acc: List[float] = self._sensor.linear_accelerations
-                accelerations: LinearAccelerations = LinearAccelerations(header=header, x=acc[0], y=acc[1], z=acc[2])
-                vel: List[float] = self._sensor.angular_velocities
-                velocities: AngularVelocities = AngularVelocities(header=header, x=vel[0]*DEG2RAD, y=vel[1]*DEG2RAD, z=vel[2]*DEG2RAD)
-                temp: float = self._sensor.temperature
-                temperature: Temperature = Temperature(header=header, data=temp)
+                acc: Optional[List[float]] = self._sensor.linear_accelerations
+                accelerations: Optional[LinearAccelerations] = LinearAccelerations(header=header, x=acc[0], y=acc[1], z=acc[2]) if acc is not None else None
+                vel: Optional[List[float]] = self._sensor.angular_velocities
+                velocities: Optional[AngularVelocities] = AngularVelocities(header=header, x=vel[0]*DEG2RAD, y=vel[1]*DEG2RAD, z=vel[2]*DEG2RAD) if vel is not None else None
+                temp: Optional[float] = self._sensor.temperature
+                temperature: Optional[Temperature] = Temperature(header=header, data=temp) if temp is not None else None
             except Exception as e:
                 self.logwarn(f"IMU Comm Loss: {e}")
             else:
@@ -125,10 +146,13 @@ class IMUNode(Node):
                 )
 
                 # publish
-                await accelerations_publisher.publish(accelerations.to_rawdata())
-                await velocities_publisher.publish(velocities.to_rawdata())
+                if accelerations is not None:
+                    await accelerations_publisher.publish(accelerations.to_rawdata())
+                if velocities is not None:
+                    await velocities_publisher.publish(velocities.to_rawdata())
                 # await orientation_queue.publish(orientation.to_rawdata())
-                await temperature_publisher.publish(temperature.to_rawdata())
+                if temperature is not None:
+                    await temperature_publisher.publish(temperature.to_rawdata())
                 await all_publisher.publish(imu_message.to_rawdata())
             finally:
                 # wait
