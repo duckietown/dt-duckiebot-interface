@@ -53,10 +53,7 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
             # TODO: use transformations to set the frame in the message
         )
         while not self.is_shutdown:
-            # do nothing if HIL is active
-            if self.hil_is_active:
-                await asyncio.sleep(1.0)
-                continue
+            await asyncio.sleep(1.0)
 
 def main():
     node: DuckiematrixInterface = DuckiematrixInterface()
