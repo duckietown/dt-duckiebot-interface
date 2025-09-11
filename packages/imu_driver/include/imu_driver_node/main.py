@@ -113,7 +113,7 @@ class IMUNode(Node, HardwareInTheLoopSupport):
             dst=self.context,
             dst_path=["out"],
             # paths to connect when a remote is set
-            subpaths=["acceleration/linear", "velocity/angular"],
+            subpaths=["acceleration/linear", "velocity/angular", "all"],
             # which side is the re-pluggable one
             side=HardwareInTheLoopSide.SOURCE,
             # TODO: use transformations to set the frame in the message
