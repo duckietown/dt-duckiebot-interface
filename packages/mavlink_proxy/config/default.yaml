@@ -1,0 +1,8 @@
+# MAVLink Proxy Node Configuration
+
+# PX4 SITL connection settings
+px4_host: "localhost"
+px4_port: 4560
+
+# Buffer size for reading MAVLink data
+buffer_size: 4096
