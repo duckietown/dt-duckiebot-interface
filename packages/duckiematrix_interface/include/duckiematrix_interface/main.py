@@ -16,6 +16,8 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
         Gets remapped to `{ROBOT_NAME}/state/pose`.
     - `{matrix_key}/state/twist` (Twist): the linear and angular velocity of the robot gets
         published as a Twist message. Gets remapped to `{ROBOT_NAME}/state/twist`.
+    - `{matrix_key}/collision` (String): the collision information of the robot.
+        Gets remapped to `{ROBOT_NAME}/collision`.
     """
 
     def __init__(self):
@@ -32,22 +34,24 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
         # create queues
         pose_queue = await (self.context / "out" / "state" / "pose").queue_create()
         twist_queue = await (self.context / "out" / "state" / "twist").queue_create()
+        collision_queue = await (self.context / "out" / "collision").queue_create()
         # expose node to the switchboard
         await self.dtps_expose()
         # expose queues to the switchboard
         await (self.switchboard / "state" / "pose").expose(pose_queue)
         await (self.switchboard / "state" / "twist").expose(twist_queue)
+        await (self.switchboard / "collision").expose(collision_queue)
         # initialize HIL support
         await self.init_hil_support(
             self.context,
             # source (this is the dynamic side, duckiematrix or nothing)
             src=None,
-            src_path=["state"],
+            src_path=None,
             # destination (this is us, static)
             dst=self.context,
-            dst_path=["out", "state"],
+            dst_path=["out"],
             # paths to connect when a remote is set
-            subpaths=["pose", "twist"],
+            subpaths=["state/pose", "state/twist", "collision"],
             # which side is the re-pluggable one
             side=HardwareInTheLoopSide.SOURCE,
             # TODO: use transformations to set the frame in the message
