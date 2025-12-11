@@ -17,7 +17,6 @@ Architecture:
 import argparse
 import asyncio
 import dataclasses
-import socket
 from typing import Optional
 
 from dt_node_utils import NodeType
@@ -145,7 +144,7 @@ class MAVLinkProxyNode(Node):
         # This callback is here for potential logging/monitoring
         pass
     
-    async def _read_from_px4_task(self, tx_publisher):
+    async def _read_from_px4_task(self, queue):
         """
         Background task to read from PX4 and publish to TX queue.
         
@@ -169,7 +168,7 @@ class MAVLinkProxyNode(Node):
                         content=data,
                         content_type="application/octet-stream"
                     )
-                    await tx_publisher.publish(raw_data)
+                    await queue.publish(raw_data)
                     
                     if messages_read == 1:
                         self.loginfo("Started reading MAVLink data from PX4")
@@ -192,16 +191,11 @@ class MAVLinkProxyNode(Node):
         tx_queue = await (self.context / "out" / "tx").queue_create()
         # RX: Data flowing FROM engine TO PX4 (actuator-like)
         rx_queue = await (self.context / "in" / "rx").queue_create()
-        
-        # Create publisher for TX (we publish data we read from PX4)
-        tx_publisher = await tx_queue.publisher()
-        
+
+
         # Subscribe to TX (we receive telemetry from engine via HIL and forward to PX4)
         await tx_queue.subscribe(self.cb_mavlink_tx)
-        
-        # Subscribe to RX (we receive data from switchboard, HIL forwards to engine)
-        await rx_queue.subscribe(self.cb_mavlink_rx)
-        
+
         # Expose node to the switchboard
         await self.dtps_expose()
         
@@ -215,7 +209,7 @@ class MAVLinkProxyNode(Node):
         ).expose(rx_queue)
         
         # Initialize HIL support for TX direction (engine -> node)
-        # Engine publishes sensor data that we receive
+        # Engine publishes mavlink data that we receive
         await self._hil_tx.init_hil_support(
             node=self.context,
             src=None,  # Engine side (dynamic source)
@@ -227,7 +221,7 @@ class MAVLinkProxyNode(Node):
         )
         
         # Initialize HIL support for RX direction (node -> engine)
-        # We receive from switchboard and forward to engine
+        # We receive mavlink data from px4 and forward to matrix engine
         await self._hil_rx.init_hil_support(
             node=self.context,
             src=self.context,  # This node (static source)
@@ -254,7 +248,7 @@ class MAVLinkProxyNode(Node):
         self.loginfo(f"MAVLink proxy listening on {addr[0]}:{addr[1]}")
         
         # Start background task to read from PX4
-        read_task = asyncio.create_task(self._read_from_px4_task(tx_publisher))
+        read_task = asyncio.create_task(self._read_from_px4_task(rx_queue))
         
         # Run forever
         try:
