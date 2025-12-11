@@ -213,7 +213,7 @@ class MAVLinkProxyNode(Node):
         await self._hil_tx.init_hil_support(
             node=self.context,
             src=None,  # Engine side (dynamic source)
-            src_path=['sensor', 'mavlink','mavlink'],
+            src_path=['sensor', 'mavlink', self.proxy_name],
             dst=self.context,  # This node (static destination)
             dst_path=['out'],
             subpaths=['tx'],
@@ -227,7 +227,7 @@ class MAVLinkProxyNode(Node):
             src=self.context,  # This node (static source)
             src_path=['in'],
             dst=None,  # Engine side (dynamic destination)
-            dst_path=['actuator', 'mavlink', 'mavlink'],
+            dst_path=['actuator', 'mavlink', self.proxy_name],
             subpaths=['rx'],
             side=HardwareInTheLoopSide.DESTINATION,  # Engine is the dynamic destination
         )
@@ -285,7 +285,7 @@ def main():
     parser.add_argument(
         "--proxy-name",
         type=str,
-        default="mavlink",
+        default="simulator",
         help="Name of the MAVLink proxy instance"
     )
     parser.add_argument(
