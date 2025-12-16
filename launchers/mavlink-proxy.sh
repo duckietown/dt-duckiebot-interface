@@ -12,6 +12,11 @@ source /environment.sh
 PROXY_NAME="simulator"
 CONFIG_FILE="default"
 
+if [ "${ROBOT_HARDWARE}" == "virtual" ]; then
+  echo "Actuator 'display' not implemented for Virtual robots"
+  exec sleep infinity
+fi
+
 exec python3 \
   -m mavlink_proxy_node.main \
     --proxy-name ${PROXY_NAME} \
