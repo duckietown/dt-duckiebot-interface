@@ -13,7 +13,7 @@ PROXY_NAME="simulator"
 CONFIG_FILE="default"
 
 if [ "${ROBOT_HARDWARE}" == "virtual" ]; then
-  echo "Actuator 'display' not implemented for Virtual robots"
+  echo "mavlink-proxy not needed for Virtual robots"
   exec sleep infinity
 fi
 
