@@ -377,20 +377,66 @@ class RobotInfoRenderer(MultipageTextFragmentRenderer):
     async def step(self):
         if self._data is None:
             return
+        hardware: dict = self._data["hardware"]
+        board: str = hardware["board"]
+        model: str = hardware["model"]
+        revision: str = hardware["revision"]
         firmware: str = f"v{self._data['software']['version']}"
         distro: str = os.environ.get('DT_DISTRO', 'N.A.')
         ip: str = self.get_local_ip_address_on_gateway_interface() or "N.A."
-        # format texts for the display
-        text: str = self._fmt({
+        data = {
             "Name": get_robot_name(),
             "Model": get_robot_configuration().name,
+            "Hardware": board + " " + model + f" ({revision})",
             "Firmware": firmware,
             "Distro": distro,
-            # NOTE: IP uses two lines
-            "IP": "", "": ip
-        })
+            "IP": ip,
+            "Battery": "Not detected",
+            "L motor": "Not detected",
+            "R motor": "Not detected",
+            "Camera": "Not detected",
+            "ToF": "Not detected",
+            "IMU": "Not detected"
+        }
+        for component in self._data["components"]:
+            if component["detected"]:
+                if component["key"] == "battery":
+                    data["Battery"] = "Detected"
+                elif component["key"] == "motor/left":
+                    data["L motor"] = "Detected"
+                elif component["key"] == "motor/right":
+                    data["R motor"] = "Detected"
+                elif component["key"] == "camera":
+                    data["Camera"] = "Detected"
+                elif component["key"] == "tof/front-center":
+                    data["ToF"] = "Detected"
+                elif component["key"] == "imu":
+                    data["IMU"] = "Detected"
+            if component["key"] == "motor/left":
+                data["L motor"] = self.get_calibratable_component_text(
+                    data["L motor"], 
+                    component["calibration"])
+            elif component["key"] == "motor/right":
+                data["R motor"] = self.get_calibratable_component_text(
+                    data["R motor"], 
+                    component["calibration"])
+            elif component["key"] == "camera":
+                data["Camera"] = self.get_calibratable_component_text(
+                    data["Camera"], 
+                    component["calibration"])
+        # format texts for the display
+        text: str = self._fmt(data)
         # update the underlying text renderer
         super().update(text)
+
+    @staticmethod
+    def get_calibratable_component_text(component_text: str, calibration: dict) -> str:
+        if calibration["needed"]:
+            if component_text == "Detected":
+                component_text += " and calibrated" if calibration["completed"] else " but not calibrated"
+            else:
+                component_text += " but calibrated" if calibration["completed"] else " and not calibrated"
+        return component_text
 
     @staticmethod
     def get_local_ip_address_on_gateway_interface() -> Optional[str]:
