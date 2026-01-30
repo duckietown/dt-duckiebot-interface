@@ -345,16 +345,24 @@ class RobotInfoRenderer(MultipageTextFragmentRenderer):
         )
         # data
         self._data: Optional[dict] = None
+        # scroll state
+        self._scroll_offset: int = 0
 
-    @staticmethod
-    def _shorten_str(value):
-        """If the input is longer than the allowed, it's trimmed and '...' is added"""
+    def _shorten_str(self, value):
+        """If the input is longer than the allowed, it scrolls through the text"""
         # maximum length of the value
         max_length: int = 8
-        output = value
-        if len(value) > max_length:
-            output = value[:(max_length - 3)] + "..."
-        return output
+        if len(value) <= max_length:
+            return value
+        # add padding for smooth scroll loop
+        scrollable_text = value + "   "
+        # calculate scroll position
+        offset = self._scroll_offset % len(scrollable_text)
+        # extract visible window
+        visible = ""
+        for i in range(max_length):
+            visible += scrollable_text[(offset + i) % len(scrollable_text)]
+        return visible
 
     def _fmt(self, data: Dict[str, str]) -> str:
         # length of the longest line
@@ -377,6 +385,8 @@ class RobotInfoRenderer(MultipageTextFragmentRenderer):
     async def step(self):
         if self._data is None:
             return
+        # update scroll position every frame
+        self._scroll_offset += 1
         hardware: dict = self._data["hardware"]
         board: str = hardware["board"]
         model: str = hardware["model"]
