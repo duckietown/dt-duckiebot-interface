@@ -345,16 +345,24 @@ class RobotInfoRenderer(MultipageTextFragmentRenderer):
         )
         # data
         self._data: Optional[dict] = None
+        # scroll state
+        self._scroll_offset: int = 0
 
-    @staticmethod
-    def _shorten_str(value):
-        """If the input is longer than the allowed, it's trimmed and '...' is added"""
+    def _shorten_str(self, value):
+        """If the input is longer than the allowed, it scrolls through the text"""
         # maximum length of the value
         max_length: int = 8
-        output = value
-        if len(value) > max_length:
-            output = value[:(max_length - 3)] + "..."
-        return output
+        if len(value) <= max_length:
+            return value
+        # add padding for smooth scroll loop
+        scrollable_text = value + "   "
+        # calculate scroll position
+        offset = self._scroll_offset % len(scrollable_text)
+        # extract visible window
+        visible = ""
+        for i in range(max_length):
+            visible += scrollable_text[(offset + i) % len(scrollable_text)]
+        return visible
 
     def _fmt(self, data: Dict[str, str]) -> str:
         # length of the longest line
@@ -377,20 +385,68 @@ class RobotInfoRenderer(MultipageTextFragmentRenderer):
     async def step(self):
         if self._data is None:
             return
+        # update scroll position every frame
+        self._scroll_offset += 1
+        hardware: dict = self._data["hardware"]
+        board: str = hardware["board"]
+        model: str = hardware["model"]
+        revision: str = hardware["revision"]
         firmware: str = f"v{self._data['software']['version']}"
         distro: str = os.environ.get('DT_DISTRO', 'N.A.')
         ip: str = self.get_local_ip_address_on_gateway_interface() or "N.A."
-        # format texts for the display
-        text: str = self._fmt({
+        data = {
             "Name": get_robot_name(),
             "Model": get_robot_configuration().name,
+            "Hardware": board + " " + model + f" ({revision})",
             "Firmware": firmware,
             "Distro": distro,
-            # NOTE: IP uses two lines
-            "IP": "", "": ip
-        })
+            "IP": ip,
+            "Battery": "Not detected",
+            "L motor": "Not detected",
+            "R motor": "Not detected",
+            "Camera": "Not detected",
+            "ToF": "Not detected",
+            "IMU": "Not detected"
+        }
+        for component in self._data["components"]:
+            if component["detected"]:
+                if component["key"] == "battery":
+                    data["Battery"] = "Detected"
+                elif component["key"] == "motor/left":
+                    data["L motor"] = "Detected"
+                elif component["key"] == "motor/right":
+                    data["R motor"] = "Detected"
+                elif component["key"] == "camera":
+                    data["Camera"] = "Detected"
+                elif component["key"] == "tof/front-center":
+                    data["ToF"] = "Detected"
+                elif component["key"] == "imu":
+                    data["IMU"] = "Detected"
+            if component["key"] == "motor/left":
+                data["L motor"] = self.get_calibratable_component_text(
+                    data["L motor"], 
+                    component["calibration"])
+            elif component["key"] == "motor/right":
+                data["R motor"] = self.get_calibratable_component_text(
+                    data["R motor"], 
+                    component["calibration"])
+            elif component["key"] == "camera":
+                data["Camera"] = self.get_calibratable_component_text(
+                    data["Camera"], 
+                    component["calibration"])
+        # format texts for the display
+        text: str = self._fmt(data)
         # update the underlying text renderer
         super().update(text)
+
+    @staticmethod
+    def get_calibratable_component_text(component_text: str, calibration: dict) -> str:
+        if calibration["needed"]:
+            if component_text == "Detected":
+                component_text += " and calibrated" if calibration["completed"] else " but not calibrated"
+            else:
+                component_text += " but calibrated" if calibration["completed"] else " and not calibrated"
+        return component_text
 
     @staticmethod
     def get_local_ip_address_on_gateway_interface() -> Optional[str]:
