@@ -14,26 +14,40 @@ It should not contain any high-level functionality.
 
 By default, `ROBOT_TYPE` is duckiebot, and you can set it to watchtower or traffic_light if you use them.
 
-## Jetson Orin Nano
+## Jetson Support (Nano / Orin Nano)
 
-The Jetson Orin Nano requires newer versions of several camera libraries to work. Since the same libraries are also used by the Jetson Nano and they are not backwards compatible there is in this repo a separate `Dockerfile.orin` to build the container for the Orin Nano. The command to do this is:
+Jetson devices (Nano, Orin Nano, etc.) require NVIDIA's L4T camera libraries. Instead of baking these into the container, the stack mounts them from the host at runtime. This approach:
 
+- Works across all JetPack versions (4.x, 5.x, 6.x)
+- Ensures ABI compatibility between container and host
+- Eliminates the need for separate Orin-specific images
+
+### Key mounts for Jetson camera support
+
+The `driver-camera` service in the stack includes these mounts:
+
+```yaml
+volumes:
+  # nvargus socket (for nvarguscamerasrc)
+  - /tmp:/tmp
+  # L4T libraries
+  - /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro
+  - /usr/lib/aarch64-linux-gnu/tegra-egl:/usr/lib/aarch64-linux-gnu/tegra-egl:ro
+  - /etc/nv_tegra_release:/etc/nv_tegra_release:ro
+  - /etc/ld.so.conf.d/nvidia-tegra.conf:/etc/ld.so.conf.d/nvidia-tegra.conf:ro
 ```
-dts devel build -H [!ROBOT_NAME] --file Dockerfile.orin --tag ente-arm64v8-orin --pull
-```
 
-To push the image you can optionally add the `--push` flag.
+### Running manually with dts
 
-### Note
-
-In order to ensure compatibility this image should be built on a Jetson Orin Nano.
-
-### Launching the camera driver
-
-Once the special image for the Jetson Orin Nano is built, the camera driver can be launched with the following command:
-
-```
-dts devel run -H [!ROBOT_NAME] -RW -L sensor-camera --tag ente-arm64v8-orin --  -v  /data/ramdisk/dtps:/dtps -v /tmp/argus_socket:/tmp/argus_socket --privileged
+```bash
+dts devel run -H [ROBOT_NAME] -RW -L sensor-camera -- \
+  -v /data/ramdisk/dtps:/dtps \
+  -v /tmp/argus_socket:/tmp/argus_socket \
+  -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro \
+  -v /usr/lib/aarch64-linux-gnu/tegra-egl:/usr/lib/aarch64-linux-gnu/tegra-egl:ro \
+  -v /etc/nv_tegra_release:/etc/nv_tegra_release:ro \
+  -v /etc/ld.so.conf.d/nvidia-tegra.conf:/etc/ld.so.conf.d/nvidia-tegra.conf:ro \
+  --privileged
 ```
 
 ## Development
