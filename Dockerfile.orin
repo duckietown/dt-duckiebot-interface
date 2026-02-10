@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-# Dockerfile.orin  – adds JetPack 5 camera stack for Orin
+# Dockerfile.orin  – adds JetPack 6 camera stack for Orin
 # ─────────────────────────────────────────────────────────────
 
 ARG BASE_IMG=docker.io/duckietown/dt-duckiebot-interface:ente-arm64v8
@@ -7,16 +7,16 @@ FROM ${BASE_IMG}
 COPY assets/etc/ld.so.conf.d/nvidia-tegra-egl.conf /etc/ld.so.conf.d/nvidia-tegra-egl.conf
 RUN ldconfig
 
-# setup the camera on the Jetson Orin Nano
-RUN printf "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal           main restricted universe multiverse\n\
-    deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-updates   main restricted universe multiverse\n\
-    deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports focal-security  main restricted universe multiverse\n" \
+# setup the camera on the Jetson Orin Nano (JetPack 6.2.3 / L4T R36.4)
+RUN printf "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy           main restricted universe multiverse\n\
+    deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates   main restricted universe multiverse\n\
+    deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security  main restricted universe multiverse\n" \
         > /etc/apt/sources.list \
      && apt-get update
 
 RUN apt-get update && apt-get install -y --no-install-recommends curl ca-certificates \
     && curl -fsSL https://repo.download.nvidia.com/jetson/jetson-ota-public.asc | tee /etc/apt/trusted.gpg.d/jetson-ota-public.asc \
-    && printf "deb https://repo.download.nvidia.com/jetson/common r35.6 main\ndeb https://repo.download.nvidia.com/jetson/t234 r35.6 main\n" \
+    && printf "deb https://repo.download.nvidia.com/jetson/common r36.4 main\ndeb https://repo.download.nvidia.com/jetson/t234 r36.4 main\n" \
          > /etc/apt/sources.list.d/nvidia-l4t.list \
     && apt-get update
 
