@@ -134,23 +134,44 @@ class ToFNode(Node, HardwareInTheLoopSupport):
                     dist = sensor.get_distance()
                     if dist is None or dist < 0:
                         self.logger.warning(f"No devices found on connector {conn}, but the bus exists")
-                        try:
-                            sensor.stop()
-                        except Exception:
-                            self.logger.exception(f"Error stopping sensor on connector {conn} during cleanup")
+                        if getattr(sensor, "_sensor", None) is not None:
+                            try:
+                                sensor.stop()
+                            except Exception as e:
+                                self.logger.debug(f"Cleanup failed stopping sensor on connector {conn}: {e}")
                         continue
                     self.logger.info(f"Device found on connector {conn}")
 
                     time.sleep(2)
 
                     return sensor
-                except Exception:
+                except ValueError as e:
+                    # concise message for device-probe failures
+                    if "No I2C device" in str(e):
+                        self.logger.warning(f"No I2C device on connector {conn}")
+                        continue
                     self.logger.exception(f"Exception while trying connector {conn}")
-                    if sensor is not None:
+                    if getattr(sensor, "_sensor", None) is not None:
                         try:
                             sensor.stop()
-                        except Exception:
-                            self.logger.exception(f"Error stopping sensor on connector {conn} during cleanup")
+                        except Exception as e2:
+                            self.logger.debug(f"Cleanup failed stopping sensor on connector {conn}: {e2}")
+                    continue
+                except (OSError, IOError, RuntimeError) as e:
+                    self.logger.warning(f"I2C error on connector {conn}: {e}")
+                    if getattr(sensor, "_sensor", None) is not None:
+                        try:
+                            sensor.stop()
+                        except Exception as e2:
+                            self.logger.debug(f"Cleanup failed stopping sensor on connector {conn}: {e2}")
+                    continue
+                except Exception:
+                    self.logger.exception(f"Unexpected exception while trying connector {conn}")
+                    if getattr(sensor, "_sensor", None) is not None:
+                        try:
+                            sensor.stop()
+                        except Exception as e2:
+                            self.logger.debug(f"Cleanup failed stopping sensor on connector {conn}: {e2}")
                     continue
         else:
             sensor = ToFDriver(accuracy=self._accuracy, name=self.sensor_name)
