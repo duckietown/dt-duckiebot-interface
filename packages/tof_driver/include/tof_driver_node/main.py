@@ -118,26 +118,40 @@ class ToFNode(Node, HardwareInTheLoopSupport):
                 if not os.path.exists(bus_dev):
                     self.logger.warning(f"No devices found on connector {conn}, the bus does NOT exist")
                     continue
+                sensor: Optional[ToFDriver] = None
+                try:
+                    sensor = ToFDriver(
+                        accuracy=self._accuracy,
+                        i2c_bus=connector.bus,
+                        i2c_address=connector.address,
+                        name=self.sensor_name
+                    )
+                    sensor.setup()
 
-                sensor = ToFDriver(
-                    accuracy=self._accuracy,
-                    i2c_bus=connector.bus,
-                    i2c_address=connector.address,
-                    name=self.sensor_name
-                )
-                sensor.setup()
+                    sensor.start()
 
-                sensor.start()
+                    time.sleep(1)
+                    dist = sensor.get_distance()
+                    if dist is None or dist < 0:
+                        self.logger.warning(f"No devices found on connector {conn}, but the bus exists")
+                        try:
+                            sensor.stop()
+                        except Exception:
+                            self.logger.exception(f"Error stopping sensor on connector {conn} during cleanup")
+                        continue
+                    self.logger.info(f"Device found on connector {conn}")
 
-                time.sleep(1)
-                if sensor.get_distance() < 0:
-                    self.logger.warning(f"No devices found on connector {conn}, but the bus exists")
+                    time.sleep(2)
+
+                    return sensor
+                except Exception:
+                    self.logger.exception(f"Exception while trying connector {conn}")
+                    if sensor is not None:
+                        try:
+                            sensor.stop()
+                        except Exception:
+                            self.logger.exception(f"Error stopping sensor on connector {conn} during cleanup")
                     continue
-                self.logger.info(f"Device found on connector {conn}")
-
-                time.sleep(2)
-
-                return sensor
         else:
             sensor = ToFDriver(accuracy=self._accuracy, name=self.sensor_name)
             sensor.setup()
