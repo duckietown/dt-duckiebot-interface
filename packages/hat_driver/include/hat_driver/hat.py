@@ -7,13 +7,15 @@ from .motor import Motor, MotorPins, MotorDirectionControl
 
 
 class AbsHAT(ABC):
-    def __init__(self, address=0x60, frequency=1600):
+    def __init__(self, address=0x60, frequency=1600, busnum=-1):
         # default I2C address of the HAT
         self._i2caddr = address
         # default @1600Hz PWM frequency
         self._frequency = frequency
+        # I2C bus number
+        self._busnum = busnum
         # configure PWM
-        self._pwm = PWM(self._i2caddr, debug=False)
+        self._pwm = PWM(self._i2caddr, debug=False, busnum=self._busnum)
         self._pwm.setPWMFreq(self._frequency)
 
     @abstractmethod
