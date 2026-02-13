@@ -31,10 +31,10 @@ volumes:
   # nvargus socket (for nvarguscamerasrc)
   - /tmp:/tmp
   # L4T libraries
-  - /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro
-  - /usr/lib/aarch64-linux-gnu/tegra-egl:/usr/lib/aarch64-linux-gnu/tegra-egl:ro
-  - /etc/nv_tegra_release:/etc/nv_tegra_release:ro
-  - /etc/ld.so.conf.d/nvidia-tegra.conf:/etc/ld.so.conf.d/nvidia-tegra.conf:ro
+  - /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra
+  - /usr/lib/aarch64-linux-gnu/tegra-egl:/usr/lib/aarch64-linux-gnu/tegra-egl
+  - /etc/nv_tegra_release:/etc/nv_tegra_release
+  - /etc/ld.so.conf.d/nvidia-tegra.conf:/etc/ld.so.conf.d/nvidia-tegra.conf
 ```
 
 ### Running manually with dts
@@ -43,10 +43,10 @@ volumes:
 dts devel run -H [ROBOT_NAME] -RW -L sensor-camera -- \
   -v /data/ramdisk/dtps:/dtps \
   -v /tmp/argus_socket:/tmp/argus_socket \
-  -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra:ro \
-  -v /usr/lib/aarch64-linux-gnu/tegra-egl:/usr/lib/aarch64-linux-gnu/tegra-egl:ro \
-  -v /etc/nv_tegra_release:/etc/nv_tegra_release:ro \
-  -v /etc/ld.so.conf.d/nvidia-tegra.conf:/etc/ld.so.conf.d/nvidia-tegra.conf:ro \
+  -v /usr/lib/aarch64-linux-gnu/tegra:/usr/lib/aarch64-linux-gnu/tegra \
+  -v /usr/lib/aarch64-linux-gnu/tegra-egl:/usr/lib/aarch64-linux-gnu/tegra-egl \
+  -v /etc/nv_tegra_release:/etc/nv_tegra_release \
+  -v /etc/ld.so.conf.d/nvidia-tegra.conf:/etc/ld.so.conf.d/nvidia-tegra.conf \
   --privileged
 ```
 
