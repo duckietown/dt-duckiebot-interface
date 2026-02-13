@@ -401,27 +401,27 @@ class RobotInfoRenderer(MultipageTextFragmentRenderer):
             "Firmware": firmware,
             "Distro": distro,
             "IP": ip,
-            "Battery": "Not detected",
-            "L motor": "Not detected",
-            "R motor": "Not detected",
-            "Camera": "Not detected",
-            "ToF": "Not detected",
-            "IMU": "Not detected"
+            "Battery": "!Det",
+            "L motor": "!Det",
+            "R motor": "!Det",
+            "Camera": "!Det",
+            "ToF": "!Det",
+            "IMU": "!Det"
         }
         for component in self._data["components"]:
             if component["detected"]:
                 if component["key"] == "battery":
-                    data["Battery"] = "Detected"
+                    data["Battery"] = "Det"
                 elif component["key"] == "motor/left":
-                    data["L motor"] = "Detected"
+                    data["L motor"] = "Det"
                 elif component["key"] == "motor/right":
-                    data["R motor"] = "Detected"
+                    data["R motor"] = "Det"
                 elif component["key"] == "camera":
-                    data["Camera"] = "Detected"
+                    data["Camera"] = "Det"
                 elif component["key"] == "tof/front-center":
-                    data["ToF"] = "Detected"
+                    data["ToF"] = "Det"
                 elif component["key"] == "imu":
-                    data["IMU"] = "Detected"
+                    data["IMU"] = "Det"
             if component["key"] == "motor/left":
                 data["L motor"] = self.get_calibratable_component_text(
                     data["L motor"], 
@@ -442,10 +442,7 @@ class RobotInfoRenderer(MultipageTextFragmentRenderer):
     @staticmethod
     def get_calibratable_component_text(component_text: str, calibration: dict) -> str:
         if calibration["needed"]:
-            if component_text == "Detected":
-                component_text += " and calibrated" if calibration["completed"] else " but not calibrated"
-            else:
-                component_text += " but calibrated" if calibration["completed"] else " and not calibrated"
+            component_text += "+Cal" if calibration["completed"] else "+!Cal"
         return component_text
 
     @staticmethod
