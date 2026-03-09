@@ -3,7 +3,7 @@
 from math import fabs, floor
 
 import hat_driver
-from dt_robot_utils import get_robot_configuration
+from dt_robot_utils import get_robot_configuration, RobotConfiguration
 from wheels_driver.wheels_driver_abs import WheelsDriverAbs, WheelPWMConfiguration
 
 MotorDirection = hat_driver.MotorDirection
@@ -18,7 +18,7 @@ class DaguWheelsDriver(WheelsDriverAbs):
         super(DaguWheelsDriver, self).__init__(left_config, right_config)
         rcfg = get_robot_configuration()
         DTHAT = hat_driver.from_env()
-        self.hat = DTHAT()
+        self.hat = DTHAT(busnum=7 if rcfg is RobotConfiguration.DB26J else -1)
         self.leftMotor = self.hat.get_motor(1, "left")
         self.rightMotor = self.hat.get_motor(2, "right")
         # print out some stats
