@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Any
 
@@ -45,7 +46,7 @@ class DisplayHardwareTest(AbstractHardwareTest):
         self._node.running_test = True
         self._display.add_fragment(fragment)
         self._display.page = PAGE_TEST_DISPLAY
-        time.sleep(duration)
+        await asyncio.sleep(duration)
         with self._display.fragments_lock:
             del self._display.fragments[DisplayRegionID.BODY][fragment.name]
         self._display.page = PAGE_HOME
