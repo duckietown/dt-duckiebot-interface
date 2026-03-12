@@ -24,7 +24,7 @@ from dt_node_utils.asyncio import create_task
 from dt_node_utils.config import NodeConfiguration
 from dt_node_utils.decorators import sidecar
 from dt_node_utils.node import Node
-from dt_robot_utils import get_robot_name, get_robot_configuration
+from dt_robot_utils import get_robot_name, get_robot_configuration, get_robot_hardware, RobotHardware
 from dtps.ergo_ui import PublisherInterface
 from duckietown_messages.actuators.display_fragments import DisplayFragments
 from duckietown_messages.standard.header import Header
@@ -39,6 +39,29 @@ class DisplayRendererNodeConfiguration(NodeConfiguration):
         frequency: float
 
     renderers: Dict[str, RendererConfiguration]
+
+
+def _detect_wifi_interface() -> str:
+    """Detect the WiFi interface name based on robot hardware.
+
+    On Jetson Orin Nano, the USB WiFi dongle uses predictable interface naming
+    (wlx* for USB, wlp* for PCI) instead of the legacy wlan0 name.
+
+    Returns:
+        The detected WiFi interface name, falling back to 'wlan0'.
+    """
+    if get_robot_hardware() == RobotHardware.JETSON_ORIN_NANO:
+        interfaces = netifaces.interfaces()
+        # prefer wlx* (USB WiFi dongles with predictable naming)
+        for iface in interfaces:
+            if iface.startswith("wlx"):
+                return iface
+        # try wlp* (PCI-based WiFi)
+        for iface in interfaces:
+            if iface.startswith("wlp"):
+                return iface
+    # default for Jetson Nano, Raspberry Pi, etc.
+    return "wlan0"
 
 
 class DisplayRendererNode(Node):
@@ -75,12 +98,15 @@ class DisplayRendererNode(Node):
             self.publish,
             frequency=self.configuration.renderers["robot_info"].frequency
         )
+        # detect the WiFi interface name (wlx* on Orin Nano, wlan0 on others)
+        wifi_iface = _detect_wifi_interface()
         self._wlan0_indicator = NetIFaceFragmentRenderer(
             assets_dir,
-            "wlan0",
+            wifi_iface,
             DisplayROI(0, 0, 11, 16),
             self.publish,
-            frequency=self.configuration.renderers["network"].frequency
+            frequency=self.configuration.renderers["network"].frequency,
+            asset_iface="wlan0",
         )
         self._eth0_indicator = NetIFaceFragmentRenderer(
             assets_dir,
@@ -295,7 +321,8 @@ class NetIFaceFragmentRenderer(AbsDisplayFragmentRenderer):
                  iface: str,
                  roi: DisplayROI,
                  callback: Callable[['AbsDisplayFragmentRenderer'], Awaitable],
-                 frequency: float):
+                 frequency: float,
+                 asset_iface: Optional[str] = None):
         super(NetIFaceFragmentRenderer, self).__init__(
             f"__iface_connection_{iface}__",
             page=ALL_PAGES,
@@ -308,10 +335,15 @@ class NetIFaceFragmentRenderer(AbsDisplayFragmentRenderer):
         )
         self._assets_dir = assets_dir
         self._iface = iface
+        # asset_iface allows loading icon PNGs with a different name than the runtime interface
+        # e.g., load wlan0_connected.png even when the runtime interface is wlx...
+        self._asset_iface = asset_iface or iface
         # load assets
         self._assets = {
-            asset: pil_to_np(ImageOps.grayscale(Image.open(self._assets_dir / "icons" / f"{asset}.png")))
-            for asset in [f"{self._iface}_connected", f"{self._iface}_not_connected"]
+            f"{self._asset_iface}_connected":
+                pil_to_np(ImageOps.grayscale(Image.open(self._assets_dir / "icons" / f"{self._asset_iface}_connected.png"))),
+            f"{self._asset_iface}_not_connected":
+                pil_to_np(ImageOps.grayscale(Image.open(self._assets_dir / "icons" / f"{self._asset_iface}_not_connected.png"))),
         }
 
     def render(self):
@@ -321,7 +353,7 @@ class NetIFaceFragmentRenderer(AbsDisplayFragmentRenderer):
             connected = netifaces.AF_INET in iface_addrs
         except ValueError:
             connected = False
-        icon = self._iface + ("" if connected else "_not") + "_connected"
+        icon = self._asset_iface + ("" if connected else "_not") + "_connected"
         self._buffer[:, :] = self._assets[icon]
 
 

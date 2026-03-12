@@ -2,6 +2,7 @@
 
 import dataclasses
 import time
+from typing import Optional, List
 
 import argparse
 
@@ -28,9 +29,10 @@ from display_hardware_test import DisplayHardwareTest
 
 @dataclasses.dataclass
 class DisplayNodeConfiguration(NodeConfiguration):
-    bus: int
-    address: int
-    frequency: float
+    bus: Optional[int] = None
+    buses: Optional[List[int]] = None
+    address: int = 0x3C
+    frequency: float = 1.0
 
 
 BOOTING_SCREEN: DisplayFragment = DisplayFragment(
@@ -73,13 +75,24 @@ class DisplayNode(Node):
         # configuration
         self.configuration: DisplayNodeConfiguration = DisplayNodeConfiguration.from_name(
             self.package, node_name, config)
-        # create display driver
-        self._display = SSD1306Display(
-            self.configuration.bus,
-            self.configuration.address,
-            self.configuration.frequency,
-            self.logger
-        )
+        # resolve list of buses to try (support both 'bus' and 'buses' config keys)
+        buses = self.configuration.buses if self.configuration.buses else [self.configuration.bus]
+        # create display driver — try each bus in order
+        self._display: Optional[SSD1306Display] = None
+        for bus in buses:
+            try:
+                self._display = SSD1306Display(
+                    bus,
+                    self.configuration.address,
+                    self.configuration.frequency,
+                    self.logger
+                )
+                self.logger.info(f"Display initialized on I2C bus {bus}")
+                break
+            except Exception as e:
+                self.logger.warning(f"Failed to initialize display on I2C bus {bus}: {e}")
+        if self._display is None:
+            raise RuntimeError(f"Failed to initialize display on any of the I2C buses: {buses}")
         # running test flag
         self.running_test: bool = False
 
