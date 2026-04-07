@@ -140,16 +140,26 @@ class HardwareInTheLoopSupport:
             # set source
             try:
                 await self._passthrough.set_source(remote, path)
+            except (OSError, ConnectionError) as e:
+                logger.warning(f"Passthrough source not reachable (engine may not be running yet): {e}")
             except Exception as e:
-                logger.error(f"Failed to set passthrough source: {str(e)}")
-                traceback.print_exc()
+                if "CannotConnect" in type(e).__name__:
+                    logger.warning(f"Passthrough source not reachable (engine may not be running yet): {e}")
+                else:
+                    logger.error(f"Failed to set passthrough source: {e}")
+                    traceback.print_exc()
         elif self._side == HardwareInTheLoopSide.DESTINATION:
             # set destination
             try:
                 await self._passthrough.set_destination(remote, path)
+            except (OSError, ConnectionError) as e:
+                logger.warning(f"Passthrough destination not reachable (engine may not be running yet): {e}")
             except Exception as e:
-                logger.error(f"Failed to set passthrough destination: {str(e)}")
-                traceback.print_exc()
+                if "CannotConnect" in type(e).__name__:
+                    logger.warning(f"Passthrough destination not reachable (engine may not be running yet): {e}")
+                else:
+                    logger.error(f"Failed to set passthrough destination: {e}")
+                    traceback.print_exc()
 
     async def _on_hil_cfg_update(self, rd: RawData):
         """
