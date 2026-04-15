@@ -1,141 +1,221 @@
 #!/usr/bin/env python3
-
-import atexit
-import subprocess
-from typing import cast
-import cv2
-import asyncio
 import argparse
-import numpy as np
+import asyncio
+import atexit
+from typing import Optional, Union
 
+import cv2
+import numpy as np
 
 from camera_driver import CameraNodeAbs
 
 class CameraNode(CameraNodeAbs):
     """
-    Handles the imagery on a Raspberry Pi.
+    Handles the imagery on a Raspberry Pi 4/5 running Bookworm (64-bit).
+
+    Primary path: picamera2 / libcamera (CSI camera modules, e.g. IMX219,
+    OV5647).  Falls back to OpenCV + V4L2 for USB cameras or any device
+    that presents a /dev/video* V4L2 node without libcamera support.
+
+    The node publishes the same DTPS queue layout as the Jetson Nano driver
+    (sensor/camera/<name>/{jpeg,info,parameters,homography}) so that the
+    dt-ros2-interface camera bridge can be reused without modification.
     """
+
+    # Rotation (degrees CW) → numpy rot90 counter-clockwise steps
+    _ROTATION_K = {0: 0, 90: 3, 180: 2, 270: 1}
+
     VIDEO_DEVICE = "/dev/video0"
+    JPEG_QUALITY = 90
 
     def __init__(self, config: str, sensor_name: str):
-        # Initialize the DTROS parent class
         super(CameraNode, self).__init__(config, sensor_name)
-        # prepare gstreamer pipeline
-        self._device = None
+        self._camera: Optional[Union["Picamera2", cv2.VideoCapture]] = None
+        self._use_picamera2: bool = False
         self.loginfo("[CameraNode]: Initialized.")
 
     async def worker(self):
         """
-        Image capture procedure.
-
-        Captures a frame from the /dev/video0 image sink and publishes it.
+        Main capture loop.  Grabs frames as fast as the camera produces them
+        and hands each one to the base-class publish() as JPEG bytes.
         """
-        if self._device is None or not self._device.isOpened():
+        if self._camera is None:
             self.logerr("Device was found closed")
             return
         # init queues
         await self.dtps_init_queues()
-        # get first frame
-        retval, image = self._device.read() if self._device else (False, None)
-
-        # keep reading
         while not self.is_shutdown:
-            if not retval:
-                self.logerr("Could not read image from camera")
+            jpeg = self._capture_jpeg()
+            if jpeg is None:
+                self.logerr("Could not capture frame from camera")
                 await asyncio.sleep(1)
                 continue
-            if image is not None:
-                # without HW acceleration, the image is returned as RGB, encode on CPU
-                jpeg: bytes = cast(np.ndarray, image).tobytes()
-
-                # publish
-                await self.publish(jpeg)
-            # return control to the event loop
-            await asyncio.sleep(0.001)
-            # grab next frame
-            retval, image = self._device.read() if self._device else (False, None)
+            await self.publish(jpeg)
+            # yield to the event loop between frames
+            await asyncio.sleep(0)
         self.loginfo("Camera worker stopped.")
 
     def setup(self):
-        # setup camera
-        cam_props = {
-            "video_bitrate": 25000000,
-        }
-        for key in cam_props:
-            subprocess.call(
-                f"v4l2-ctl -d {CameraNode.VIDEO_DEVICE} -c {key}={str(cam_props[key])}", shell=True
+        """
+        Open the camera.  picamera2 (libcamera) is tried first; V4L2 is the
+        fallback.  Raises RuntimeError when neither interface works.
+        """
+        if not self._try_picamera2():
+            self._try_v4l2()
+
+    # ------------------------------------------------------------------
+    # picamera2 (libcamera) path — preferred on Bookworm RPi 4/5
+    # ------------------------------------------------------------------
+
+    def _try_picamera2(self) -> bool:
+        """
+        Attempt to open the camera via picamera2/libcamera.
+
+        Returns True on success, False if picamera2 is not installed or the
+        camera cannot be opened.
+        """
+        try:
+            from picamera2 import Picamera2  # type: ignore[import]
+        except ImportError:
+            self.logwarn("picamera2 not installed; skipping libcamera path.")
+            return False
+        try:
+            cam = Picamera2()
+            cfg = cam.create_video_configuration(
+                main={
+                    "format": "RGB888",
+                    "size": (self.configuration.res_w, self.configuration.res_h),
+                },
+                controls={
+                    "FrameRate": float(self.configuration.framerate),
+                },
             )
-        # create VideoCapture object
-        if self._device is None:
-            self._device = cv2.VideoCapture()
-        # open the device
-        if not self._device.isOpened():
-            try:
-                self._device.open(CameraNode.VIDEO_DEVICE, cv2.CAP_V4L2)
-                # make sure the device is open
-                if not self._device.isOpened():
-                    msg = "OpenCV cannot open camera"
-                    self.logerr(msg)
-                    raise RuntimeError(msg)
-                # configure camera
-                self._device.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
-                self._device.set(cv2.CAP_PROP_FRAME_WIDTH, self.configuration.res_w)
-                self._device.set(cv2.CAP_PROP_FRAME_HEIGHT, self.configuration.res_h)
-                self._device.set(cv2.CAP_PROP_ROLL, self.configuration.rotation)
-                self._device.set(cv2.CAP_PROP_FPS, self.configuration.framerate)
-                self._device.set(cv2.CAP_PROP_CONVERT_RGB, 0.0)
-                # Set auto exposure to false
-                if self.configuration.exposure_mode == "sports":
-                    msg = "Setting exposure to 'sports' mode."
-                    self.loginfo(msg)
-                    self._device.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
-                    self._device.set(cv2.CAP_PROP_EXPOSURE, self.configuration.exposure)
-                # try getting a sample image
-                retval, _ = self._device.read()
-                if not retval:
-                    msg = "Could not read image from camera"
-                    self.logerr(msg)
-                    raise RuntimeError(msg)
-            except (Exception, RuntimeError):
-                self.stop()
-                msg = "Could not start camera"
-                self.logerr(msg)
-                raise RuntimeError(msg)
-            # register self.close as cleanup function
+            cam.configure(cfg)
+            # JPEG quality hint used by picamera2's still-capture helpers
+            cam.options["quality"] = self.JPEG_QUALITY
+            if self.configuration.exposure_mode == "sports":
+                self.loginfo("Setting AeExposureMode=1 (sports).")
+                cam.set_controls({"AeExposureMode": 1})
+            cam.start()
+            # smoke-test: grab one frame to confirm the pipeline works
+            frame = cam.capture_array()
+            if frame is None:
+                cam.stop()
+                cam.close()
+                self.logwarn("picamera2 opened but could not capture a frame.")
+                return False
+            self._camera = cam
+            self._use_picamera2 = True
             atexit.register(self.stop)
+            self.loginfo("Camera opened via picamera2 (libcamera).")
+            return True
+        except Exception as e:
+            self.logwarn(f"picamera2 failed to open camera: {e}")
+            return False
+
+    # ------------------------------------------------------------------
+    # V4L2 / OpenCV fallback path — USB cameras and legacy setups
+    # ------------------------------------------------------------------
+
+    def _try_v4l2(self):
+        """
+        Open /dev/video0 via OpenCV + V4L2 with MJPEG output.
+        Raises RuntimeError when the device cannot be opened.
+        """
+        cap = cv2.VideoCapture()
+        try:
+            cap.open(CameraNode.VIDEO_DEVICE, cv2.CAP_V4L2)
+            if not cap.isOpened():
+                raise RuntimeError("OpenCV cannot open camera via V4L2")
+            # request MJPEG from the camera (avoids in-kernel JPEG decode/re-encode)
+            cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*"MJPG"))
+            cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.configuration.res_w)
+            cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.configuration.res_h)
+            cap.set(cv2.CAP_PROP_FPS, self.configuration.framerate)
+            # keep raw MJPEG bytes; do NOT let OpenCV decode and re-encode
+            cap.set(cv2.CAP_PROP_CONVERT_RGB, 0.0)
+            if self.configuration.exposure_mode == "sports":
+                self.loginfo("Setting auto-exposure to 'sports' mode.")
+                cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, 0.75)
+                if self.configuration.exposure is not None:
+                    cap.set(cv2.CAP_PROP_EXPOSURE, self.configuration.exposure)
+            retval, _ = cap.read()
+            if not retval:
+                raise RuntimeError("Could not read image from camera via V4L2")
+            self._camera = cap
+            self._use_picamera2 = False
+            atexit.register(self.stop)
+            self.loginfo("Camera opened via V4L2 (OpenCV).")
+        except Exception as e:
+            cap.release()
+            msg = f"Could not start camera: {e}"
+            self.logerr(msg)
+            raise RuntimeError(msg)
+
+    # ------------------------------------------------------------------
+    # Frame capture helpers
+    # ------------------------------------------------------------------
+
+    def _capture_jpeg(self) -> Optional[bytes]:
+        """Return the current frame as JPEG bytes, or None on failure."""
+        if self._use_picamera2:
+            return self._capture_jpeg_picamera2()
+        return self._capture_jpeg_v4l2()
+
+    def _capture_jpeg_picamera2(self) -> Optional[bytes]:
+        frame = self._camera.capture_array()
+        if frame is None:
+            return None
+        # apply clockwise rotation via counter-clockwise numpy rot90
+        k = self._ROTATION_K.get(self.configuration.rotation, 0)
+        if k:
+            frame = np.rot90(frame, k=k)
+        ok, buf = cv2.imencode(
+            ".jpg", frame,
+            [cv2.IMWRITE_JPEG_QUALITY, self.JPEG_QUALITY],
+        )
+        return buf.tobytes() if ok else None
+
+    def _capture_jpeg_v4l2(self) -> Optional[bytes]:
+        retval, image = self._camera.read()
+        if not retval or image is None:
+            return None
+        # With FOURCC=MJPG and CONVERT_RGB=0, OpenCV returns the raw MJPEG
+        # buffer as a 1-D numpy array; .tobytes() gives the JPEG stream.
+        return image.tobytes()
+
+    # ------------------------------------------------------------------
+    # Lifecycle hooks
+    # ------------------------------------------------------------------
 
     def on_shutdown(self):
         super().on_shutdown()
-        if self._device is not None:
-            self._device.release()
-        self.loginfo("OpenCV device released.")
+        self.release()
 
     def stop(self):
-        """
-        docstring
-        """
         self.release()
 
     def release(self, force: bool = False):
-        if self._device is not None:
+        if self._camera is not None:
             self.loginfo("Releasing camera...")
-            # noinspection PyBroadException
             try:
-                self._device.release()
+                if self._use_picamera2:
+                    self._camera.stop()
+                    self._camera.close()
+                else:
+                    self._camera.release()
             except Exception:
                 pass
             self.loginfo("Camera released.")
-        self._device = None
+        self._camera = None
 
 
 def main():
-    parser: argparse.ArgumentParser = argparse.ArgumentParser()
-    parser.add_argument("--sensor-name", type=str, required=True, help="Name of the sensor")
-    parser.add_argument("--config", type=str, required=True, help="Name of the configuration")
-    args: argparse.Namespace = parser.parse_args()
-    # create node
-    node: CameraNode = CameraNode(config=args.config, sensor_name=args.sensor_name)
-    # launch the node
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--sensor-name", type=str, required=True)
+    parser.add_argument("--config", type=str, required=True)
+    args = parser.parse_args()
+    node = CameraNode(config=args.config, sensor_name=args.sensor_name)
     node.spin()
 
 

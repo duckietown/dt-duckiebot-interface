@@ -1,0 +1,43 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dockerfile.rpi  –  adds the Raspberry Pi camera stack (libcamera + picamera2)
+#                    on top of the base dt-duckiebot-interface image.
+#
+# Targets Raspberry Pi 4 / 5 running Ubuntu Noble (24.04) or Raspberry Pi OS
+# Bookworm (Debian 12), both with a 64-bit arm64 kernel.
+#
+# Build example:
+#   docker build \
+#     --build-arg BASE_IMG=docker.io/duckietown/dt-duckiebot-interface:ente-arm64v8 \
+#     -f Dockerfile.rpi \
+#     -t docker.io/duckietown/dt-duckiebot-interface:ente-arm64v8-rpi .
+# ─────────────────────────────────────────────────────────────────────────────
+
+ARG BASE_IMG=docker.io/duckietown/dt-duckiebot-interface:ente-arm64v8
+FROM ${BASE_IMG}
+
+# ---------------------------------------------------------------------------
+# System libraries for libcamera
+#
+# On Ubuntu 24.04 (Noble) and Raspberry Pi OS Bookworm these packages ship in
+# the default apt repositories.  On older Ubuntu bases (Focal / Jammy) they
+# may not be present; the build will fail with a clear error in that case.
+# ---------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        # libcamera runtime and IPA modules (including the RPi-specific ones)
+        libcamera0t64 \
+        libcamera-ipa \
+        # Python 3 bindings for libcamera (built against system libcamera)
+        python3-libcamera \
+        # KMS/DRM bindings required by picamera2 for zero-copy display paths
+        python3-kms++ \
+        # GStreamer plugin so libcamerasrc is available as a pipeline element
+        gstreamer1.0-libcamera \
+    && rm -rf /var/lib/apt/lists/*
+
+# ---------------------------------------------------------------------------
+# picamera2 – high-level Python camera API built on top of libcamera
+#
+# We pin a minimum version that ships the create_video_configuration() API
+# used by the camera driver node.
+# ---------------------------------------------------------------------------
+RUN pip3 install --no-cache-dir "picamera2>=0.3.21"
