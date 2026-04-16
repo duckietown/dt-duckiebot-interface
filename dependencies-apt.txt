@@ -24,5 +24,6 @@ socat
 libcamera0.2
 libcamera-ipa
 libcamera-tools
+libcap-dev
 python3-libcamera
 gstreamer1.0-libcamera
