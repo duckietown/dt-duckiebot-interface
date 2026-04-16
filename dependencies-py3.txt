@@ -5,6 +5,7 @@ Jetson.GPIO==2.1.9
 
 # RPi packages
 RPi.GPIO==0.7.1
+picamera2>=0.3.21
 
 # dependencies for the OLED display
 luma.oled==3.13.0

@@ -19,3 +19,10 @@ v4l-utils
 
 # tools for betaflight SITL
 socat
+
+# Raspberry Pi camera stack (Bookworm/Noble arm64)
+libcamera0.2
+libcamera-ipa
+libcamera-tools
+python3-libcamera
+gstreamer1.0-libcamera
