@@ -16,7 +16,7 @@ from kvstore_utils import KVStore
 try:
     from dtps.ergo_use import CannotConnectToAnyURL
     EXPECTED_CONNECTION_EXCEPTIONS = (OSError, CannotConnectToAnyURL)
-except Exception:
+except ImportError:
     EXPECTED_CONNECTION_EXCEPTIONS = (OSError,)
 
 logger = logging.getLogger("hil-support")
