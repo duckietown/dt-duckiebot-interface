@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import logging
-import traceback
 from enum import IntEnum
 from typing import Optional, List, Dict, Callable
 
@@ -13,6 +12,12 @@ from duckietown_messages.simulation.hil.configuration import HILConfiguration
 from duckietown_messages.simulation.hil.connection.configuration import HILConnectionConfiguration
 from duckietown_messages.utils.exceptions import DataDecodingError
 from kvstore_utils import KVStore
+
+try:
+    from dtps.ergo_use import CannotConnectToAnyURL
+    EXPECTED_CONNECTION_EXCEPTIONS = (OSError, CannotConnectToAnyURL)
+except Exception:
+    EXPECTED_CONNECTION_EXCEPTIONS = (OSError,)
 
 logger = logging.getLogger("hil-support")
 
@@ -140,26 +145,18 @@ class HardwareInTheLoopSupport:
             # set source
             try:
                 await self._passthrough.set_source(remote, path)
-            except (OSError, ConnectionError) as e:
+            except EXPECTED_CONNECTION_EXCEPTIONS as e:
                 logger.warning(f"Passthrough source not reachable (engine may not be running yet): {e}")
             except Exception as e:
-                if "CannotConnect" in type(e).__name__:
-                    logger.warning(f"Passthrough source not reachable (engine may not be running yet): {e}")
-                else:
-                    logger.error(f"Failed to set passthrough source: {e}")
-                    traceback.print_exc()
+                logger.exception(f"Failed to set passthrough source: {e}")
         elif self._side == HardwareInTheLoopSide.DESTINATION:
             # set destination
             try:
                 await self._passthrough.set_destination(remote, path)
-            except (OSError, ConnectionError) as e:
+            except EXPECTED_CONNECTION_EXCEPTIONS as e:
                 logger.warning(f"Passthrough destination not reachable (engine may not be running yet): {e}")
             except Exception as e:
-                if "CannotConnect" in type(e).__name__:
-                    logger.warning(f"Passthrough destination not reachable (engine may not be running yet): {e}")
-                else:
-                    logger.error(f"Failed to set passthrough destination: {e}")
-                    traceback.print_exc()
+                logger.exception(f"Failed to set passthrough destination: {e}")
 
     async def _on_hil_cfg_update(self, rd: RawData):
         """
