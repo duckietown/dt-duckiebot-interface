@@ -71,11 +71,32 @@ ENV DT_PROJECT_NAME="${PROJECT_NAME}" \
 COPY ./dependencies-apt.txt "${PROJECT_PATH}/"
 RUN dt-apt-install ${PROJECT_PATH}/dependencies-apt.txt
 
+# Debian's python3-libcamera installs into /usr/lib/<triplet>/python3.X/site-packages/,
+# which Python 3.12 does not include in sys.path by default. Expose it via a .pth file
+# so picamera2 can `import libcamera` at runtime.
+RUN set -e; \
+    pyver="$(python3 -c 'import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")')"; \
+    triplet="$(python3 -c 'import sysconfig;print(sysconfig.get_config_var("MULTIARCH"))')"; \
+    libcamera_dir="/usr/lib/${triplet}/python${pyver}/site-packages"; \
+    if [ -d "${libcamera_dir}/libcamera" ]; then \
+        echo "${libcamera_dir}" > "/usr/local/lib/python${pyver}/dist-packages/libcamera.pth"; \
+    fi
+
 # install python3 dependencies
 ARG PIP_INDEX_URL="https://pypi.org/simple"
 ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 COPY ./dependencies-py3.* "${PROJECT_PATH}/"
 RUN dt-pip3-install "${PROJECT_PATH}/dependencies-py3.*"
+
+# picamera2's previews/__init__.py eagerly imports drm_preview, which requires
+# pykms (python3-kms++). That package is not available on Ubuntu Noble and we
+# run headless (no DRM preview), so guard the import to tolerate ImportError.
+RUN set -e; \
+    pyver="$(python3 -c 'import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")')"; \
+    previews_init="/usr/local/lib/python${pyver}/dist-packages/picamera2/previews/__init__.py"; \
+    if [ -f "${previews_init}" ] && ! grep -q "except ImportError" "${previews_init}"; then \
+        sed -i 's|^from .drm_preview import DrmPreview$|try:\n    from .drm_preview import DrmPreview\nexcept ImportError:\n    DrmPreview = None|' "${previews_init}"; \
+    fi
 
 # copy the source code
 COPY ./packages "${PROJECT_PATH}/packages"
