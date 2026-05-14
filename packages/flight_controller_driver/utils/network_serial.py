@@ -2,7 +2,7 @@ import socket
 import serial
 
 # Configuration
-HOST = '0.0.0.0'  # Listen on all network interfaces
+HOST = '127.0.0.1'  # Listen on loopback interface only
 PORT = 12345  # Port to listen on for incoming connections
 SERIAL_PORT = '/dev/ttyACM{}'  # Serial port to which data will be sent
 BAUD_RATE = 1e6  # Baud rate for the serial communication
