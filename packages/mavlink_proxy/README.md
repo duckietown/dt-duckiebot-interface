@@ -56,9 +56,13 @@ python3 main.py --config default --proxy-name mavlink
 
 ### With PX4 SITL
 
-1. Start PX4 SITL:
+1. Start PX4 SITL with the tag matching your host architecture:
 ```bash
-docker run --rm --network host duckietown/dt-px4:ente
+# amd64
+docker run --rm --network host duckietown/dt-px4:ente-amd64
+
+# arm64
+docker run --rm --network host duckietown/dt-px4:ente-arm64v8
 ```
 
 2. Start MAVLink Proxy:
