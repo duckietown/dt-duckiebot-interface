@@ -2,12 +2,11 @@
 
 source /environment.sh
 
+# Initialize launch file.
+dt-launchfile-init
+
 # YOUR CODE BELOW THIS LINE
 # ----------------------------------------------------------------------------
-
-
-# NOTE: Use the variable DT_PROJECT_PATH to know the absolute path to your code
-# NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 SENSOR_NAME="base"
 CONFIG_FILE="${ROBOT_TYPE}/${SENSOR_NAME}/default"
@@ -17,6 +16,8 @@ exec python3 \
     --sensor-name ${SENSOR_NAME} \
     --config ${CONFIG_FILE}
 
-
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE
+
+# Wait for app to end.
+dt-launchfile-join

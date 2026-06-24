@@ -2,18 +2,17 @@
 
 source /environment.sh
 
+# Initialize launch file.
+dt-launchfile-init
+
 # YOUR CODE BELOW THIS LINE
 # ----------------------------------------------------------------------------
-
-
-# NOTE: Use the variable DT_PROJECT_PATH to know the absolute path to your code
-# NOTE: Use `dt-exec COMMAND` to run the main process (blocking process)
 
 SENSOR_NAME="interaction_plate"
 CONFIG_FILE="${SENSOR_NAME}/default"
 
 if [ "${ROBOT_HARDWARE}" == "virtual" ]; then
-  echo "Sensor 'power-button' not implemented for Virtual robots"
+  echo "Sensor 'power-button' not implemented for virtual robots."
   exec sleep infinity
 fi
 
@@ -22,6 +21,8 @@ exec python3 \
     --sensor-name ${SENSOR_NAME} \
     --config ${CONFIG_FILE}
 
-
 # ----------------------------------------------------------------------------
 # YOUR CODE ABOVE THIS LINE
+
+# Wait for app to end.
+dt-launchfile-join
