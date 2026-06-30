@@ -4,9 +4,9 @@ frequency: 30
 mode: "LONG_RANGE"
 display_fragment_frequency: 0
 connectors:
-  # DD24 - One ToF sensor connected directly to the HUT
   # Raspberry Pi 4
-  -   bus: 22
+  # front ToF -> mux channel 1 (i2c-24)
+  -   bus: 24
       address: 0x29
 
   # Raspberry Pi 5
