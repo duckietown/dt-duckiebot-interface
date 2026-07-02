@@ -5,8 +5,8 @@ mode: "LONG_RANGE"
 display_fragment_frequency: 0
 connectors:
   # Raspberry Pi 4
-  # top ToF -> mux channel 4 (i2c-27)
-  -   bus: 27
+  # top ToF -> port CHL3
+  -   bus: 26
       address: 0x29
 
   # Raspberry Pi 5
