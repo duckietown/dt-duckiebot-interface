@@ -10,5 +10,6 @@ connectors:
       address: 0x29
 
   # Raspberry Pi 5
+  # TODO: verify bus on Pi 5
   -   bus: 11
       address: 0x29
