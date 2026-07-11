@@ -6,6 +6,9 @@ Jetson.GPIO==2.1.9
 # RPi packages
 RPi.GPIO==0.7.1
 
+# Raspberry Pi camera Python API
+picamera2==0.3.36
+
 # dependencies for the OLED display
 luma.oled==3.13.0
 

@@ -71,11 +71,59 @@ ENV DT_PROJECT_NAME="${PROJECT_NAME}" \
 COPY ./dependencies-apt.txt "${PROJECT_PATH}/"
 RUN dt-apt-install ${PROJECT_PATH}/dependencies-apt.txt
 
+# Build libcamera from the Raspberry Pi fork so we have the OV5647 fixes that
+# landed after 0.2. Ubuntu Noble ships libcamera 0.2.0, which trips a
+# `prepareIsp()` IPA-buffer assertion on the Duckiedrone's OV5647 sensor.
+ARG LIBCAMERA_REF=v0.4.0
+RUN set -eux; \
+    git clone --depth 1 --branch "${LIBCAMERA_REF}" \
+        https://github.com/raspberrypi/libcamera.git /tmp/libcamera; \
+    cd /tmp/libcamera; \
+    meson setup build \
+        --prefix=/usr \
+        --buildtype=release \
+        -Dipas=rpi/vc4 \
+        -Dpipelines=rpi/vc4 \
+        -Dpycamera=enabled \
+        -Ddocumentation=disabled \
+        -Dgstreamer=disabled \
+        -Dv4l2=true \
+        -Dtest=false \
+        -Dcam=disabled \
+        -Dqcam=disabled \
+        -Dlc-compliance=disabled; \
+    ninja -C build install; \
+    ldconfig; \
+    cd /; rm -rf /tmp/libcamera
+
+# libcamera's meson install drops the Python bindings under
+# /usr/lib/python<ver>/site-packages/, which Ubuntu Noble's Python doesn't
+# auto-include. Expose it via a .pth file so `import libcamera` works.
+RUN set -e; \
+    pyver="$(python3 -c 'import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")')"; \
+    lc_parent="$(python3 -c "import glob,os;hits=glob.glob('/usr/lib/python*/site-packages/libcamera')+glob.glob('/usr/lib/python*/dist-packages/libcamera')+glob.glob('/usr/lib/*/python*/site-packages/libcamera');print(os.path.dirname(hits[0]) if hits else '')")"; \
+    if [ -z "${lc_parent}" ]; then \
+        echo "ERROR: libcamera Python bindings not found after install" >&2; exit 1; \
+    fi; \
+    mkdir -p "/usr/local/lib/python${pyver}/dist-packages"; \
+    echo "${lc_parent}" > "/usr/local/lib/python${pyver}/dist-packages/libcamera.pth"; \
+    echo "libcamera Python bindings: ${lc_parent}"
+
 # install python3 dependencies
 ARG PIP_INDEX_URL="https://pypi.org/simple"
 ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 COPY ./dependencies-py3.* "${PROJECT_PATH}/"
 RUN dt-pip3-install "${PROJECT_PATH}/dependencies-py3.*"
+
+# picamera2.previews/__init__.py eagerly imports drm_preview, which needs
+# pykms (python3-kms++). That package is not available on Noble and we run
+# headless, so soften the import to tolerate ImportError.
+RUN set -e; \
+    pyver="$(python3 -c 'import sys;print(f"{sys.version_info.major}.{sys.version_info.minor}")')"; \
+    previews_init="/usr/local/lib/python${pyver}/dist-packages/picamera2/previews/__init__.py"; \
+    if [ -f "${previews_init}" ] && ! grep -q "except ImportError" "${previews_init}"; then \
+        sed -i 's|^from .drm_preview import DrmPreview$|try:\n    from .drm_preview import DrmPreview\nexcept ImportError:\n    DrmPreview = None|' "${previews_init}"; \
+    fi
 
 # copy the source code
 COPY ./packages "${PROJECT_PATH}/packages"
