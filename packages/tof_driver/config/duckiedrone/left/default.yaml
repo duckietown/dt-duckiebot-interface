@@ -1,6 +1,6 @@
 sensor_name: "left"
 sensor_model: "VL53L1X"
-frequency: 30
+frequency: 5  # Hz
 mode: "LONG_RANGE"
 display_fragment_frequency: 0
 connectors:
