@@ -72,6 +72,11 @@ class CameraNode(CameraNodeAbs):
                 self.logwarn(f"Hardware JPEG encoder unavailable, using software: {exc}")
                 return None
             self.loginfo(f"JPEG encoding on hardware ({self._hw_encoder.device})")
+            if not self._hw_encoder.quality_applied:
+                self.logwarn(
+                    f"Could not set hardware JPEG quality to {self.JPEG_QUALITY}, "
+                    "the encoder is using its own default"
+                )
         try:
             return self._hw_encoder.encode(image)
         except Exception as exc:

@@ -98,36 +98,42 @@ class HardwareJpegEncoder:
     def __init__(self, width, height, quality=90, device="/dev/video31", out_size=768 * 1024):
         self.w, self.h, self.out_size = width, height, out_size
         self.device = device
+        self.quality_applied = True
         self.fd = os.open(device, os.O_RDWR)
-
-        f = Format(type=BUF_TYPE_OUTPUT_MPLANE)
-        f.fmt.pix_mp.width, f.fmt.pix_mp.height = width, height
-        f.fmt.pix_mp.pixelformat = PIX_BGR24
-        f.fmt.pix_mp.num_planes = 1
-        f.fmt.pix_mp.plane_fmt[0].bytesperline = width * 3
-        f.fmt.pix_mp.plane_fmt[0].sizeimage = width * height * 3
-        fcntl.ioctl(self.fd, VIDIOC_S_FMT, f)
-        self.in_size = f.fmt.pix_mp.plane_fmt[0].sizeimage
-
-        f = Format(type=BUF_TYPE_CAPTURE_MPLANE)
-        f.fmt.pix_mp.width, f.fmt.pix_mp.height = width, height
-        f.fmt.pix_mp.pixelformat = PIX_JPEG
-        f.fmt.pix_mp.num_planes = 1
-        f.fmt.pix_mp.plane_fmt[0].sizeimage = out_size
-        fcntl.ioctl(self.fd, VIDIOC_S_FMT, f)
-        self.out_size = f.fmt.pix_mp.plane_fmt[0].sizeimage
-
         try:
-            fcntl.ioctl(self.fd, VIDIOC_S_CTRL, Control(id=CID_JPEG_QUALITY, value=quality))
-        except OSError:
-            pass  # some kernels expose quality only via ext-ctrls
+            f = Format(type=BUF_TYPE_OUTPUT_MPLANE)
+            f.fmt.pix_mp.width, f.fmt.pix_mp.height = width, height
+            f.fmt.pix_mp.pixelformat = PIX_BGR24
+            f.fmt.pix_mp.num_planes = 1
+            f.fmt.pix_mp.plane_fmt[0].bytesperline = width * 3
+            f.fmt.pix_mp.plane_fmt[0].sizeimage = width * height * 3
+            fcntl.ioctl(self.fd, VIDIOC_S_FMT, f)
+            self.in_size = f.fmt.pix_mp.plane_fmt[0].sizeimage
 
-        self.in_map = self._setup(BUF_TYPE_OUTPUT_MPLANE)
-        self.out_map = self._setup(BUF_TYPE_CAPTURE_MPLANE)
-        self._prealloc()
+            f = Format(type=BUF_TYPE_CAPTURE_MPLANE)
+            f.fmt.pix_mp.width, f.fmt.pix_mp.height = width, height
+            f.fmt.pix_mp.pixelformat = PIX_JPEG
+            f.fmt.pix_mp.num_planes = 1
+            f.fmt.pix_mp.plane_fmt[0].sizeimage = out_size
+            fcntl.ioctl(self.fd, VIDIOC_S_FMT, f)
+            self.out_size = f.fmt.pix_mp.plane_fmt[0].sizeimage
 
-        for t in (BUF_TYPE_OUTPUT_MPLANE, BUF_TYPE_CAPTURE_MPLANE):
-            fcntl.ioctl(self.fd, VIDIOC_STREAMON, ctypes.c_int(t))
+            try:
+                fcntl.ioctl(self.fd, VIDIOC_S_CTRL, Control(id=CID_JPEG_QUALITY, value=quality))
+            except OSError:
+                # some kernels expose quality only via ext-ctrls; the block then falls
+                # back to its own default of 80, so the caller is told about it
+                self.quality_applied = False
+
+            self.in_map = self._setup(BUF_TYPE_OUTPUT_MPLANE)
+            self.out_map = self._setup(BUF_TYPE_CAPTURE_MPLANE)
+            self._prealloc()
+
+            for t in (BUF_TYPE_OUTPUT_MPLANE, BUF_TYPE_CAPTURE_MPLANE):
+                fcntl.ioctl(self.fd, VIDIOC_STREAMON, ctypes.c_int(t))
+        except BaseException:
+            os.close(self.fd)
+            raise
 
     def _setup(self, btype):
         fcntl.ioctl(self.fd, VIDIOC_REQBUFS,
@@ -175,7 +181,10 @@ class HardwareJpegEncoder:
         self.in_map.write(view.cast("B"))
         self._qbuf(BUF_TYPE_CAPTURE_MPLANE, 0)
         self._qbuf(BUF_TYPE_OUTPUT_MPLANE, self.in_size)
-        select.select([self.fd], [], [], 2.0)
+        ready, _, _ = select.select([self.fd], [], [], 2.0)
+        if not ready:
+            # the fd is blocking, so dequeuing now would hang the caller's event loop
+            raise TimeoutError("hardware JPEG encoder did not complete within 2s")
         self._dqbuf(BUF_TYPE_OUTPUT_MPLANE)
         n = self._dqbuf(BUF_TYPE_CAPTURE_MPLANE)
         return self.out_map[:n]
@@ -185,5 +194,5 @@ class HardwareJpegEncoder:
             try:
                 fcntl.ioctl(self.fd, VIDIOC_STREAMOFF, ctypes.c_int(t))
             except OSError:
-                pass
+                pass  # best effort: STREAMOFF fails if the stream was never started
         os.close(self.fd)
