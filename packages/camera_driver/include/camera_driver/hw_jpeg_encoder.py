@@ -109,6 +109,16 @@ class HardwareJpegEncoder:
             f.fmt.pix_mp.plane_fmt[0].sizeimage = width * height * 3
             fcntl.ioctl(self.fd, VIDIOC_S_FMT, f)
             self.in_size = f.fmt.pix_mp.plane_fmt[0].sizeimage
+            # the driver may pad rows for alignment. we feed it a tightly packed
+            # numpy buffer, so anything else would be read with the wrong stride
+            # and come out skewed. bail out and let the caller use software.
+            if (f.fmt.pix_mp.plane_fmt[0].bytesperline != width * 3
+                    or self.in_size != width * height * 3):
+                raise RuntimeError(
+                    f"encoder wants padded input (bytesperline "
+                    f"{f.fmt.pix_mp.plane_fmt[0].bytesperline}, sizeimage {self.in_size}) "
+                    f"for {width}x{height}, expected {width * 3} and {width * height * 3}"
+                )
 
             f = Format(type=BUF_TYPE_CAPTURE_MPLANE)
             f.fmt.pix_mp.width, f.fmt.pix_mp.height = width, height
@@ -177,10 +187,11 @@ class HardwareJpegEncoder:
         view = memoryview(image)
         if not view.c_contiguous:
             view = memoryview(np.ascontiguousarray(image))
+        flat = view.cast("B")
         self.in_map.seek(0)
-        self.in_map.write(view.cast("B"))
+        self.in_map.write(flat)
         self._qbuf(BUF_TYPE_CAPTURE_MPLANE, 0)
-        self._qbuf(BUF_TYPE_OUTPUT_MPLANE, self.in_size)
+        self._qbuf(BUF_TYPE_OUTPUT_MPLANE, flat.nbytes)
         ready, _, _ = select.select([self.fd], [], [], 2.0)
         if not ready:
             # the fd is blocking, so dequeuing now would hang the caller's event loop
@@ -195,4 +206,6 @@ class HardwareJpegEncoder:
                 fcntl.ioctl(self.fd, VIDIOC_STREAMOFF, ctypes.c_int(t))
             except OSError:
                 pass  # best effort: STREAMOFF fails if the stream was never started
+        for m in (self.in_map, self.out_map):
+            m.close()
         os.close(self.fd)
