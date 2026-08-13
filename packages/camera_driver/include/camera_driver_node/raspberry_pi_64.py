@@ -10,6 +10,7 @@ import numpy as np
 
 
 from camera_driver import CameraNodeAbs
+from camera_driver.hw_jpeg_encoder import HardwareJpegEncoder
 
 class CameraNode(CameraNodeAbs):
     """
@@ -17,11 +18,10 @@ class CameraNode(CameraNodeAbs):
     """
     VIDEO_DEVICE = "/dev/video0"
     JPEG_QUALITY = 90
-    ROTATION_QUADRANTS = {
-        0: 0,
-        90: 3,
-        180: 2,
-        270: 1,
+    ROTATION_CODES = {
+        90: cv2.ROTATE_90_CLOCKWISE,
+        180: cv2.ROTATE_180,
+        270: cv2.ROTATE_90_COUNTERCLOCKWISE,
     }
 
     def __init__(self, config: str, sensor_name: str):
@@ -29,6 +29,8 @@ class CameraNode(CameraNodeAbs):
         super(CameraNode, self).__init__(config, sensor_name)
         self._device: Optional[Any] = None
         self._use_picamera2 = False
+        self._hw_encoder: Optional[HardwareJpegEncoder] = None
+        self._hw_encoder_disabled = False
         self.loginfo("[CameraNode]: Initialized.")
 
     def _get_capture_size(self) -> Tuple[int, int]:
@@ -42,17 +44,49 @@ class CameraNode(CameraNodeAbs):
 
     def _rotate_image(self, image: np.ndarray) -> np.ndarray:
         rotation = self.configuration.rotation % 360
-        rotation_quadrants = self.ROTATION_QUADRANTS.get(rotation, 0)
-        if rotation_quadrants:
-            return np.rot90(image, k=rotation_quadrants)
+        code = self.ROTATION_CODES.get(rotation)
+        if code is not None:
+            return cv2.rotate(image, code)
         return image
 
     def _encode_jpeg(self, image: np.ndarray) -> Optional[bytes]:
+        jpeg = self._encode_jpeg_hardware(image)
+        if jpeg is not None:
+            return jpeg
         encode_parameters = [cv2.IMWRITE_JPEG_QUALITY, self.JPEG_QUALITY]
         success, encoded = cv2.imencode(".jpg", image, encode_parameters)
         if not success:
             return None
         return encoded.tobytes()
+
+    def _encode_jpeg_hardware(self, image: np.ndarray) -> Optional[bytes]:
+        """Encode on the VideoCore JPEG block, or return None to fall back to software."""
+        if self._hw_encoder_disabled:
+            return None
+        if self._hw_encoder is None:
+            height, width = image.shape[:2]
+            try:
+                self._hw_encoder = HardwareJpegEncoder(width, height, quality=self.JPEG_QUALITY)
+            except Exception as exc:
+                self._hw_encoder_disabled = True
+                self.logwarn(f"Hardware JPEG encoder unavailable, using software: {exc}")
+                return None
+            self.loginfo(f"JPEG encoding on hardware ({self._hw_encoder.device})")
+        try:
+            return self._hw_encoder.encode(image)
+        except Exception as exc:
+            self.logwarn(f"Hardware JPEG encode failed, falling back to software: {exc}")
+            self._release_hw_encoder()
+            self._hw_encoder_disabled = True
+            return None
+
+    def _release_hw_encoder(self):
+        if self._hw_encoder is not None:
+            try:
+                self._hw_encoder.close()
+            except Exception as exc:
+                self.logwarn(f"Failed to close hardware JPEG encoder: {exc}")
+            self._hw_encoder = None
 
     def _capture_jpeg(self) -> Optional[bytes]:
         if self._device is None:
@@ -194,6 +228,7 @@ class CameraNode(CameraNodeAbs):
         self.release()
 
     def release(self, force: bool = False):
+        self._release_hw_encoder()
         if self._device is not None:
             self.loginfo("Releasing camera...")
             if self._use_picamera2:
