@@ -1,6 +1,6 @@
 maker: Waveshare
 model: OV5647
-framerate: 30
+framerate: 15
 fov: 160
 res_w: 480
 res_h: 640
