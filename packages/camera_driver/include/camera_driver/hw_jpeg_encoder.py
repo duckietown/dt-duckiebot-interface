@@ -95,7 +95,13 @@ VIDIOC_S_CTRL = _iowr(28, ctypes.sizeof(Control))
 
 
 class HardwareJpegEncoder:
-    def __init__(self, width, height, quality=90, device="/dev/video31", out_size=768 * 1024):
+    def __init__(self, width, height, quality=90, device="/dev/video31", out_size=None):
+        if out_size is None:
+            # a q90 frame measures well under a byte per pixel, but a noisy one can
+            # run much larger, so the buffer scales with the resolution rather than
+            # sitting at what one sensor needed: 480x640 keeps the 768 KiB that was
+            # measured, 1296x972 (watchtower, traffic light) gets 1.8 MiB.
+            out_size = max(768 * 1024, width * height * 3 // 2)
         self.w, self.h, self.out_size = width, height, out_size
         self.device = device
         self.quality_applied = True
