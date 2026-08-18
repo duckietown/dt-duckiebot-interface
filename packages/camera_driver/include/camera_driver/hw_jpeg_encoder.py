@@ -105,6 +105,8 @@ class HardwareJpegEncoder:
         self.w, self.h, self.out_size = width, height, out_size
         self.device = device
         self.quality_applied = True
+        self.in_map = None
+        self.out_map = None
         self.fd = os.open(device, os.O_RDWR)
         try:
             f = Format(type=BUF_TYPE_OUTPUT_MPLANE)
@@ -148,7 +150,12 @@ class HardwareJpegEncoder:
             for t in (BUF_TYPE_OUTPUT_MPLANE, BUF_TYPE_CAPTURE_MPLANE):
                 fcntl.ioctl(self.fd, VIDIOC_STREAMON, ctypes.c_int(t))
         except BaseException:
-            os.close(self.fd)
+            try:
+                for mapping in (self.in_map, self.out_map):
+                    if mapping is not None:
+                        mapping.close()
+            finally:
+                os.close(self.fd)
             raise
 
     def _setup(self, btype):
@@ -204,6 +211,8 @@ class HardwareJpegEncoder:
             raise TimeoutError("hardware JPEG encoder did not complete within 2s")
         self._dqbuf(BUF_TYPE_OUTPUT_MPLANE)
         n = self._dqbuf(BUF_TYPE_CAPTURE_MPLANE)
+        if n == 0 or n > self.out_size:
+            raise RuntimeError(f"hardware JPEG encoder returned invalid output size: {n}")
         return self.out_map[:n]
 
     def close(self):
