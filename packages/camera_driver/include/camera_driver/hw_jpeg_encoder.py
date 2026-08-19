@@ -153,9 +153,15 @@ class HardwareJpegEncoder:
             try:
                 for mapping in (self.in_map, self.out_map):
                     if mapping is not None:
-                        mapping.close()
+                        try:
+                            mapping.close()
+                        except Exception:
+                            pass
             finally:
-                os.close(self.fd)
+                try:
+                    os.close(self.fd)
+                except OSError:
+                    pass
             raise
 
     def _setup(self, btype):
