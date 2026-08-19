@@ -10,7 +10,7 @@ import numpy as np
 
 
 from camera_driver import CameraNodeAbs
-from camera_driver.hw_jpeg_encoder import HardwareJpegEncoder
+from camera_driver.hw_jpeg_encoder import HardwareJpegEncoder, InvalidJpegOutputError
 
 class CameraNode(CameraNodeAbs):
     """
@@ -79,6 +79,12 @@ class CameraNode(CameraNodeAbs):
                 )
         try:
             return self._hw_encoder.encode(image)
+        except InvalidJpegOutputError as exc:
+            self.logwarn(
+                f"Hardware JPEG encoder returned invalid output, "
+                f"falling back to software for this frame: {exc}"
+            )
+            return None
         except Exception as exc:
             self.logwarn(f"Hardware JPEG encode failed, falling back to software: {exc}")
             self._release_hw_encoder()

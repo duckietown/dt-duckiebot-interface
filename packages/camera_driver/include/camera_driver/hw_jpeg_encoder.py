@@ -94,6 +94,10 @@ VIDIOC_STREAMOFF = _iow(19, 4)
 VIDIOC_S_CTRL = _iowr(28, ctypes.sizeof(Control))
 
 
+class InvalidJpegOutputError(RuntimeError):
+    """The V4L2 encoder completed a frame without a usable JPEG payload."""
+
+
 class HardwareJpegEncoder:
     def __init__(self, width, height, quality=90, device="/dev/video31", out_size=None):
         if out_size is None:
@@ -218,7 +222,9 @@ class HardwareJpegEncoder:
         self._dqbuf(BUF_TYPE_OUTPUT_MPLANE)
         n = self._dqbuf(BUF_TYPE_CAPTURE_MPLANE)
         if n == 0 or n > self.out_size:
-            raise RuntimeError(f"hardware JPEG encoder returned invalid output size: {n}")
+            raise InvalidJpegOutputError(
+                f"hardware JPEG encoder returned invalid output size: {n}"
+            )
         return self.out_map[:n]
 
     def close(self):
