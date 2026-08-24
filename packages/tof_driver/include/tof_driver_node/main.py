@@ -42,6 +42,10 @@ class ToFNodeConfiguration(NodeConfiguration):
     mode: str
     display_fragment_frequency: int
     connectors: List[Connector]
+    # milliseconds. None keeps the mode default
+    timing_budget: Optional[int] = None
+    # milliseconds. None derives it from `frequency`
+    inter_measurement_period: Optional[int] = None
 
 
 class ToFNode(Node, HardwareInTheLoopSupport):
@@ -78,20 +82,42 @@ class ToFNode(Node, HardwareInTheLoopSupport):
             self.configuration.sensor_model
             )
 
-        # compute frequency
-        self._frequency: int = self.configuration.frequency
-        max_frequency = min(self.configuration.frequency, int(1.0 / self._accuracy.timing_budget))
+        # chip-level knobs, when the configuration asks for them
+        if self.configuration.timing_budget is not None:
+            self._accuracy.timing_budget = self.configuration.timing_budget / 1000.0
+        if self.configuration.inter_measurement_period is not None:
+            self._accuracy.inter_measurement_period = (
+                self.configuration.inter_measurement_period / 1000.0
+            )
+        else:
+            # measure as often as the publish rate needs, never faster than one takes
+            self._accuracy.inter_measurement_period = max(
+                1.0 / self.configuration.frequency, self._accuracy.timing_budget
+            )
+
+        # fail here rather than inside the bus probe, where it would read as missing hardware
+        self._accuracy.validate(self.configuration.sensor_model)
+
+        # the inter-measurement period is the rate ceiling, not the timing budget
+        self._frequency: float = self.configuration.frequency
+        max_frequency: float = self._accuracy.max_frequency
 
         assert max_frequency > 0, "The timing budget is too low."
 
-        if self.configuration.frequency > max_frequency:
+        if self._frequency > max_frequency:
             self.logger.warning(
-                f"Frequency of {self.configuration.frequency}Hz not supported. The selected mode "
-                f"{self.configuration.mode} has a timing budget of {self._accuracy.timing_budget}s, "
-                f"which yields a maximum frequency of {max_frequency}Hz."
+                f"Frequency of {self.configuration.frequency}Hz not supported. Mode "
+                f"{self.configuration.mode} with a timing budget of "
+                f"{self._accuracy.timing_budget_ms}ms and an inter-measurement period of "
+                f"{self._accuracy.inter_measurement_period_ms}ms yields a maximum "
+                f"frequency of {max_frequency:.1f}Hz."
             )
             self._frequency = max_frequency
-        self.logger.info(f"Frequency set to {self._frequency}Hz.")
+        self.logger.info(
+            f"Frequency set to {self._frequency:.1f}Hz "
+            f"(timing budget {self._accuracy.timing_budget_ms}ms, "
+            f"inter-measurement period {self._accuracy.inter_measurement_period_ms}ms)."
+        )
 
         # frame
         self.frame_id: str = f"{self._robot_name}/tof/{self.sensor_name}"
@@ -229,14 +255,21 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         await info_queue.publish(msg.to_rawdata())
         # read and publish
         dt: float = 1.0 / self._frequency
+        next_slot: float = time.time()
         while not self.is_shutdown:
             # do nothing if HIL is active
             if self.hil_is_active:
                 await asyncio.sleep(1.0)
+                next_slot = time.time()
                 continue
             if self._sensor is None:
                 self.logger.error("The sensor is not responding.")
                 await asyncio.sleep(dt)
+                continue
+            # skip repeats: without this the result register hands out the previous
+            # measurement again, which looks like data but carries nothing new
+            if not await self._wait_for_measurement(dt):
+                self.logger.debug("No new measurement within one period, skipping.")
                 continue
             # ---
             try:
@@ -268,8 +301,22 @@ class ToFNode(Node, HardwareInTheLoopSupport):
             # update display
             if self._renderer is not None:
                 self._renderer.update(range_mm)
-            # wait
-            await asyncio.sleep(dt)
+            # sleep to a deadline, not for a fixed delay, or the read time eats the rate
+            next_slot = max(next_slot + dt, time.time())
+            await asyncio.sleep(next_slot - time.time())
+
+    async def _wait_for_measurement(self, timeout: float) -> bool:
+        """Wait for a measurement the sensor has not handed out yet. Each check is an
+        I2C read, so poll in proportion to how long a measurement takes rather than as
+        fast as possible.
+        """
+        deadline: float = time.time() + timeout
+        poll: float = min(max(self._accuracy.inter_measurement_period / 20, 0.001), 0.010)
+        while not self._sensor.data_ready:
+            if time.time() >= deadline:
+                return False
+            await asyncio.sleep(poll)
+        return True
 
     @sidecar
     async def worker_display(self):
