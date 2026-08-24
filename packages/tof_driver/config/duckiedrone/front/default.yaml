@@ -1,7 +1,25 @@
 sensor_name: "front"
 sensor_model: "VL53L1X"
-frequency: 5  # Hz
+
+# publish rate, Hz. Also sets the chip's measurement rate unless
+# inter_measurement_period overrides it.
+frequency: 5
+
+# SHORT_RANGE: less reach, much better in bright light. LONG_RANGE: more reach.
 mode: "LONG_RANGE"
+
+# light collected per measurement, ms. One of 15 (SHORT_RANGE only), 20, 33,
+# 50, 100, 200, 500. Longer is quieter and reaches further, but slower and
+# laggier. 200ms is the most that fits at 5 Hz: 0.8mm noise, furthest reach.
+timing_budget: 200
+
+# gap between measurements, ms. Caps the rate of new readings, must be
+# >= timing_budget. Derived from frequency when omitted.
+# inter_measurement_period: 200
+
+# laser is on continuously here. Halve its duty cycle:
+# timing_budget: 100
+
 display_fragment_frequency: 0
 connectors:
   # Raspberry Pi 4
