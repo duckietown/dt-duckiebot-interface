@@ -12,13 +12,31 @@
             ]
         },
         "frequency": {
-            "type": "number"
+            "type": "number",
+            "exclusiveMinimum": 0
         },
         "mode": {
             "type": "string"
         },
+        "timing_budget": {
+            "description": "How long the chip integrates photons for one measurement, in milliseconds. Omit to use the default that comes with the selected mode. VL53L1X only.",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "exclusiveMinimum": 0
+        },
+        "inter_measurement_period": {
+            "description": "How often the chip starts a new measurement, in milliseconds. Must be at least as long as the timing budget. Omit to derive it from `frequency`. VL53L1X only.",
+            "type": [
+                "integer",
+                "null"
+            ],
+            "exclusiveMinimum": 0
+        },
         "display_fragment_frequency": {
-            "type": "number"
+            "type": "number",
+            "minimum": 0
         },
         "connectors": {
             "type": "array",
@@ -54,10 +72,18 @@
                 },
                 "mode": {
                     "type": "string",
-                    "enum": ["BETTER", "GOOD", "BEST", "LONG_RANGE", "HIGH_SPEED"]
+                    "enum": [
+                        "BETTER",
+                        "GOOD",
+                        "BEST",
+                        "LONG_RANGE",
+                        "HIGH_SPEED"
+                    ]
                 }
             },
-            "required": ["mode"]
+            "required": [
+                "mode"
+            ]
         },
         {
             "properties": {
@@ -66,10 +92,15 @@
                 },
                 "mode": {
                     "type": "string",
-                    "enum": ["SHORT_RANGE", "LONG_RANGE"]
+                    "enum": [
+                        "SHORT_RANGE",
+                        "LONG_RANGE"
+                    ]
                 }
             },
-            "required": ["mode"]
+            "required": [
+                "mode"
+            ]
         }
     ]
 }

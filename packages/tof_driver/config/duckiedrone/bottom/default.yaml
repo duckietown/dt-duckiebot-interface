@@ -1,7 +1,26 @@
 sensor_name: "bottom"
 sensor_model: "VL53L1X"
+
+# publish rate, Hz. Also sets the chip's measurement rate unless
+# inter_measurement_period overrides it.
 frequency: 30
+
+# SHORT_RANGE: less reach, much better in bright light. LONG_RANGE: more reach.
 mode: "LONG_RANGE"
+
+# light collected per measurement, ms. One of 15 (SHORT_RANGE only), 20, 33,
+# 50, 100, 200, 500. Longer is quieter and reaches further, but slower and
+# laggier. 33ms gives 30 Hz, 2mm noise, 17ms latency.
+timing_budget: 33
+
+# gap between measurements, ms. Caps the rate of new readings, must be
+# >= timing_budget. Derived from frequency when omitted.
+# inter_measurement_period: 33
+
+# quieter: 1mm noise, 10 Hz, 50ms latency
+# frequency: 10
+# timing_budget: 100
+
 display_fragment_frequency: 0
 connectors:
   # Raspberry Pi 4
