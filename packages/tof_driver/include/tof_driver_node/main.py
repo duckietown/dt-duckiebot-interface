@@ -255,24 +255,28 @@ class ToFNode(Node, HardwareInTheLoopSupport):
         await info_queue.publish(msg.to_rawdata())
         # read and publish
         dt: float = 1.0 / self._frequency
-        next_slot: float = time.time()
+        # schedule against the monotonic clock, so an NTP step does not stall or rush the
+        # loop. Message timestamps stay on the wall clock, consumers correlate against it
+        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        next_slot: float = loop.time()
         while not self.is_shutdown:
             # do nothing if HIL is active
             if self.hil_is_active:
                 await asyncio.sleep(1.0)
-                next_slot = time.time()
+                next_slot = loop.time()
                 continue
             if self._sensor is None:
                 self.logger.error("The sensor is not responding.")
                 await asyncio.sleep(dt)
                 continue
-            # skip repeats: without this the result register hands out the previous
-            # measurement again, which looks like data but carries nothing new
-            if not await self._wait_for_measurement(dt):
-                self.logger.debug("No new measurement within one period, skipping.")
-                continue
             # ---
             try:
+                # skip repeats: without this the result register hands out the previous
+                # measurement again, which looks like data but carries nothing new. This
+                # is an I2C read too, so it shares the bus-error handler below
+                if not await self._wait_for_measurement(dt):
+                    self.logger.debug("No new measurement within one period, skipping.")
+                    continue
                 # detect range
                 range_mm: Optional[float] = self._sensor.get_distance()
             except OSError:
@@ -302,18 +306,19 @@ class ToFNode(Node, HardwareInTheLoopSupport):
             if self._renderer is not None:
                 self._renderer.update(range_mm)
             # sleep to a deadline, not for a fixed delay, or the read time eats the rate
-            next_slot = max(next_slot + dt, time.time())
-            await asyncio.sleep(next_slot - time.time())
+            next_slot = max(next_slot + dt, loop.time())
+            await asyncio.sleep(next_slot - loop.time())
 
     async def _wait_for_measurement(self, timeout: float) -> bool:
         """Wait for a measurement the sensor has not handed out yet. Each check is an
         I2C read, so poll in proportion to how long a measurement takes rather than as
         fast as possible.
         """
-        deadline: float = time.time() + timeout
+        loop: asyncio.AbstractEventLoop = asyncio.get_running_loop()
+        deadline: float = loop.time() + timeout
         poll: float = min(max(self._accuracy.inter_measurement_period / 20, 0.001), 0.010)
         while not self._sensor.data_ready:
-            if time.time() >= deadline:
+            if loop.time() >= deadline:
                 return False
             await asyncio.sleep(poll)
         return True
