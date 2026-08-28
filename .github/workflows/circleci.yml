@@ -1,4 +1,7 @@
 on: [status]
+permissions:
+  contents: read
+  statuses: write
 jobs:
    circleci_artifacts_redirector_job:
      runs-on: ubuntu-latest
