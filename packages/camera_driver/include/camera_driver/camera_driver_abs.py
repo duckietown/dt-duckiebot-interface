@@ -17,6 +17,7 @@ from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 from kvstore_utils import KVStore
 from turbojpeg import TurboJPEG
 from typing import Optional, cast
+from dtps_utils.passthrough import PassthroughPublisherTransport
 
 @dataclasses.dataclass
 class CameraNodeConfiguration(NodeConfiguration):
@@ -40,12 +41,25 @@ class CameraNodeConfiguration(NodeConfiguration):
     exposure: Optional[int] = None
 
 
+@dataclasses.dataclass
+class CameraTopicTransport:
+    """Shared-memory and HTTP settings for one camera topic."""
+
+    shm_path: str
+    shm_only: bool
+
+
 class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
     """
     Handles the imagery.
 
     The node handles the image stream, initializing it, publishing frames
     according to the required frequency and stops it at shutdown.
+
+    Each topic uses HTTP by default. With ``DT_CAMERA_SHM_OUT_PATH`` set, use
+    ``DT_CAMERA_SHM_ONLY_JPEG=1``, ``DT_CAMERA_SHM_ONLY_INFO=1``, or
+    ``DT_CAMERA_SHM_ONLY_PARAMETERS=1`` to make only that topic use its
+    shared-memory channel exclusively.
 
     Note that only one instance of this class should be used at a time.
     If another node tries to start an instance while this node is running,
@@ -56,7 +70,7 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         super().__init__(
             name=node_name,
             kind=NodeType.DRIVER,
-            description="Reads a stream of images from a camera and publishes the frames over DTPS"
+            description="Reads a stream of images from a camera and publishes the frames over HTTP or shared memory"
         )
         HardwareInTheLoopSupport.__init__(self)
         self.robot_name = os.environ.get("VEHICLE_NAME")
@@ -93,6 +107,48 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         self._jpeg: TurboJPEG = TurboJPEG()
         # queues
         self._has_published: bool = False
+        camera_shm_path = os.environ.get("DT_CAMERA_SHM_OUT_PATH", "")
+        self._camera_shm_path = camera_shm_path.strip()
+        topic_shm_paths = {
+            "jpeg": self._camera_shm_path,
+            "info": self._topic_shm_path(self._camera_shm_path, ".info"),
+            "parameters": self._topic_shm_path(
+                self._camera_shm_path,
+                ".parameters",
+            ),
+        }
+        topic_shm_only_variables = {
+            "jpeg": "DT_CAMERA_SHM_ONLY_JPEG",
+            "info": "DT_CAMERA_SHM_ONLY_INFO",
+            "parameters": "DT_CAMERA_SHM_ONLY_PARAMETERS",
+        }
+        self._topic_transports = {}
+        for topic_name, shm_path in topic_shm_paths.items():
+            shm_only_variable = topic_shm_only_variables[topic_name]
+            shm_only_requested = self._read_boolean_environment(
+                shm_only_variable,
+                False,
+            )
+            shm_is_enabled = shm_path != ""
+            if shm_only_requested and not shm_is_enabled:
+                self.logwarn(
+                    f"Ignoring {shm_only_variable}=1 because "
+                    "DT_CAMERA_SHM_OUT_PATH is not configured."
+                )
+            shm_only = shm_is_enabled and shm_only_requested
+            self._topic_transports[topic_name] = CameraTopicTransport(
+                shm_path,
+                shm_only,
+            )
+            if shm_is_enabled:
+                self.loginfo(
+                    f"Camera {topic_name} SHM output enabled at "
+                    f"'{shm_path}'."
+                )
+            if shm_only:
+                self.loginfo(
+                    f"Camera {topic_name} SHM-only output enabled."
+                )
         self._jpeg_queue: Optional[DTPSContext] = None
         self._parameters_queue: Optional[DTPSContext] = None
         self._homography_queue: Optional[DTPSContext] = None
@@ -128,6 +184,28 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         # ---
         self.loginfo("[CameraNodeAbs]: Initialized.")
 
+    def _read_boolean_environment(self, variable_name: str, default: bool) -> bool:
+        """Read a ``0`` or ``1`` transport option and warn for invalid values."""
+        default_value = "1" if default else "0"
+        variable_value = os.environ.get(variable_name, default_value)
+        variable_value = variable_value.strip()
+        if variable_value not in ("0", "1"):
+            self.logwarn(
+                f"{variable_name} must be '0' or '1'; using '{default_value}'."
+            )
+            return default
+        return variable_value == "1"
+
+    @staticmethod
+    def _topic_shm_path(
+        base_path: str,
+        suffix: str,
+    ) -> str:
+        """Derive a topic channel path from the compatible JPEG base path."""
+        if not base_path:
+            return ""
+        return base_path + suffix
+
     def _stale_stream_reset(self):
         self.shutdown("Data flow monitor has closed the node because of stale stream.")
 
@@ -139,15 +217,47 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         timestamp = time.time()
         self.jpeg_message.header.timestamp = timestamp
         self.jpeg_message.data = jpeg
-        await self._jpeg_publisher.publish(self.jpeg_message.to_rawdata())
+        jpeg_rawdata = self.jpeg_message.to_rawdata()
+        await self._publish_topic(
+            "jpeg",
+            jpeg_rawdata,
+            self._jpeg_publisher,
+        )
         # publish info message
         self.info_message.header.timestamp = timestamp
-        await self._info_publisher.publish(self.info_message.to_rawdata())
+        await self._publish_camera_info()
         self._last_image_published_time = time.time()
         if not self._has_published:
             self.loginfo("Published the first image")
             self.loginfo("Published camera info")
             self._has_published = True
+
+    async def _publish_topic(
+        self,
+        topic_name: str,
+        rawdata: RawData,
+        dtps_publisher,
+    ):
+        """Publish one topic through HTTP and its optional SHM channel."""
+        transport = self._topic_transports[topic_name]
+        if dtps_publisher is None:
+            raise RuntimeError(
+                f"Camera {topic_name} publisher is not initialized."
+            )
+        await dtps_publisher.publish(
+            rawdata,
+            shm_path=transport.shm_path or None,
+            shm_only=transport.shm_only,
+        )
+
+    async def _publish_camera_info(self):
+        """Publish camera information through the configured topic transport."""
+        info_rawdata = self.info_message.to_rawdata()
+        await self._publish_topic(
+            "info",
+            info_rawdata,
+            self._info_publisher,
+        )
 
     async def dtps_init_queues(self):
         await self.dtps_init(self.configuration)
@@ -176,6 +286,14 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         # subscribe to the camera homography
         await kvstore.subscribe("calibration/camera_extrinsic/current", self._on_new_extrinsic_calibration)
         # initialize HIL support
+        hil_publish_transports = {}
+        for topic_name in ("jpeg", "info"):
+            transport = self._topic_transports[topic_name]
+            if transport.shm_path:
+                hil_publish_transports[topic_name] = PassthroughPublisherTransport(
+                    shm_path=transport.shm_path,
+                    shm_only=transport.shm_only,
+                )
         await self.init_hil_support(
             self.context,
             # source (this is the dynamic side, duckiematrix or nothing)
@@ -187,7 +305,8 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             # paths to connect when a remote is set
             subpaths=["jpeg", "info"],
             # which side is the re-pluggable one
-            side=HardwareInTheLoopSide.SOURCE
+            side=HardwareInTheLoopSide.SOURCE,
+            publish_transports=hil_publish_transports,
             # TODO: use transformations to set the frame in the message
         )
 
@@ -295,9 +414,14 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
         self.info_message.width = self.camera_model.width
         self.info_message.height = self.camera_model.height
         # publish parameters message
-        await self._parameters_queue.publish(parameters_message.to_rawdata())
+        parameters_rawdata = parameters_message.to_rawdata()
+        await self._publish_topic(
+            "parameters",
+            parameters_rawdata,
+            self._parameters_queue,
+        )
         # publish info message
-        await self._info_publisher.publish(self.info_message.to_rawdata())
+        await self._publish_camera_info()
         self.loginfo("Updated intrinsic camera calibration from KVStore.")
         self.loginfo("Published camera info")
 

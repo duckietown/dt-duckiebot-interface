@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Callable
 
 from dtps import context, DTPSContext
 from dtps_http import RawData
-from dtps_utils.passthrough import DTPSPassthrough
+from dtps_utils.passthrough import DTPSPassthrough, PassthroughPublisherTransport
 from duckietown_messages.network.dtps.context import DTPSContextMsg
 from duckietown_messages.simulation.hil.configuration import HILConfiguration
 from duckietown_messages.simulation.hil.connection.configuration import HILConnectionConfiguration
@@ -52,6 +52,7 @@ class HardwareInTheLoopSupport:
             subpaths: List[str],
             side: HardwareInTheLoopSide,
             transformations: Optional[Dict[str, Callable[[RawData], RawData]]] = None,
+            publish_transports: Optional[Dict[str, PassthroughPublisherTransport]] = None,
             ):
         """
         Configures the support for hardware in the loop (HIL) simulation.
@@ -65,6 +66,8 @@ class HardwareInTheLoopSupport:
             subpaths (List[str]): The paths to connect when a remote is set.
             side (HardwareInTheLoopSide): Specifies which side is the re-pluggable one.
             transformations (Optional[Dict[str, Callable[[RawData], RawData]]]): Optional transformations to set the frame in the message.
+            publish_transports (Optional[Dict[str, PassthroughPublisherTransport]]):
+                Optional outgoing transport settings for each relayed subpath.
 
         Returns:
             None
@@ -72,7 +75,8 @@ class HardwareInTheLoopSupport:
         self._side: HardwareInTheLoopSide = side
         # create passthrough
         self._passthrough = DTPSPassthrough(node, src, dst, subpaths, src_path=src_path, dst_path=dst_path,
-                                            transformations=transformations)
+                                            transformations=transformations,
+                                            publish_transports=publish_transports)
         await self._passthrough.astart()
         # kv-store
         kvstore: KVStore = KVStore()

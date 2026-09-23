@@ -7,6 +7,37 @@ Status:
 Repository containing all the necessary drivers to start sensors and actuators.
 It should not contain any high-level functionality.
 
+## Camera Shared Memory
+
+Set `DT_CAMERA_SHM_OUT_PATH` to enable the camera driver's local shared-memory
+channels. Given a base path such as `/data/ramdisk/camera-shm/front_center`,
+the driver uses these paths:
+
+| Topic | Channel path | Default primary transport |
+| --- | --- | --- |
+| JPEG | `<base>` | HTTP |
+| Camera info | `<base>.info` | HTTP |
+| Intrinsic parameters | `<base>.parameters` | HTTP |
+
+With a base path configured, set any of these to `1` to make that topic
+SHM-only:
+
+- `DT_CAMERA_SHM_ONLY_JPEG`
+- `DT_CAMERA_SHM_ONLY_INFO`
+- `DT_CAMERA_SHM_ONLY_PARAMETERS`
+
+All three options accept only `0` or `1` and default to `0`. When no base path
+is configured, all topics use HTTP. ROS consumers must use the same topic
+flags as the producer. The driver passes the configured channel and transport
+choice to its DTPS API calls. A failed SHM write falls back to HTTP.
+When HIL passthrough is active, the JPEG and camera-info streams retain the
+same configured transport choice.
+
+DTPS preserves both `RawData.content` and `RawData.content_type` in its SHM
+envelope. It is a latest-value transport, so consumers must tolerate dropped
+or repeated payloads. See the [shared-memory transport documentation](../lib-dtps-http/docs/src/impl/shm.md)
+for transport selection, synchronization, and lifecycle details.
+
 
 ## How to launch manually
 
