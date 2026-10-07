@@ -394,6 +394,7 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
                 P=calibration["projection_matrix"]["data"],
                 R=calibration["rectification_matrix"]["data"]
             )
+            distortion_model: str = calibration.get("distortion_model", "plumb_bob")
             if self.configuration.res_w != self.camera_model.width or self.configuration.res_h != self.camera_model.height:
                 self.camera_model = self.scale_camera_model(self.camera_model, self.configuration)
         except Exception as e:
@@ -407,7 +408,8 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
             K=self.camera_model.K.flatten().tolist(),
             D=self.camera_model.D.flatten().tolist(),
             P=self.camera_model.P.flatten().tolist(),
-            R=self.camera_model.R.flatten().tolist() if self.camera_model.R is not None else None
+            R=self.camera_model.R.flatten().tolist() if self.camera_model.R is not None else None,
+            distortion_model=distortion_model
         )
         # info message
         self.info_message.header.timestamp = timestamp
