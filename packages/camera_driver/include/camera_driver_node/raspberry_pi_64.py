@@ -108,11 +108,11 @@ class CameraNode(CameraNodeAbs):
             image = request.make_array("main")
         finally:
             request.release()
+        # nanoseconds on the kernel's monotonic clock, 0 if libcamera has none
         sensor_timestamp = metadata.get("SensorTimestamp")
-        if sensor_timestamp is None:
+        if not sensor_timestamp:
             return image, time.time()
-        # SensorTimestamp is in nanoseconds on the kernel's monotonic clock
-        return image, sensor_timestamp / 1e9 + time.time() - time.monotonic()
+        return image, sensor_timestamp / 1e9 + (time.time() - time.monotonic())
 
     def _capture_jpeg(self) -> Optional[Tuple[bytes, float]]:
         if self._device is None:
