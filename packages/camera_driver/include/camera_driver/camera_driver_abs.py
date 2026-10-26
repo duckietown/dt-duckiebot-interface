@@ -209,12 +209,13 @@ class CameraNodeAbs(Node, HardwareInTheLoopSupport, metaclass=ABCMeta):
     def _stale_stream_reset(self):
         self.shutdown("Data flow monitor has closed the node because of stale stream.")
 
-    async def publish(self, jpeg: bytes):
+    async def publish(self, jpeg: bytes, timestamp: Optional[float] = None):
         # do not publish if passthrough is active
         if self.hil_is_active:
             return
         # publish jpeg message
-        timestamp = time.time()
+        if timestamp is None:
+            timestamp = time.time()
         self.jpeg_message.header.timestamp = timestamp
         self.jpeg_message.data = jpeg
         jpeg_rawdata = self.jpeg_message.to_rawdata()

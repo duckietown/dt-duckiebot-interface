@@ -2,6 +2,7 @@
 
 import atexit
 import subprocess
+import time
 from typing import Any, Optional, Tuple, cast
 import cv2
 import asyncio
@@ -99,21 +100,39 @@ class CameraNode(CameraNodeAbs):
                 self.logwarn(f"Failed to close hardware JPEG encoder: {exc}")
             self._hw_encoder = None
 
-    def _capture_jpeg(self) -> Optional[bytes]:
+    def _capture_picamera2(self) -> Tuple[Optional[np.ndarray], float]:
+        """Capture a frame and its capture time, as wall-clock seconds."""
+        request = self._device.capture_request()
+        try:
+            metadata = request.get_metadata()
+            image = request.make_array("main")
+        finally:
+            request.release()
+        sensor_timestamp = metadata.get("SensorTimestamp")
+        if sensor_timestamp is None:
+            return image, time.time()
+        # SensorTimestamp is in nanoseconds on the kernel's monotonic clock
+        return image, sensor_timestamp / 1e9 + time.time() - time.monotonic()
+
+    def _capture_jpeg(self) -> Optional[Tuple[bytes, float]]:
         if self._device is None:
             return None
         if self._use_picamera2:
-            image = self._device.capture_array()
+            image, timestamp = self._capture_picamera2()
             if image is None:
                 return None
         else:
             video_capture = cast(cv2.VideoCapture, self._device)
             success, image = video_capture.read()
+            timestamp = time.time()
             if not success or image is None:
                 return None
         image_array = cast(np.ndarray, image)
         rotated_image = self._rotate_image(image_array)
-        return self._encode_jpeg(rotated_image)
+        jpeg = self._encode_jpeg(rotated_image)
+        if jpeg is None:
+            return None
+        return jpeg, timestamp
 
     def _set_optional_v4l2_control(self, key: str, value: int):
         command = ["v4l2-ctl", "-d", self.VIDEO_DEVICE, "-c", f"{key}={value}"]
@@ -207,12 +226,13 @@ class CameraNode(CameraNodeAbs):
 
         # keep reading
         while not self.is_shutdown:
-            jpeg = self._capture_jpeg()
-            if jpeg is None:
+            frame = self._capture_jpeg()
+            if frame is None:
                 self.logerr("Could not read image from camera")
                 await asyncio.sleep(1)
                 continue
-            await self.publish(jpeg)
+            jpeg, timestamp = frame
+            await self.publish(jpeg, timestamp)
             # return control to the event loop
             await asyncio.sleep(0.001)
         self.loginfo("Camera worker stopped.")
