@@ -74,7 +74,10 @@ RUN dt-apt-install ${PROJECT_PATH}/dependencies-apt.txt
 # Build libcamera from the Raspberry Pi fork so we have the OV5647 fixes that
 # landed after 0.2. Ubuntu Noble ships libcamera 0.2.0, which trips a
 # `prepareIsp()` IPA-buffer assertion on the Duckiedrone's OV5647 sensor.
-ARG LIBCAMERA_REF=v0.4.0
+# Use a `+rpt` tag: the plain upstream tags (e.g. v0.4.0) lack the rpi/pisp
+# pipeline, so on a Raspberry Pi 5 libcamera reports no cameras at all.
+# v0.5.2+rpt20250903 is the version Raspberry Pi OS ships for the Pi 5.
+ARG LIBCAMERA_REF=v0.5.2+rpt20250903
 RUN set -eux; \
     git clone --depth 1 --branch "${LIBCAMERA_REF}" \
         https://github.com/raspberrypi/libcamera.git /tmp/libcamera; \
@@ -82,8 +85,8 @@ RUN set -eux; \
     meson setup build \
         --prefix=/usr \
         --buildtype=release \
-        -Dipas=rpi/vc4 \
-        -Dpipelines=rpi/vc4 \
+        -Dipas=rpi/vc4,rpi/pisp \
+        -Dpipelines=rpi/vc4,rpi/pisp \
         -Dpycamera=enabled \
         -Ddocumentation=disabled \
         -Dgstreamer=disabled \
