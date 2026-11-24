@@ -4,6 +4,7 @@ import asyncio
 
 from dt_node_utils import NodeType
 from dt_node_utils.node import Node
+from hil_support.attachment_presence import AttachmentPresence, HEARTBEAT_SECONDS
 from hil_support.hil import HardwareInTheLoopSupport, HardwareInTheLoopSide
 
 
@@ -56,8 +57,17 @@ class DuckiematrixInterface(Node, HardwareInTheLoopSupport):
             side=HardwareInTheLoopSide.SOURCE,
             # TODO: use transformations to set the frame in the message
         )
-        while not self.is_shutdown:
-            await asyncio.sleep(1.0)
+        presence = AttachmentPresence(self._robot_name)
+        try:
+            await presence.publish_identity()
+            while not self.is_shutdown:
+                await presence.update(
+                    self._hil_connection if self.hil_is_active else None,
+                    dreamwalking=self._hil_configuration.dreamwalking,
+                )
+                await asyncio.sleep(HEARTBEAT_SECONDS)
+        finally:
+            await presence.close()
 
 def main():
     node: DuckiematrixInterface = DuckiematrixInterface()

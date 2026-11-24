@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
+import asyncio
 import logging
+import os
 from enum import IntEnum
 from typing import Optional, List, Dict, Callable
 
+from aiohttp import ClientError, ClientResponseError
+from dt_robot_utils import get_robot_name
 from dtps import context, DTPSContext
 from dtps_http import RawData
 from dtps_utils.passthrough import DTPSPassthrough, PassthroughPublisherTransport
@@ -20,6 +24,18 @@ except ImportError:
     EXPECTED_CONNECTION_EXCEPTIONS = (OSError,)
 
 logger = logging.getLogger("hil-support")
+ATTACHMENT_TIMEOUT = 3.0
+ATTACHMENT_CONNECTION_ERRORS = EXPECTED_CONNECTION_EXCEPTIONS + (asyncio.TimeoutError, ClientError)
+
+
+def get_hil_robot_model() -> Dict[str, str]:
+    # Read the platform identity without restricting HIL to the driver's model enums.
+    robot_type = os.environ.get("ROBOT_TYPE", "__NOTSET__")
+    configuration = os.environ.get("ROBOT_CONFIGURATION", "UNKNOWN")
+    return {
+        "robot_type": "unknown" if robot_type == "__NOTSET__" else robot_type,
+        "configuration": "UNKNOWN" if configuration == "__NOTSET__" else configuration,
+    }
 
 
 class HardwareInTheLoopSide(IntEnum):
@@ -37,6 +53,7 @@ class HardwareInTheLoopSupport:
         # passthrough context
         self._passthrough: Optional[DTPSPassthrough] = None
         self._hil_configuration: HILConfiguration = HILConfiguration()
+        self._hil_connection: Optional[HILConnectionConfiguration] = None
 
     @property
     def hil_is_active(self) -> bool:
@@ -106,23 +123,19 @@ class HardwareInTheLoopSupport:
             if cxt_cfg is not None:
                 # open link to context indicated
                 try:
-                    remote: DTPSContext = await context(cxt_cfg.name, urls=cxt_cfg.urls)
+                    remote = await asyncio.wait_for(
+                        context(cxt_cfg.name, urls=cxt_cfg.urls), ATTACHMENT_TIMEOUT,
+                    )
                 except Exception as e:
                     logger.error(f"Failed to open context '{cxt_cfg.name}':"
                                  f"\n\turls: {cxt_cfg.urls}"
                                  f"\n\terror: {str(e)}")
                     return
-                # make sure the context exists BUG: this fails sometimes, not sure why
-                # exists: bool = True
-                # try:
-                #     exists = await remote.exists()
-                # except TimeoutError:
-                #     pass
-                
-                # if not exists:
-                #     logger.info(f"Remote context '{cxt_cfg.name}' with urls '{cxt_cfg.urls}' does not exist or "
-                #                 f"it is not reachable. Ignoring.")
-                #     return
+                # KV settings can also be written by older clients or survive an Engine swap.
+                if not await self._reserve_hil_entity(remote, conn_cfg.agent_name):
+                    if cxt_cfg.urls:
+                        await remote.aclose()
+                    return
                 # navigate to optional path
                 try:
                     if cxt_cfg.path:
@@ -145,10 +158,12 @@ class HardwareInTheLoopSupport:
             if self._passthrough.is_active:
                 logger.info(f"Disconnecting passthrough")
 
+        self._hil_connection = None
         if self._side == HardwareInTheLoopSide.SOURCE:
             # set source
             try:
                 await self._passthrough.set_source(remote, path)
+                self._hil_connection = conn_cfg
             except EXPECTED_CONNECTION_EXCEPTIONS as e:
                 logger.warning(f"Passthrough source not reachable (engine may not be running yet): {e}")
             except Exception as e:
@@ -161,6 +176,26 @@ class HardwareInTheLoopSupport:
                 logger.warning(f"Passthrough destination not reachable (engine may not be running yet): {e}")
             except Exception as e:
                 logger.exception(f"Failed to set passthrough destination: {e}")
+
+    @staticmethod
+    async def _reserve_hil_entity(remote: DTPSContext, agent: str) -> bool:
+        try:
+            await asyncio.wait_for(
+                (remote / "hil" / "reserve").publish(RawData.json_from_native_object({
+                    "entity": agent,
+                    "robot": get_robot_name(),
+                    **get_hil_robot_model(),
+                })),
+                ATTACHMENT_TIMEOUT,
+            )
+        except ClientResponseError as error:
+            reason = "The Engine does not support HIL reservations; update it." if error.status == 404 else error.message
+            logger.warning("Cannot attach to Duckiematrix entity '%s': %s", agent, reason)
+            return False
+        except ATTACHMENT_CONNECTION_ERRORS as error:
+            logger.warning("Could not reserve Duckiematrix entity '%s': %s", agent, error)
+            return False
+        return True
 
     async def _on_hil_cfg_update(self, rd: RawData):
         """
